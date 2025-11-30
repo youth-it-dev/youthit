@@ -320,10 +320,7 @@ class NotionRewardHistoryService {
 
             // 리워드 타입 결정 (Notion 정책 DB에서 조회 - 관계형 필드)
             let rewardTypeRelation = [];
-            if (historyData.actionKey === 'additional_point') {
-              // 관리자 지급은 정책 DB에 없으므로 관계형 필드 비워두기
-              rewardTypeRelation = [];
-            } else if (rewardPolicyMap[historyData.actionKey]) {
+            if (rewardPolicyMap[historyData.actionKey]) {
               // 정책 DB에서 페이지 ID 가져와서 relation으로 연결
               const policyInfo = rewardPolicyMap[historyData.actionKey];
               rewardTypeRelation = [{ id: policyInfo.pageId }];
