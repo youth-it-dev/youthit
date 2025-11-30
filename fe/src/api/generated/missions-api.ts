@@ -108,6 +108,26 @@ export const putMissionsPostsCommentsByTwoIds = (
   );
 };
 
+export const postMissionsPostsCommentsReportByTwoIds = (
+  request: Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq
+) => {
+  const { postId, commentId, ...data } = request;
+  return post<Types.TPOSTMissionsPostsCommentsReportByTwoIdsRes>(
+    `/missions/posts/${request.postId}/comments/${request.commentId}/report`,
+    data.data ?? data
+  );
+};
+
+export const postMissionsPostsReportById = (
+  request: Types.TPOSTMissionsPostsReportByIdReq
+) => {
+  const { postId, ...data } = request;
+  return post<Types.TPOSTMissionsPostsReportByIdRes>(
+    `/missions/posts/${request.postId}/report`,
+    data.data ?? data
+  );
+};
+
 export const getMissionsStats = () => {
   return get<Types.TGETMissionsStatsRes>(`/missions/stats`);
 };

@@ -335,6 +335,62 @@ export const usePutMissionsPostsCommentsByTwoIds = <
   });
 };
 
+export const usePostMissionsPostsCommentsReportByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsCommentsReportByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsCommentsReportByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsCommentsReportByTwoIds(
+        variables as Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq
+      ),
+    ...options,
+  });
+};
+
+export const usePostMissionsPostsReportById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsReportByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsReportById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsReportById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsReportById(
+        variables as Types.TPOSTMissionsPostsReportByIdReq
+      ),
+    ...options,
+  });
+};
+
 export const useGetMissionsStats = <TData = Types.TGETMissionsStatsRes>(
   options?: Omit<
     UseQueryOptions<Types.TGETMissionsStatsRes, Error, TData>,

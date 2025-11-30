@@ -252,6 +252,33 @@ export type TPUTMissionsPostsCommentsByTwoIdsRes = {
   updatedAt?: string;
 };
 
+export interface TPOSTMissionsPostsCommentsReportByTwoIdsReq {
+  postId: string;
+  commentId: string;
+  data: {
+    targetUserId: string;
+    reportReason: string;
+    missionId: string;
+  };
+}
+
+export type TPOSTMissionsPostsCommentsReportByTwoIdsRes = {
+  message?: string;
+};
+
+export interface TPOSTMissionsPostsReportByIdReq {
+  postId: string;
+  data: {
+    targetUserId: string;
+    reportReason: string;
+    missionId: string;
+  };
+}
+
+export type TPOSTMissionsPostsReportByIdRes = {
+  message?: string;
+};
+
 export type TGETMissionsStatsRes = {
   todayTotalCount?: number;
   todayCompletedCount?: number;
