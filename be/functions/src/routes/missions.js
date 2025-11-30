@@ -2043,6 +2043,222 @@ router.post("/:missionId/quit", authGuard, missionController.quitMission);
  */
 router.post("/:missionId/posts", authGuard, missionController.createMissionPost);
 
+// 미션 인증글 신고
+/**
+ * @swagger
+ * /missions/posts/{postId}/report:
+ *   post:
+ *     tags: [Missions]
+ *     summary: 미션 인증글 신고
+ *     description: 미션 인증글을 신고합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 인증글 ID
+ *         example: "8nB99m2VfVyGAhdmsiFn"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetUserId
+ *               - reportReason
+ *               - missionId
+ *             properties:
+ *               targetUserId:
+ *                 type: string
+ *                 description: 신고 대상 작성자 ID
+ *                 example: "user-123"
+ *               reportReason:
+ *                 type: string
+ *                 description: 신고 사유
+ *                 example: "욕설"
+ *               missionId:
+ *                 type: string
+ *                 description: 미션 ID
+ *                 example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *     responses:
+ *       201:
+ *         description: 신고 접수 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "신고가 접수되었습니다."
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingFields:
+ *                 summary: 필수 필드 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *               DuplicateReport:
+ *                 summary: 중복 신고
+ *                 value:
+ *                   status: 400
+ *                   message: "이미 신고한 콘텐츠입니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 인증글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               PostNotFound:
+ *                 summary: 인증글 없음
+ *                 value:
+ *                   status: 404
+ *                   message: "신고하려는 인증글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.post("/posts/:postId/report", authGuard, missionController.reportMissionPost);
+
+// 미션 인증글 댓글 신고
+/**
+ * @swagger
+ * /missions/posts/{postId}/comments/{commentId}/report:
+ *   post:
+ *     tags: [Missions]
+ *     summary: 미션 인증글 댓글 신고
+ *     description: 미션 인증글 댓글을 신고합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 인증글 ID
+ *         example: "8nB99m2VfVyGAhdmsiFn"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 댓글 ID
+ *         example: "mtj4zO8tw0EIfCNQv7Ws"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetUserId
+ *               - reportReason
+ *               - missionId
+ *             properties:
+ *               targetUserId:
+ *                 type: string
+ *                 description: 신고 대상 작성자 ID
+ *                 example: "user-123"
+ *               reportReason:
+ *                 type: string
+ *                 description: 신고 사유
+ *                 example: "욕설"
+ *               missionId:
+ *                 type: string
+ *                 description: 미션 ID
+ *                 example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
+ *     responses:
+ *       201:
+ *         description: 신고 접수 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "신고가 접수되었습니다."
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               MissingFields:
+ *                 summary: 필수 필드 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *               DuplicateReport:
+ *                 summary: 중복 신고
+ *                 value:
+ *                   status: 400
+ *                   message: "이미 신고한 콘텐츠입니다."
+ *               CommunityComment:
+ *                 summary: 커뮤니티 댓글
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글은 미션 신고 API를 사용할 수 없습니다."
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 댓글을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               CommentNotFound:
+ *                 summary: 댓글 없음
+ *                 value:
+ *                   status: 404
+ *                   message: "신고하려는 댓글을 찾을 수 없습니다."
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.post("/posts/:postId/comments/:commentId/report", authGuard, missionController.reportMissionComment);
+
 module.exports = router;
 
 
