@@ -18,6 +18,7 @@ class ReportContentController {
         targetId, // 신고 대상
         targetUserId, // 신고 대상 작성자
         communityId, // 커뮤니티ID
+        missionId, // 미션ID
         reportReason, // 신고 사유
       } = req.body;
 
@@ -41,6 +42,7 @@ class ReportContentController {
         targetId,
         targetUserId,
         communityId: communityId || null,
+        missionId: missionId || null,
         reporterId: uid,
         reportReason,
       };

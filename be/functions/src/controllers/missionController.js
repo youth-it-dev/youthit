@@ -2,6 +2,7 @@ const notionMissionService = require("../services/notionMissionService");
 const missionService = require("../services/missionService");
 const missionPostService = require("../services/missionPostService");
 const missionLikeService = require("../services/missionLikeService");
+const reportContentService = require("../services/reportContentService");
 const { MISSION_STATUS } = require("../constants/missionConstants");
 const {
   parsePageSize,
@@ -78,6 +79,8 @@ class MissionController {
     this.toggleMissionLike = this.toggleMissionLike.bind(this);
     this.toggleMissionPostLike = this.toggleMissionPostLike.bind(this);
     this.toggleMissionPostCommentLike = this.toggleMissionPostCommentLike.bind(this);
+    this.reportMissionPost = this.reportMissionPost.bind(this);
+    this.reportMissionComment = this.reportMissionComment.bind(this);
   }
 
   /**
@@ -712,6 +715,82 @@ class MissionController {
       return res.success(result);
     } catch (error) {
       console.error("[MissionController] 미션 찜 토글 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 신고
+   */
+  async reportMissionPost(req, res, next) {
+    try {
+      const { postId } = req.params;
+      const userId = req.user?.uid;
+      const { targetUserId, reportReason, missionId } = req.body;
+
+      if (!postId) {
+        const error = new Error("인증글 ID가 필요합니다.");
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      if (!targetUserId || !reportReason || !missionId) {
+        const error = new Error("필수 필드가 누락되었습니다. (targetUserId, reportReason, missionId)");
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const reportData = {
+        targetType: "post",
+        targetId: postId,
+        targetUserId,
+        missionId,
+        reporterId: userId,
+        reportReason,
+      };
+
+      await reportContentService.createReport(reportData);
+      return res.created({ message: "신고가 접수되었습니다." });
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 신고 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 인증글 댓글 신고
+   */
+  async reportMissionComment(req, res, next) {
+    try {
+      const { postId, commentId } = req.params;
+      const userId = req.user?.uid;
+      const { targetUserId, reportReason, missionId } = req.body;
+
+      if (!postId || !commentId) {
+        const error = new Error("인증글 ID와 댓글 ID가 필요합니다.");
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      if (!targetUserId || !reportReason || !missionId) {
+        const error = new Error("필수 필드가 누락되었습니다. (targetUserId, reportReason, missionId)");
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const reportData = {
+        targetType: "comment",
+        targetId: commentId,
+        targetUserId,
+        missionId,
+        reporterId: userId,
+        reportReason,
+      };
+
+      await reportContentService.createReport(reportData);
+      return res.created({ message: "신고가 접수되었습니다." });
+    } catch (error) {
+      console.error("[MissionController] 미션 인증글 댓글 신고 오류:", error.message);
       return next(error);
     }
   }

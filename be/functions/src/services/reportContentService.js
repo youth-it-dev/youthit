@@ -2,6 +2,7 @@ const { Client } = require('@notionhq/client');
 const { db, FieldValue, admin } = require("../config/database");
 const { Timestamp } = require("firebase-admin/firestore");
 const notionUserService = require("./notionUserService");
+const { MISSION_POSTS_COLLECTION } = require("../constants/missionConstants");
 
 
 class ReportContentService {
@@ -23,7 +24,8 @@ async createReport(reportData) {
       targetType, 
       targetId, 
       targetUserId,
-      communityId, 
+      communityId,
+      missionId,
       reporterId, 
       reportReason 
     } = reportData;
@@ -39,18 +41,27 @@ async createReport(reportData) {
     }
 
     // 2. 신고 대상 존재 여부 확인
-    await this.validateTargetExists(targetType, targetId, communityId);
+    await this.validateTargetExists(targetType, targetId, communityId, missionId);
 
     // 3. 신고 카운트 증가 (먼저 실행)
     let reportsCount = 0;
     let isLocked = false;
     try {
       if (targetType === "comment") {
+        const commentDoc = await db.collection("comments").doc(targetId).get();
+        if (!commentDoc.exists) {
+          throw new Error("댓글을 찾을 수 없습니다.");
+        }
+        const commentData = commentDoc.data();
+        
+        // 미션 댓글인지 확인 (communityId가 없으면 미션 댓글)
+        const isMissionComment = !commentData.communityId;
+        
         await db.collection("comments").doc(targetId).update({
           reportsCount: FieldValue.increment(1),
         });
-        const commentDoc = await db.collection("comments").doc(targetId).get();
-        reportsCount = commentDoc.data()?.reportsCount || 0;
+        const updatedCommentDoc = await db.collection("comments").doc(targetId).get();
+        reportsCount = updatedCommentDoc.data()?.reportsCount || 0;
         
         // comment는 3회 이상이면 잠금
         if (reportsCount >= 3) {
@@ -58,43 +69,67 @@ async createReport(reportData) {
           await db.collection("comments").doc(targetId).update({
             isLocked: true,
           });
-          console.log(`[신고 처리] 댓글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+          console.log(`[신고 처리] ${isMissionComment ? '미션' : '커뮤니티'} 댓글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
         }
       } else if (targetType === "post") {
-        if (!communityId) {
-          const err = new Error("게시글 신고에는 communityId가 필요합니다.");
-          err.code = "MISSING_COMMUNITY_ID";
-          err.status = 400;
-          throw err;
-        }
-        await db
-          .collection("communities")
-          .doc(communityId)
-          .collection("posts")
-          .doc(targetId)
-          .update({
+        // 미션 인증글인 경우
+        if (missionId) {
+          const postDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(targetId).get();
+          if (!postDoc.exists) {
+            throw new Error("인증글을 찾을 수 없습니다.");
+          }
+          
+          await db.collection(MISSION_POSTS_COLLECTION).doc(targetId).update({
             reportsCount: FieldValue.increment(1),
           });
-        const postDoc = await db
-          .collection("communities")
-          .doc(communityId)
-          .collection("posts")
-          .doc(targetId)
-          .get();
-        reportsCount = postDoc.data()?.reportsCount || 0;
-        
-        // post는 5회 이상이면 잠금
-        if (reportsCount >= 5) {
-          isLocked = true;
+          const updatedPostDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(targetId).get();
+          reportsCount = updatedPostDoc.data()?.reportsCount || 0;
+          
+          // post는 5회 이상이면 잠금
+          if (reportsCount >= 5) {
+            isLocked = true;
+            await db.collection(MISSION_POSTS_COLLECTION).doc(targetId).update({
+              isLocked: true,
+            });
+            console.log(`[신고 처리] 미션 인증글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+          }
+        } else {
+          // 커뮤니티 게시글인 경우
+          if (!communityId) {
+            const err = new Error("게시글 신고에는 communityId 또는 missionId가 필요합니다.");
+            err.code = "MISSING_COMMUNITY_ID";
+            err.status = 400;
+            throw err;
+          }
           await db
             .collection("communities")
             .doc(communityId)
             .collection("posts")
             .doc(targetId)
             .update({
-              isLocked: true,
+              reportsCount: FieldValue.increment(1),
             });
-          console.log(`[신고 처리] 게시글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+          const postDoc = await db
+            .collection("communities")
+            .doc(communityId)
+            .collection("posts")
+            .doc(targetId)
+            .get();
+          reportsCount = postDoc.data()?.reportsCount || 0;
+          
+          // post는 5회 이상이면 잠금
+          if (reportsCount >= 5) {
+            isLocked = true;
+            await db
+              .collection("communities")
+              .doc(communityId)
+              .collection("posts")
+              .doc(targetId)
+              .update({
+                isLocked: true,
+              });
+            console.log(`[신고 처리] 커뮤니티 게시글 ${targetId} 잠금 처리 (신고 카운트: ${reportsCount})`);
+          }
         }
       }
     } catch (countUpdateError) {
@@ -112,7 +147,8 @@ async createReport(reportData) {
       targetType,
       targetId,
       targetUserId,
-      communityId,
+      communityId: communityId || null,
+      missionId: missionId || null,
       reporterId,
       reportReason,
       status: false,
@@ -224,23 +260,42 @@ async checkDuplicateReport(reporterId, targetType, targetId) {
 /**
  * 신고 대상 존재 여부 확인
  */
-async validateTargetExists(targetType, targetId, communityId) {
+async validateTargetExists(targetType, targetId, communityId, missionId) {
   try {
     if (targetType === 'post') {
+      // 미션 인증글인 경우
+      if (missionId) {
+        const postDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(targetId).get();
+        if (!postDoc.exists) {
+          const error = new Error("신고하려는 인증글을 찾을 수 없습니다.");
+          error.code = "NOTION_POST_NOT_FOUND";
+          error.status = 404;
+          throw error;
+        }
+        const postData = postDoc.data();
+        // missionId가 일치하는지 확인
+        if (postData.missionNotionPageId !== missionId) {
+          const error = new Error("인증글이 해당 미션에 속하지 않습니다.");
+          error.code = "BAD_REQUEST";
+          error.status = 400;
+          throw error;
+        }
+      } else {
+        // 커뮤니티 게시글인 경우
+        if (!communityId) {
+          const error1 = new Error("communityId 또는 missionId가 필요합니다. 게시글은 반드시 커뮤니티 또는 미션 하위에 존재합니다.");
+          error1.code = "MISSING_COMMUNITY_ID";
+          error1.status = 400;
+          throw error1;
+        }
 
-      if (!communityId) {
-        const error1 = new Error("communityId가 필요합니다. 게시글은 반드시 커뮤니티 하위에 존재합니다.");
-        error1.code = "MISSING_COMMUNITY_ID";
-        error1.status = 400;
-        throw error1;
-      }
-
-      const postDoc = await db.doc(`communities/${communityId}/posts/${targetId}`).get();
-      if (!postDoc.exists) {
-        const error2 = new Error("신고하려는 게시글을 찾을 수 없습니다.");
-        error2.code = "NOTION_POST_NOT_FOUND";
-        error2.status = 404;
-        throw error2;
+        const postDoc = await db.doc(`communities/${communityId}/posts/${targetId}`).get();
+        if (!postDoc.exists) {
+          const error2 = new Error("신고하려는 게시글을 찾을 수 없습니다.");
+          error2.code = "NOTION_POST_NOT_FOUND";
+          error2.status = 404;
+          throw error2;
+        }
       }
     } else if (targetType === 'comment') {
       const commentDoc = await db.doc(`comments/${targetId}`).get();
@@ -249,6 +304,36 @@ async validateTargetExists(targetType, targetId, communityId) {
         error3.code = "COMMENT_NOT_FOUND";
         error3.status = 404;
         throw error3;
+      }
+      
+      const commentData = commentDoc.data();
+      
+      // 미션 댓글인 경우 missionId 검증
+      if (missionId) {
+        if (commentData.communityId) {
+          const error = new Error("커뮤니티 댓글은 미션 신고 API를 사용할 수 없습니다.");
+          error.code = "BAD_REQUEST";
+          error.status = 400;
+          throw error;
+        }
+        // 댓글이 속한 게시글의 missionId 확인
+        if (commentData.postId) {
+          const postDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(commentData.postId).get();
+          if (postDoc.exists) {
+            const postData = postDoc.data();
+            if (postData.missionNotionPageId !== missionId) {
+              const error = new Error("댓글이 해당 미션에 속하지 않습니다.");
+              error.code = "BAD_REQUEST";
+              error.status = 400;
+              throw error;
+            }
+          } else {
+            const error = new Error("댓글이 속한 게시글을 찾을 수 없습니다.");
+            error.code = "POST_NOT_FOUND";
+            error.status = 404;
+            throw error;
+          }
+        }
       }
     }
   } catch (error) {
@@ -319,6 +404,7 @@ async getReportsByReporter(reporterId, { size = 10, cursor }) {
         reporterId: props['신고자ID']?.rich_text?.[0]?.text?.content || null,
         reportReason: props['신고 사유']?.rich_text?.[0]?.text?.content || null,
         communityId: props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null,
+        missionId: props['미션 ID']?.rich_text?.[0]?.text?.content || null,
         status : props['선택']?.checkbox || false,
         reportedAt: props['신고일시']?.date?.start || null,
         syncNotionAt: props['동기화 시간(Notion)']?.date?.start || null,
@@ -360,7 +446,7 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
+    const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
     
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
@@ -385,7 +471,11 @@ async syncReportToNotion(reportData) {
     let contentUrl = null;
     if (targetType === 'post') {
       // 게시글인 경우
-      if (communityId) {
+      if (missionId) {
+        // 미션 인증글
+        contentUrl = `https://yourdentity.vercel.app/mission/post/${targetId}?missionId=${missionId}`;
+      } else if (communityId) {
+        // 커뮤니티 게시글
         contentUrl = `https://yourdentity.vercel.app/community/post/${targetId}?communityId=${communityId}`;
       }
     } else if (targetType === 'comment') {
@@ -395,7 +485,12 @@ async syncReportToNotion(reportData) {
         if (commentDoc.exists) {
           const commentData = commentDoc.data();
           const postId = commentData.postId;
-          if (postId && communityId) {
+          
+          if (missionId && postId) {
+            // 미션 댓글
+            contentUrl = `https://yourdentity.vercel.app/mission/post/${postId}?missionId=${missionId}`;
+          } else if (postId && communityId) {
+            // 커뮤니티 댓글
             contentUrl = `https://yourdentity.vercel.app/community/post/${postId}/comments?communityId=${communityId}`;
           }
         }
@@ -484,28 +579,45 @@ async syncReportToNotion(reportData) {
     }
 
     // 2. 새로운 신고 페이지 생성
+    const notionProperties = {
+      '신고 타입': { title: [{ text: { content: this.mapTargetType(targetType) } }] },
+      '신고 콘텐츠': { rich_text: [{ text: { content: `${targetId}` } }] },
+      '작성자': { rich_text: [{ text: { content: `${targetUserId}` } }] },
+      '신고 사유': { rich_text: [{ text: { content: reportReason } }] },
+      '신고자': { rich_text: [{ text: { content: reporterName } }] },
+      '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
+      '신고일시': { date: { start: new Date().toISOString() } },
+      '선택': { checkbox: status },
+      '신고 카운트': { number: reportsCount }, 
+      '잠김 상태': { rich_text: [{ text: { content: String(isLocked) } }] },
+      '동기화 시간(Firebase)': { 
+        date: { 
+          start: new Date(new Date().getTime()).toISOString()
+        },
+      },
+    };
+    
+    // 커뮤니티 ID 필드 추가 (커뮤니티 신고인 경우만)
+    if (communityId) {
+      notionProperties['커뮤니티 ID'] = { rich_text: [{ text: { content: communityId } }] };
+    }
+    
+    // 미션 ID 필드 추가 (미션 신고인 경우만)
+    // Note: 커뮤니티 신고와 미션 신고는 동시에 발생하지 않음
+    // - 커뮤니티 신고: communityId만 있음
+    // - 미션 신고: missionId만 있고 communityId는 null
+    if (missionId) {
+      notionProperties['미션 ID'] = { rich_text: [{ text: { content: missionId } }] };
+    }
+    
+    // URL 필드 추가 (contentUrl이 있을 때만)
+    if (contentUrl) {
+      notionProperties['URL'] = { url: contentUrl };
+    }
+    
     const notionData = {
       parent: { database_id: this.reportsDatabaseId },
-      properties: {
-        '신고 타입': { title: [{ text: { content: this.mapTargetType(targetType) } }] },
-        '신고 콘텐츠': { rich_text: [{ text: { content: `${targetId}` } }] },
-        '작성자': { rich_text: [{ text: { content: `${targetUserId}` } }] },
-        '신고 사유': { rich_text: [{ text: { content: reportReason } }] },
-        '신고자': { rich_text: [{ text: { content: reporterName } }] },
-        '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
-        '신고일시': { date: { start: new Date().toISOString() } },
-        '커뮤니티 ID': { rich_text: communityId ? [{ text: { content: communityId } }] : [] },
-        '선택': { checkbox: status },
-        '신고 카운트': { number: reportsCount }, 
-        '잠김 상태': { rich_text: [{ text: { content: String(isLocked) } }] },
-        '동기화 시간(Firebase)': { 
-            date: { 
-              start: new Date(new Date().getTime()).toISOString()
-            },
-          },
-          // URL 필드 추가 (contentUrl이 있을 때만)
-          ...(contentUrl && { 'URL': { url: contentUrl } }),
-        }
+      properties: notionProperties
     };
 
 
@@ -514,7 +626,22 @@ async syncReportToNotion(reportData) {
     return { success: true, notionPageId: response.id };
   } catch (error) {
     console.error('Notion 동기화 실패:', error);
-    const customError = new Error("Notion 동기화 중 오류가 발생했습니다.");
+    console.error('Notion 동기화 실패 상세:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      body: error.body,
+      stack: error.stack
+    });
+    // Notion API 에러의 경우 body에 상세 정보가 있을 수 있음
+    let errorMessage = error.message || '알 수 없는 오류';
+    if (error.body && typeof error.body === 'object') {
+      const notionError = error.body;
+      if (notionError.message) {
+        errorMessage = `${errorMessage}: ${notionError.message}`;
+      }
+    }
+    const customError = new Error(`Notion 동기화 중 오류가 발생했습니다: ${errorMessage}`);
     customError.code = "NOTION_SYNC_FAILED";
     customError.status = 500;
     throw customError;
@@ -593,6 +720,7 @@ async syncResolvedReports() {
         const targetType = props['신고 타입']?.title?.[0]?.text?.content || null;
         const targetId = props['신고 콘텐츠']?.rich_text?.[0]?.text?.content || null;
         const communityId = props['커뮤니티 ID']?.rich_text?.[0]?.text?.content || null;
+        const missionId = props['미션 ID']?.rich_text?.[0]?.text?.content || null;
         const status = props['선택']?.checkbox || false;
         const notionUpdatedAt = new Date().toISOString();
 
@@ -602,6 +730,7 @@ async syncResolvedReports() {
           targetType,
           targetId,
           communityId,
+          missionId,
           status,
           notionUpdatedAt
         });
@@ -620,9 +749,12 @@ async syncResolvedReports() {
       const { targetId, targetType, communityId } = report;
       if (!targetId || !targetType) continue;
       
-      // targetId를 키로 사용 (게시글은 communityId도 포함, 댓글은 targetId만)
+      // Notion에서 missionId 가져오기
+      const missionId = report.notionPage?.properties['미션 ID']?.rich_text?.[0]?.text?.content || null;
+      
+      // targetId를 키로 사용 (게시글은 communityId 또는 missionId 포함, 댓글은 targetId만)
       const key = targetType === "게시글" 
-        ? `${targetType}_${communityId}_${targetId}` 
+        ? `${targetType}_${communityId || missionId || 'unknown'}_${targetId}` 
         : `${targetType}_${targetId}`;
       
       if (!reportsByTarget[key]) {
@@ -630,6 +762,7 @@ async syncResolvedReports() {
           targetType,
           targetId,
           communityId,
+          missionId,
           reports: [],
           hasResolved: false
         };
@@ -660,16 +793,27 @@ async syncResolvedReports() {
     // 신고 카운트가 0인 그룹들 처리
     for (const { key, group } of groupsToDelete) {
       try {
-        const { targetType, targetId, communityId, reports } = group;
+        const { targetType, targetId, communityId, missionId, reports } = group;
         
         // Firestore 업데이트: isLocked = false, reportsCount = 0
-        if (targetType === "게시글" && communityId) {
-          const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
-          await postRef.update({
-            isLocked: false,
-            reportsCount: 0
-          });
-          console.log(`[게시글] ${targetId} → isLocked: false, reportsCount: 0으로 설정`);
+        if (targetType === "게시글") {
+          if (missionId) {
+            // 미션 인증글
+            const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(targetId);
+            await postRef.update({
+              isLocked: false,
+              reportsCount: 0
+            });
+            console.log(`[미션 인증글] ${targetId} → isLocked: false, reportsCount: 0으로 설정`);
+          } else if (communityId) {
+            // 커뮤니티 게시글
+            const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+            await postRef.update({
+              isLocked: false,
+              reportsCount: 0
+            });
+            console.log(`[커뮤니티 게시글] ${targetId} → isLocked: false, reportsCount: 0으로 설정`);
+          }
         } else if (targetType === "댓글") {
           const commentRef = db.doc(`comments/${targetId}`);
           await commentRef.update({
@@ -869,22 +1013,44 @@ async syncResolvedReports() {
 
     // Firebase 동기화 (status=true인 경우만 여기 도달)
     if (targetType === "게시글") {
-      const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+      // Notion에서 missionId 가져오기
+      const missionId = notionPage?.properties['미션 ID']?.rich_text?.[0]?.text?.content || null;
+      
+      if (missionId) {
+        // 미션 인증글
+        const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(targetId);
+        await db.runTransaction(async (t) => {
+          const postSnap = await t.get(postRef);
 
-      await db.runTransaction(async (t) => {
-        const postSnap = await t.get(postRef);
+          if (!postSnap.exists) {
+              const err = new Error("POST_NOT_FOUND");
+              err.code = "POST_NOT_FOUND";
+              throw err;
+          }
+          // status=true이므로 항상 isLocked: true로 설정
+          t.update(postRef, { isLocked: true });
 
-        if (!postSnap.exists) {
-            const err = new Error("POST_NOT_FOUND");
-            err.code = "POST_NOT_FOUND";
-            throw err;
-        }
-        // status=true이므로 항상 isLocked: true로 설정
-        t.update(postRef, { isLocked: true });
+          console.log(`[미션 인증글] ${targetId} → locked`);
+        });
+        syncSuccess = true;
+      } else if (communityId) {
+        // 커뮤니티 게시글
+        const postRef = db.doc(`communities/${communityId}/posts/${targetId}`);
+        await db.runTransaction(async (t) => {
+          const postSnap = await t.get(postRef);
 
-        console.log(`[게시글] ${targetId} → locked`);
-      });
-      syncSuccess = true;
+          if (!postSnap.exists) {
+              const err = new Error("POST_NOT_FOUND");
+              err.code = "POST_NOT_FOUND";
+              throw err;
+          }
+          // status=true이므로 항상 isLocked: true로 설정
+          t.update(postRef, { isLocked: true });
+
+          console.log(`[커뮤니티 게시글] ${targetId} → locked`);
+        });
+        syncSuccess = true;
+      }
 
     } else if (targetType === "댓글") {
       const commentRef = db.doc(`comments/${targetId}`);
