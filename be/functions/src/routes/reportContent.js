@@ -5,14 +5,6 @@ const authGuard = require("../middleware/authGuard");
 
 const router = express.Router();
 
-
-/**
- * @swagger
- * tags:
- *   name: reportContent
- *   description: 신고 관리 API
- */
-
 /**
  * @swagger
  * components:
