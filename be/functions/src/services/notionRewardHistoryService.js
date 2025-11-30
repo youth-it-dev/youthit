@@ -413,10 +413,6 @@ class NotionRewardHistoryService {
               notionPage['만료 날짜'] = {
                 date: { start: expiryDate }
               };
-              console.log(`[Notion 필드 추가] 만료 날짜: ${expiryDate}, historyId=${historyId}`);
-            } else {
-              // expiresAt이 없으면 필드를 추가하지 않음
-              console.log(`[Notion 필드 스킵] 만료 날짜 없음 (historyId=${historyId})`);
             }
 
             // 중복 체크용 고유 키 생성 (historyId 사용)
@@ -427,7 +423,6 @@ class NotionRewardHistoryService {
               if (notionRewardHistories[uniqueKey]) {
                 // 기존 페이지 아카이브 (삭제)
                 await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
-                console.log(`[삭제 후 재생성] 기존 페이지 아카이브 완료 (pageId: ${notionRewardHistories[uniqueKey].pageId})`);
               }
               // 새 페이지 생성 (기존 페이지가 있었든 없었든 항상 생성)
               await this.createNotionPageWithRetry(notionPage);
@@ -616,7 +611,6 @@ class NotionRewardHistoryService {
         
         // 지수 백오프: 1초, 2초, 4초...
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`${delay/1000}초 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -656,7 +650,6 @@ class NotionRewardHistoryService {
         
         // 지수 백오프: 1초, 2초, 4초...
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`${delay/1000}초 후 재시도...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
