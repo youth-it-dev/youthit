@@ -327,6 +327,11 @@ async validateTargetExists(targetType, targetId, communityId, missionId) {
               error.status = 400;
               throw error;
             }
+          } else {
+            const error = new Error("댓글이 속한 게시글을 찾을 수 없습니다.");
+            error.code = "POST_NOT_FOUND";
+            error.status = 404;
+            throw error;
           }
         }
       }
