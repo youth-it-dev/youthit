@@ -440,11 +440,7 @@ class NotionRewardHistoryService {
                 
                 // 삭제 후 재생성 재시도
                 if (notionRewardHistories[uniqueKey]) {
-                  try {
-                    await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
-                  } catch (archiveError) {
-                    console.warn(`[재시도] 기존 페이지 아카이브 실패 (무시하고 계속 진행):`, archiveError.message);
-                  }
+                  await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
                 }
                 await this.createNotionPageWithRetry(notionPageWithoutUser);
               } else {
