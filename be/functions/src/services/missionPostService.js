@@ -371,6 +371,7 @@ class MissionPostService {
    * @param {string} options.sort - 정렬 기준 ('latest' | 'popular')
    * @param {string[]} options.categories - 카테고리 필터 (다중 선택)
    * @param {string} options.userId - 내가 인증한 미션만 보기 (userId 필터)
+   * @param {string} options.missionId - 특정 미션의 인증글만 조회 (missionNotionPageId 필터)
    * @param {string} viewerId - 조회자 ID (선택)
    * @returns {Promise<Object>} 미션 인증글 목록
    */
@@ -380,6 +381,7 @@ class MissionPostService {
         sort = "latest",
         categories = [],
         userId: filterUserId,
+        missionId,
         pageSize: pageSizeInput,
         startCursor,
       } = options;
@@ -392,6 +394,11 @@ class MissionPostService {
       const cursorId = sanitizeCursor(startCursor);
 
       let query = db.collection(MISSION_POSTS_COLLECTION);
+
+      if (missionId) {
+        console.log("[MISSION_POST] missionId 필터 적용:", missionId);
+        query = query.where("missionNotionPageId", "==", missionId);
+      }
 
       if (filterUserId) {
         query = query.where("userId", "==", filterUserId);
@@ -501,8 +508,13 @@ class MissionPostService {
       };
     } catch (error) {
       console.error("[MISSION_POST] 인증글 목록 조회 실패:", error.message);
+      console.error("[MISSION_POST] 에러 상세:", error);
       if (error.code === "BAD_REQUEST") {
         throw error;
+      }
+      // Firestore 인덱스 에러인 경우 상세 정보는 로그에만 기록
+      if (error.code === 9 || error.message?.includes("index")) {
+        console.error("[MISSION_POST] Firestore 인덱스 에러:", error.message);
       }
       throw buildError("인증글 목록을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
     }

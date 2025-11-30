@@ -440,6 +440,7 @@ class MissionController {
       const {
         sort = "latest",
         userId,
+        missionId,
         pageSize: pageSizeParam,
         startCursor: startCursorParam,
       } = req.query;
@@ -471,6 +472,7 @@ class MissionController {
           sort,
           categories,
           userId,
+          missionId,
           pageSize,
           startCursor,
         },
