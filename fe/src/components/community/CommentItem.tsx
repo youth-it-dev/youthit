@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon } from "lucide-react";
+import { Heart, Image as ImageIcon } from "lucide-react";
 import { GiphySelector } from "@/components/shared/giphy-selector";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
@@ -24,6 +24,7 @@ import type * as Types from "@/types/generated/comments-types";
 import { parseCommentContent } from "@/utils/community/parse-comment-content";
 import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
+import { debug } from "@/utils/shared/debugger";
 
 /**
  * 댓글/답글 콘텐츠 렌더링 컴포넌트
@@ -107,7 +108,7 @@ const CommentItemComponent = ({
   onReplyToReplyInputChange,
   isCommentSubmitting = false,
 }: CommentItemProps) => {
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(comment.isLiked ?? false);
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [replyLikes, setReplyLikes] = useState<
     Record<string, { isLiked: boolean; likesCount: number }>
@@ -152,6 +153,34 @@ const CommentItemComponent = ({
     setIsLiked(comment.isLiked ?? false);
     setLikesCount(comment.likesCount || 0);
   }, [comment.isLiked, comment.likesCount]);
+
+  // 답글의 좋아요 상태와 카운트를 로컬 state에 동기화
+  useEffect(() => {
+    if (replies.length > 0) {
+      setReplyLikes((prev) => {
+        const updated: Record<
+          string,
+          { isLiked: boolean; likesCount: number }
+        > = { ...prev };
+        let hasChanges = false;
+
+        replies.forEach((reply) => {
+          if (reply.id) {
+            // replyLikes state에 이미 값이 있으면 유지, 없으면 reply 데이터로 초기화
+            if (!prev[reply.id]) {
+              updated[reply.id] = {
+                isLiked: reply.isLiked ?? false,
+                likesCount: reply.likesCount ?? 0,
+              };
+              hasChanges = true;
+            }
+          }
+        });
+
+        return hasChanges ? updated : prev;
+      });
+    }
+  }, [replies]);
 
   // 답글에 대한 답글 입력창이 닫힐 때 로컬 state 초기화
   useEffect(() => {
@@ -320,7 +349,7 @@ const CommentItemComponent = ({
       await likeCommentAsync({ commentId });
       // onSuccess에서 상태 업데이트하므로 여기서는 제거
     } catch (error) {
-      console.error("좋아요 실패:", error);
+      debug.error("좋아요 실패:", error);
     }
   }, [commentId, likeCommentAsync, isLikePending]);
 
@@ -330,7 +359,7 @@ const CommentItemComponent = ({
       try {
         await likeCommentAsync({ commentId: targetReplyId });
       } catch (error) {
-        console.error("답글 좋아요 실패:", error);
+        debug.error("답글 좋아요 실패:", error);
       }
     },
     [isLikePending, likeCommentAsync]
@@ -687,22 +716,13 @@ const CommentItemComponent = ({
                   className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 hover:text-gray-800"
                   type="button"
                 >
-                  <svg
+                  <Heart
                     className={cn(
                       "h-4 w-4 transition-colors",
-                      isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+                      isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
                     )}
                     fill={isLiked ? "currentColor" : "none"}
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
+                  />
                   <Typography font="noto" variant="label1R">
                     {likesCount}
                   </Typography>
@@ -900,30 +920,21 @@ const CommentItemComponent = ({
                             className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
                             type="button"
                           >
-                            <svg
+                            <Heart
                               className={cn(
                                 "h-4 w-4 transition-colors",
                                 replyIsLiked
-                                  ? "fill-red-500 text-red-500"
+                                  ? "fill-main-500 text-main-500"
                                   : "text-gray-600"
                               )}
                               fill={replyIsLiked ? "currentColor" : "none"}
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                              />
-                            </svg>
+                            />
                             <Typography
                               font="noto"
                               variant="label1R"
                               className={cn(
                                 "transition-colors",
-                                replyIsLiked ? "text-red-500" : "text-gray-600"
+                                replyIsLiked ? "text-main-500" : "text-gray-600"
                               )}
                             >
                               {replyLikesCount}

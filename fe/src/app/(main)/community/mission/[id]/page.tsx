@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart, MessageCircleMore } from "lucide-react";
 import MissionCommentsSection from "@/components/community/MissionCommentsSection";
 import KebabMenu from "@/components/shared/kebab-menu";
@@ -10,11 +11,18 @@ import { PostDetailError } from "@/components/shared/post-detail-error";
 import { PostDetailSkeleton } from "@/components/shared/post-detail-skeleton";
 import { PostProfileSection } from "@/components/shared/post-profile-section";
 import { Typography } from "@/components/shared/typography";
+import { missionsKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { useGetMissionsPostsById } from "@/hooks/generated/missions-hooks";
+import {
+  useGetMissionsPostsById,
+  usePostMissionsPostsLikeById,
+} from "@/hooks/generated/missions-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/missions-types";
+import { cn } from "@/utils/shared/cn";
+import { debug } from "@/utils/shared/debugger";
 import { sharePost } from "@/utils/shared/post-share";
+import { showToast } from "@/utils/shared/toast";
 
 /**
  * @description 미션 인증글 상세 페이지
@@ -25,8 +33,8 @@ const Page = () => {
   // URL에서 postId 추출
   const postId = params.id as string;
 
+  const queryClient = useQueryClient();
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
-  const setTitle = useTopBarStore((state) => state.setTitle);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const focusCommentInputRef = useRef<(() => void) | null>(null);
 
@@ -43,7 +51,103 @@ const Page = () => {
   });
 
   // postData를 Schema.TGETMissionsPostsByIdRes 타입으로 변환
-  const post = postData as Schema.TGETMissionsPostsByIdRes;
+  // 실제 API 응답에는 isLiked, likesCount가 포함됨
+  const post = postData as Schema.TGETMissionsPostsByIdRes & {
+    isLiked?: boolean;
+    likesCount?: number;
+  };
+
+  const isLiked = post?.isLiked ?? false;
+  const likesCount = post?.likesCount ?? 0;
+
+  // 게시글 쿼리 키
+  const postQueryKey = missionsKeys.getMissionsPostsById({ postId });
+
+  // 좋아요 mutation (onMutate는 선언 시에만 사용 가능)
+  const { mutate: likePost, isPending: isLikePending } =
+    usePostMissionsPostsLikeById({
+      onMutate: async () => {
+        // Optimistic update: 즉시 UI 업데이트
+        await queryClient.cancelQueries({ queryKey: postQueryKey });
+        const previousPost = queryClient.getQueryData<
+          Schema.TGETMissionsPostsByIdRes & {
+            isLiked?: boolean;
+            likesCount?: number;
+          }
+        >(postQueryKey);
+
+        if (previousPost) {
+          const currentIsLiked = previousPost.isLiked ?? false;
+          const currentLikesCount = previousPost.likesCount ?? 0;
+
+          queryClient.setQueryData<
+            Schema.TGETMissionsPostsByIdRes & {
+              isLiked?: boolean;
+              likesCount?: number;
+            }
+          >(postQueryKey, {
+            ...previousPost,
+            isLiked: !currentIsLiked,
+            likesCount: currentIsLiked
+              ? Math.max(0, currentLikesCount - 1)
+              : currentLikesCount + 1,
+          });
+        }
+
+        return { previousPost };
+      },
+    });
+
+  // 좋아요 핸들러
+  const handleLike = useCallback(() => {
+    if (!postId || isLikePending) return;
+
+    likePost(
+      { postId },
+      {
+        onSuccess: (response) => {
+          // API 응답으로 정확한 값으로 업데이트
+          const result = response.data;
+
+          if (result) {
+            const currentPost = queryClient.getQueryData<
+              Schema.TGETMissionsPostsByIdRes & {
+                isLiked?: boolean;
+                likesCount?: number;
+              }
+            >(postQueryKey);
+
+            if (currentPost) {
+              queryClient.setQueryData<
+                Schema.TGETMissionsPostsByIdRes & {
+                  isLiked?: boolean;
+                  likesCount?: number;
+                }
+              >(postQueryKey, {
+                ...currentPost,
+                isLiked: result.isLiked ?? false,
+                likesCount: result.likesCount ?? 0,
+              });
+            }
+          }
+        },
+        onError: (err: Error, _variables, onMutateResult: unknown) => {
+          // 에러 발생 시 이전 상태로 롤백
+          const context = onMutateResult as {
+            previousPost?: Schema.TGETMissionsPostsByIdRes & {
+              isLiked?: boolean;
+              likesCount?: number;
+            };
+          };
+          if (context?.previousPost) {
+            queryClient.setQueryData(postQueryKey, context.previousPost);
+          }
+          debug.error("좋아요 실패:", err);
+          showToast("좋아요 처리에 실패했습니다. 다시 시도해주세요.");
+        },
+      }
+    );
+  }, [postId, likePost, isLikePending, queryClient, postQueryKey]);
 
   // 공유하기 기능
   const handleShare = useCallback(async () => {
@@ -145,12 +249,26 @@ const Page = () => {
       {/* 좋아요/댓글 액션 바 */}
       <div className="flex items-center gap-6 border-t border-gray-200 p-4">
         <button
+          onClick={handleLike}
           className="flex items-center gap-2 transition-opacity hover:opacity-80"
-          disabled
+          type="button"
         >
-          <Heart className="h-5 w-5 text-gray-600" />
-          <Typography font="noto" variant="body2R" className="text-gray-600">
-            0
+          <Heart
+            className={cn(
+              "h-5 w-5 transition-colors",
+              isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
+            )}
+            fill={isLiked ? "currentColor" : "none"}
+          />
+          <Typography
+            font="noto"
+            variant="body2R"
+            className={cn(
+              "transition-colors",
+              isLiked ? "text-main-500" : "text-gray-600"
+            )}
+          >
+            {likesCount}
           </Typography>
         </button>
         <button
