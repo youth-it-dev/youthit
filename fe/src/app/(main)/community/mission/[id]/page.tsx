@@ -130,11 +130,6 @@ const Page = () => {
               });
             }
           }
-
-          // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
-          queryClient.invalidateQueries({
-            queryKey: postQueryKey,
-          });
         },
         onError: (err: Error, _variables, onMutateResult: unknown) => {
           // 에러 발생 시 이전 상태로 롤백
@@ -261,7 +256,7 @@ const Page = () => {
           <Heart
             className={cn(
               "h-5 w-5 transition-colors",
-              isLiked ? "fill-red-500 text-red-500" : "text-gray-600"
+              isLiked ? "fill-main-500 text-main-500" : "text-gray-600"
             )}
             fill={isLiked ? "currentColor" : "none"}
           />
@@ -270,7 +265,7 @@ const Page = () => {
             variant="body2R"
             className={cn(
               "transition-colors",
-              isLiked ? "text-red-500" : "text-gray-600"
+              isLiked ? "text-main-500" : "text-gray-600"
             )}
           >
             {likesCount}
