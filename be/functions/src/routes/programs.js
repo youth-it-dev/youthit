@@ -20,14 +20,14 @@ const programController = require('../controllers/programController');
  *         name: recruitmentStatus
  *         schema:
  *           type: string
- *           enum: [before, ongoing, completed, cancelled]
- *         description: 모집상태 필터 (before=모집 전, ongoing=모집 중, completed=모집 완료, cancelled=모집 취소)
+ *           enum: [before, ongoing, completed]
+ *         description: 모집상태 필터 (before=모집 전, ongoing=모집 중, completed=모집 완료)
  *       - in: query
  *         name: programStatus
  *         schema:
  *           type: string
- *           enum: [before, ongoing, completed, cancelled]
- *         description: 프로그램진행여부 필터 (before=진행 전, ongoing=진행 중, completed=종료됨, cancelled=진행 취소됨)
+ *           enum: [before, ongoing, completed]
+ *         description: 프로그램진행여부 필터 (before=진행 전, ongoing=진행 중, completed=종료됨)
  *       - in: query
  *         name: programType
  *         schema:
@@ -92,14 +92,14 @@ router.get('/', programController.getPrograms);
  *         name: recruitmentStatus
  *         schema:
  *           type: string
- *           enum: [before, ongoing, completed, cancelled]
- *         description: 모집상태 필터 (before=모집 전, ongoing=모집 중, completed=모집 완료, cancelled=모집 취소)
+ *           enum: [before, ongoing, completed]
+ *         description: 모집상태 필터 (before=모집 전, ongoing=모집 중, completed=모집 완료)
  *       - in: query
  *         name: programStatus
  *         schema:
  *           type: string
- *           enum: [before, ongoing, completed, cancelled]
- *         description: 프로그램진행여부 필터 (before=진행 전, ongoing=진행 중, completed=종료됨, cancelled=진행 취소됨)
+ *           enum: [before, ongoing, completed]
+ *         description: 프로그램진행여부 필터 (before=진행 전, ongoing=진행 중, completed=종료됨)
  *       - in: query
  *         name: programType
  *         schema:

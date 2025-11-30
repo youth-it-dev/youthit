@@ -11,14 +11,12 @@ const STATUS_MAPPINGS = {
   recruitment: {
     'before': '모집 전',
     'ongoing': '모집 중',
-    'completed': '모집 완료',
-    'cancelled': '모집 취소'
+    'completed': '모집 완료'
   },
   program: {
     'before': '진행 전',
     'ongoing': '진행 중',
-    'completed': '종료됨',
-    'cancelled': '진행 취소됨'
+    'completed': '종료됨'
   }
 };
 
