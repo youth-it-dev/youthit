@@ -335,6 +335,34 @@ export const usePutMissionsPostsCommentsByTwoIds = <
   });
 };
 
+export const usePostMissionsPostsCommentsLikeByTwoIds = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsCommentsLikeByTwoIdsReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsCommentsLikeByTwoIds>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsCommentsLikeByTwoIds>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsCommentsLikeByTwoIds(
+        variables as Types.TPOSTMissionsPostsCommentsLikeByTwoIdsReq
+      ),
+    ...options,
+  });
+};
+
 export const usePostMissionsPostsCommentsReportByTwoIds = <
   TContext = unknown,
   TVariables = Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq,
@@ -358,6 +386,34 @@ export const usePostMissionsPostsCommentsReportByTwoIds = <
     mutationFn: (variables: TVariables) =>
       Api.postMissionsPostsCommentsReportByTwoIds(
         variables as Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq
+      ),
+    ...options,
+  });
+};
+
+export const usePostMissionsPostsLikeById = <
+  TContext = unknown,
+  TVariables = Types.TPOSTMissionsPostsLikeByIdReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postMissionsPostsLikeById>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postMissionsPostsLikeById>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postMissionsPostsLikeById(
+        variables as Types.TPOSTMissionsPostsLikeByIdReq
       ),
     ...options,
   });

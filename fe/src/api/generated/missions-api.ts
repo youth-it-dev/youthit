@@ -108,6 +108,14 @@ export const putMissionsPostsCommentsByTwoIds = (
   );
 };
 
+export const postMissionsPostsCommentsLikeByTwoIds = (
+  request: Types.TPOSTMissionsPostsCommentsLikeByTwoIdsReq
+) => {
+  return post<Types.TPOSTMissionsPostsCommentsLikeByTwoIdsRes>(
+    `/missions/posts/${request.postId}/comments/${request.commentId}/like`
+  );
+};
+
 export const postMissionsPostsCommentsReportByTwoIds = (
   request: Types.TPOSTMissionsPostsCommentsReportByTwoIdsReq
 ) => {
@@ -115,6 +123,14 @@ export const postMissionsPostsCommentsReportByTwoIds = (
   return post<Types.TPOSTMissionsPostsCommentsReportByTwoIdsRes>(
     `/missions/posts/${request.postId}/comments/${request.commentId}/report`,
     data.data ?? data
+  );
+};
+
+export const postMissionsPostsLikeById = (
+  request: Types.TPOSTMissionsPostsLikeByIdReq
+) => {
+  return post<Types.TPOSTMissionsPostsLikeByIdRes>(
+    `/missions/posts/${request.postId}/like`
   );
 };
 

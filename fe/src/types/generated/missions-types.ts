@@ -252,6 +252,18 @@ export type TPUTMissionsPostsCommentsByTwoIdsRes = {
   updatedAt?: string;
 };
 
+export interface TPOSTMissionsPostsCommentsLikeByTwoIdsReq {
+  postId: string;
+  commentId: string;
+}
+
+export type TPOSTMissionsPostsCommentsLikeByTwoIdsRes = {
+  commentId?: string;
+  userId?: string;
+  isLiked?: boolean;
+  likesCount?: number;
+};
+
 export interface TPOSTMissionsPostsCommentsReportByTwoIdsReq {
   postId: string;
   commentId: string;
@@ -264,6 +276,17 @@ export interface TPOSTMissionsPostsCommentsReportByTwoIdsReq {
 
 export type TPOSTMissionsPostsCommentsReportByTwoIdsRes = {
   message?: string;
+};
+
+export interface TPOSTMissionsPostsLikeByIdReq {
+  postId: string;
+}
+
+export type TPOSTMissionsPostsLikeByIdRes = {
+  postId?: string;
+  userId?: string;
+  isLiked?: boolean;
+  likesCount?: number;
 };
 
 export interface TPOSTMissionsPostsReportByIdReq {
