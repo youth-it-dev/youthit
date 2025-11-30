@@ -1447,6 +1447,11 @@ const options = {
               description: "댓글 수",
               example: 0,
             },
+            reportsCount: {
+              type: "integer",
+              description: "신고 횟수",
+              example: 0,
+            },
             createdAt: {
               type: "string",
               format: "date-time",
