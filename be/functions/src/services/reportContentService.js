@@ -592,16 +592,17 @@ async syncReportToNotion(reportData) {
       },
     };
     
-    // 커뮤니티 ID 필드 추가 (있는 경우만)
+    // 커뮤니티 ID 필드 추가 (커뮤니티 신고인 경우만)
     if (communityId) {
       notionProperties['커뮤니티 ID'] = { rich_text: [{ text: { content: communityId } }] };
     }
     
-    // 미션 ID 필드 추가 (있는 경우만, Notion DB에 필드가 있을 때만)
-    // Note: Notion DB에 "미션 ID" 필드가 없으면 이 부분을 주석 처리하거나 필드를 추가해야 함
+    // 미션 ID 필드 추가 (미션 신고인 경우만)
+    // Note: 커뮤니티 신고와 미션 신고는 동시에 발생하지 않음
+    // - 커뮤니티 신고: communityId만 있음
+    // - 미션 신고: missionId만 있고 communityId는 null
     if (missionId) {
-      // 미션 ID 필드가 Notion DB에 존재하는 경우에만 추가
-      // notionProperties['미션 ID'] = { rich_text: [{ text: { content: missionId } }] };
+      notionProperties['미션 ID'] = { rich_text: [{ text: { content: missionId } }] };
     }
     
     // URL 필드 추가 (contentUrl이 있을 때만)
