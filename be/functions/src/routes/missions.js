@@ -2108,22 +2108,38 @@ router.post("/:missionId/posts", authGuard, missionController.createMissionPost)
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
+ *               MissingPostId:
+ *                 summary: 인증글 ID 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID가 필요합니다."
  *               MissingFields:
  *                 summary: 필수 필드 누락
  *                 value:
  *                   status: 400
- *                   message: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *                   message: "필수 필드가 누락되었습니다. (targetUserId, reportReason, missionId)"
  *               DuplicateReport:
  *                 summary: 중복 신고
  *                 value:
  *                   status: 400
  *                   message: "이미 신고한 콘텐츠입니다."
+ *               InvalidMission:
+ *                 summary: 미션 불일치
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글이 해당 미션에 속하지 않습니다."
  *       401:
  *         description: 인증 필요
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Unauthorized:
+ *                 summary: 인증 필요
+ *                 value:
+ *                   status: 401
+ *                   message: "로그인이 필요합니다."
  *       404:
  *         description: 인증글을 찾을 수 없음
  *         content:
@@ -2142,6 +2158,17 @@ router.post("/:missionId/posts", authGuard, missionController.createMissionPost)
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotionSyncFailed:
+ *                 summary: Notion 동기화 실패
+ *                 value:
+ *                   status: 500
+ *                   message: "Notion 동기화 중 오류가 발생했습니다."
+ *               ReportCountUpdateFailed:
+ *                 summary: 신고 카운트 업데이트 실패
+ *                 value:
+ *                   status: 500
+ *                   message: "신고 카운트 증가 실패"
  */
 router.post("/posts/:postId/report", authGuard, missionController.reportMissionPost);
 
@@ -2217,11 +2244,16 @@ router.post("/posts/:postId/report", authGuard, missionController.reportMissionP
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
+ *               MissingIds:
+ *                 summary: ID 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "인증글 ID와 댓글 ID가 필요합니다."
  *               MissingFields:
  *                 summary: 필수 필드 누락
  *                 value:
  *                   status: 400
- *                   message: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *                   message: "필수 필드가 누락되었습니다. (targetUserId, reportReason, missionId)"
  *               DuplicateReport:
  *                 summary: 중복 신고
  *                 value:
@@ -2232,12 +2264,23 @@ router.post("/posts/:postId/report", authGuard, missionController.reportMissionP
  *                 value:
  *                   status: 400
  *                   message: "커뮤니티 댓글은 미션 신고 API를 사용할 수 없습니다."
+ *               InvalidMission:
+ *                 summary: 미션 불일치
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글이 해당 미션에 속하지 않습니다."
  *       401:
  *         description: 인증 필요
  *         content:
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               Unauthorized:
+ *                 summary: 인증 필요
+ *                 value:
+ *                   status: 401
+ *                   message: "로그인이 필요합니다."
  *       404:
  *         description: 댓글을 찾을 수 없음
  *         content:
@@ -2256,6 +2299,17 @@ router.post("/posts/:postId/report", authGuard, missionController.reportMissionP
  *           application/json:
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
+ *             examples:
+ *               NotionSyncFailed:
+ *                 summary: Notion 동기화 실패
+ *                 value:
+ *                   status: 500
+ *                   message: "Notion 동기화 중 오류가 발생했습니다."
+ *               ReportCountUpdateFailed:
+ *                 summary: 신고 카운트 업데이트 실패
+ *                 value:
+ *                   status: 500
+ *                   message: "신고 카운트 증가 실패"
  */
 router.post("/posts/:postId/comments/:commentId/report", authGuard, missionController.reportMissionComment);
 
