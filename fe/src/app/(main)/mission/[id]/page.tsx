@@ -65,11 +65,10 @@ const Page = () => {
   const { data: postsResponse } = useGetMissionsPosts({
     request: {
       sort: "latest",
+      missionId,
     },
   });
 
-  // TODO: 미션 별 인증글 생기면 현재 미션글의 인증글만 보이게 필터링 넣기
-  // 현재 미션의 인증글만 필터링 (임시로 해제)
   const missionPosts = postsResponse?.posts || [];
 
   const [isLiked, setIsLiked] = useState(missionData?.isLiked || false);
@@ -282,7 +281,7 @@ const Page = () => {
             </Typography>
             <button
               className="flex items-center gap-1"
-              onClick={() => router.push(LINK_URL.COMMUNITY)}
+              onClick={() => router.push(LINK_URL.COMMUNITY_MISSION)}
             >
               <Typography
                 font="noto"
