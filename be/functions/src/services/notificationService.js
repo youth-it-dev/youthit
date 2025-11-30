@@ -30,6 +30,7 @@ const NOTION_FIELDS = {
   LAST_PAYMENT_DATE: '가장 최근에 지급한 일시',
   PAYMENT_RESULT: '지급 결과',
   EXPIRATION_DATE: '만료 기한',
+  SELECTED: '선택',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -696,6 +697,7 @@ class NotificationService {
           finalStatus,
           shouldUpdateLastPaymentDate,
           paymentResult,
+          clearSelected: true, // 전송 후 "선택" 체크박스 해제
         });
       } catch (updateError) {
         console.warn("Notion 필드 업데이트 실패:", updateError.message);
@@ -723,10 +725,20 @@ class NotificationService {
         },
         body: JSON.stringify({
           filter: {
-            property: NOTION_FIELDS.SEND_STATUS,
-            status: {
-              equals: SEND_STATUS.PENDING
-            }
+            and: [
+              {
+                property: NOTION_FIELDS.SEND_STATUS,
+                status: {
+                  equals: SEND_STATUS.PENDING
+                }
+              },
+              {
+                property: NOTION_FIELDS.SELECTED,
+                checkbox: {
+                  equals: true
+                }
+              }
+            ]
           }
         })
       });
@@ -741,7 +753,11 @@ class NotificationService {
 
       const data = await response.json();
 
-      return (data.results || []).map(page => ({
+      // "선택" 체크박스가 체크되어 있는 것만 필터링 (추가 안전장치)
+      return (data.results || []).filter(page => {
+        const selected = page.properties[NOTION_FIELDS.SELECTED]?.checkbox || false;
+        return selected;
+      }).map(page => ({
         pageId: page.id,
         properties: page.properties
       }));
@@ -923,9 +939,10 @@ class NotificationService {
    * @param {string} options.finalStatus - 전송 상태
    * @param {boolean} options.shouldUpdateLastPaymentDate - 최근 지급 일시 업데이트 여부
    * @param {string} options.paymentResult - 지급 결과
+   * @param {boolean} options.clearSelected - "선택" 체크박스 해제 여부
    * @return {Promise<void>}
    */
-  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult }) {
+  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false }) {
     try {
       const properties = {};
 
@@ -950,6 +967,12 @@ class NotificationService {
           status: {
             name: paymentResult,
           },
+        };
+      }
+
+      if (clearSelected) {
+        properties[NOTION_FIELDS.SELECTED] = {
+          checkbox: false,
         };
       }
 
