@@ -512,13 +512,9 @@ class MissionPostService {
       if (error.code === "BAD_REQUEST") {
         throw error;
       }
-      // Firestore 인덱스 에러인 경우 더 명확한 메시지 제공
+      // Firestore 인덱스 에러인 경우 상세 정보는 로그에만 기록
       if (error.code === 9 || error.message?.includes("index")) {
-        throw buildError(
-          `인증글 목록을 조회할 수 없습니다. 인덱스가 필요할 수 있습니다: ${error.message}`,
-          "INTERNAL_ERROR",
-          500,
-        );
+        console.error("[MISSION_POST] Firestore 인덱스 에러:", error.message);
       }
       throw buildError("인증글 목록을 조회할 수 없습니다.", "INTERNAL_ERROR", 500);
     }
