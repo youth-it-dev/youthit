@@ -26,14 +26,6 @@ const options = {
         description: "이미지 업로드 관련 API",
       },
       {
-        name: "Routines",
-        description: "루틴 관련 API",
-      },
-      {
-        name: "Gatherings",
-        description: "월간 소모임 관련 API",
-      },
-      {
         name: "Communities",
         description:
           "커뮤니티 통합 관리 API (전체 포스트 조회, 루틴 인증글, 소모임 후기글, TMI 소개글)",

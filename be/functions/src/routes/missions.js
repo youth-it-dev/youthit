@@ -1391,7 +1391,7 @@ router.delete("/posts/:postId/comments/:commentId", authGuard, missionController
  *                       example: "user-123"
  *                     isLiked:
  *                       type: boolean
- *                       description: 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+ *                       description: "좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)"
  *                       example: true
  *                     likesCount:
  *                       type: integer
@@ -1522,7 +1522,7 @@ router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPos
  *                       example: "user-123"
  *                     isLiked:
  *                       type: boolean
- *                       description: 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+ *                       description: "좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)"
  *                       example: true
  *                     likesCount:
  *                       type: integer
@@ -1555,10 +1555,15 @@ router.post("/posts/:postId/like", authGuard, missionController.toggleMissionPos
  *               $ref: "#/components/schemas/ErrorResponse"
  *             examples:
  *               MissingCommentId:
- *                 summary: 댓글 ID 누락
+ *                 summary: ID 누락
  *                 value:
  *                   status: 400
  *                   message: "인증글 ID와 댓글 ID가 필요합니다."
+ *               InvalidPostComment:
+ *                 summary: 댓글이 인증글에 속하지 않음
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글이 해당 인증글에 속하지 않습니다."
  *               CommunityComment:
  *                 summary: 커뮤니티 댓글
  *                 value:
