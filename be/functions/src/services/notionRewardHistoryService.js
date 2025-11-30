@@ -586,7 +586,7 @@ class NotionRewardHistoryService {
   async archiveNotionPageWithRetry(pageId, maxRetries = 3) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
           method: "PATCH",
           headers: {
             "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
@@ -595,12 +595,23 @@ class NotionRewardHistoryService {
           },
           body: JSON.stringify({ archived: true }),
         });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`[Notion API Error] Status: ${res.status}, Response: ${errorText}`);
+          const err = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+          err.code = "INTERNAL_ERROR";
+          throw err;
+        }
+
         return; // 성공하면 종료
       } catch (error) {
         console.warn(`Notion 페이지 아카이브 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
         
         if (attempt === maxRetries) {
-          throw new Error(`Notion 페이지 아카이브 최종 실패 (pageId: ${pageId}): ${error.message}`);
+          const finalError = new Error(`Notion 페이지 아카이브 최종 실패 (pageId: ${pageId}): ${error.message}`);
+          finalError.code = error.code || "INTERNAL_ERROR";
+          throw finalError;
         }
         
         // 지수 백오프: 1초, 2초, 4초...
