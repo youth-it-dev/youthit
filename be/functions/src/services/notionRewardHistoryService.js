@@ -422,15 +422,15 @@ class NotionRewardHistoryService {
             // 중복 체크용 고유 키 생성 (historyId 사용)
             const uniqueKey = historyId;
 
-            // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
+            // 삭제 후 재생성: 기존 페이지가 있으면 삭제 후 새로 생성, 없으면 생성
             try {
               if (notionRewardHistories[uniqueKey]) {
-                // 기존 페이지 업데이트
-                await this.updateNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId, notionPage);
-              } else {
-                // 새 페이지 생성
-                await this.createNotionPageWithRetry(notionPage);
+                // 기존 페이지 아카이브 (삭제)
+                await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
+                console.log(`[삭제 후 재생성] 기존 페이지 아카이브 완료 (pageId: ${notionRewardHistories[uniqueKey].pageId})`);
               }
+              // 새 페이지 생성 (기존 페이지가 있었든 없었든 항상 생성)
+              await this.createNotionPageWithRetry(notionPage);
             } catch (error) {
               // "회원 관리" 필드 관련 에러인 경우 필드를 제외하고 재시도
               if (error.message && (error.message.includes('회원 관리') || error.message.includes('not a property'))) {
@@ -443,11 +443,15 @@ class NotionRewardHistoryService {
                   delete notionPageWithoutUser['회원 관리 '];
                 }
                 
+                // 삭제 후 재생성 재시도
                 if (notionRewardHistories[uniqueKey]) {
-                  await this.updateNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId, notionPageWithoutUser);
-                } else {
-                  await this.createNotionPageWithRetry(notionPageWithoutUser);
+                  try {
+                    await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
+                  } catch (archiveError) {
+                    console.warn(`[재시도] 기존 페이지 아카이브 실패 (무시하고 계속 진행):`, archiveError.message);
+                  }
                 }
+                await this.createNotionPageWithRetry(notionPageWithoutUser);
               } else {
                 // 다른 에러는 그대로 throw
                 throw error;
@@ -575,33 +579,28 @@ class NotionRewardHistoryService {
   }
 
   /**
-   * 재시도 로직이 포함된 Notion 페이지 업데이트
+   * 재시도 로직이 포함된 Notion 페이지 아카이브 (삭제)
    * @param {string} pageId - Notion 페이지 ID
-   * @param {Object} notionPage - Notion 페이지 속성
    * @param {number} maxRetries - 최대 재시도 횟수
    */
-  async updateNotionPageWithRetry(pageId, notionPage, maxRetries = 3) {
+  async archiveNotionPageWithRetry(pageId, maxRetries = 3) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await this.notion.pages.update({
-          page_id: pageId,
-          properties: notionPage,
+        await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ archived: true }),
         });
         return; // 성공하면 종료
       } catch (error) {
-        console.warn(`Notion 페이지 업데이트 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
-        // 필드명 관련 에러인지 확인
-        if (error.message && (error.message.includes('만료 날짜') || error.message.includes('not a property'))) {
-          console.error(`[필드명 에러] "만료 날짜" 필드가 Notion에 존재하지 않을 수 있습니다. 에러:`, error.message);
-          // 만료 날짜 필드를 제거하고 재시도
-          const notionPageWithoutExpiry = { ...notionPage };
-          delete notionPageWithoutExpiry['만료 날짜'];
-          console.log(`[필드 제거 후 재시도] 만료 날짜 필드 제거`);
-          notionPage = notionPageWithoutExpiry;
-        }
+        console.warn(`Notion 페이지 아카이브 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
         
         if (attempt === maxRetries) {
-          throw new Error(`Notion 페이지 업데이트 최종 실패 (pageId: ${pageId}): ${error.message}`);
+          throw new Error(`Notion 페이지 아카이브 최종 실패 (pageId: ${pageId}): ${error.message}`);
         }
         
         // 지수 백오프: 1초, 2초, 4초...
