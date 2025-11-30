@@ -94,6 +94,7 @@ export type TGETMissionsMeRes = {
 
 export interface TGETMissionsPostsReq {
   sort?: "latest" | "popular";
+  missionId?: string;
   categories?: string;
   userId?: string;
   pageSize?: number;
@@ -166,6 +167,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
     profileImageUrl?: string;
     content?: string;
     parentId?: string;
+    parentAuthor?: string;
     depth?: number;
     likesCount?: number;
     isDeleted?: boolean;
@@ -180,6 +182,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
       profileImageUrl?: string;
       content?: string;
       parentId?: string;
+      parentAuthor?: string;
       depth?: number;
       likesCount?: number;
       isDeleted?: boolean;
@@ -214,6 +217,7 @@ export type TPOSTMissionsPostsCommentsByIdRes = {
   author?: string;
   content?: string;
   parentId?: string;
+  parentAuthor?: string;
   depth?: number;
   likesCount?: number;
   isLocked?: boolean;

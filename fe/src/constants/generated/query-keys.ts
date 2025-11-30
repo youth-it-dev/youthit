@@ -191,6 +191,7 @@ export const missionsKeys = {
       path: {},
       query: {
         sort: request.sort,
+        missionId: request.missionId,
         categories: request.categories,
         userId: request.userId,
         pageSize: request.pageSize,
