@@ -448,6 +448,12 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *         description: 정렬 기준 (latest=최신순, popular=조회수 인기순)
  *         example: "latest"
  *       - in: query
+ *         name: missionId
+ *         schema:
+ *           type: string
+ *         description: 특정 미션의 인증글만 조회 (미션 상세 페이지에서 사용)
+ *         example: "2b345f52-4cd0-81b3-81b8-ccd63ace93fc"
+ *       - in: query
  *         name: categories
  *         schema:
  *           type: string
