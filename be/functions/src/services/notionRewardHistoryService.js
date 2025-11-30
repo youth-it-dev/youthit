@@ -21,6 +21,8 @@ const TARGET_ACTION_KEYS = [
   'gathering_review_text',
   'gathering_review_media',
   'tmi_review',
+  'store',
+  'expiration',
 ];
 
 class NotionRewardHistoryService {

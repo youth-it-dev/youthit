@@ -468,6 +468,7 @@ class StoreService {
     transaction.set(deductHistoryRef, {
       amount: totalPoints,
       changeType: "deduct",
+      actionKey: "store",
       reason: reason,
       isProcessed: false,
       createdAt: FieldValue.serverTimestamp(),

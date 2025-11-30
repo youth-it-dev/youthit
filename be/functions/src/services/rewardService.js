@@ -624,6 +624,7 @@ class RewardService {
           transaction.set(deductHistoryRef, {
             amount: history.amount,
             changeType: 'deduct',
+            actionKey: 'expiration',
             reason: '리워드 만료',
             isProcessed: true,
             createdAt: FieldValue.serverTimestamp(),
