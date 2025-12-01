@@ -424,8 +424,7 @@ class MissionPostService {
         }
       }
 
-      // isLocked가 false인 게시글만 조회 (신고된 게시글은 목록에 표시하지 않음)
-      query = query.where("isLocked", "==", false);
+      // isLocked 필터 제거: 신고된 게시글도 목록에 포함하여 프론트엔드에서 처리
 
       if (sort === "popular") {
         query = query.orderBy("viewCount", "desc").orderBy("createdAt", "desc");
@@ -497,6 +496,7 @@ class MissionPostService {
           commentsCount: post.commentsCount || 0,
           viewCount: post.viewCount || 0,
           categories: Array.isArray(post.categories) ? post.categories : [],
+          isLocked: Boolean(post.isLocked),
           createdAt: createdAtDate.toISOString(),
           timeAgo: this.getTimeAgo(createdAtDate),
         };
@@ -597,6 +597,7 @@ class MissionPostService {
         commentsCount: post.commentsCount || 0,
         likesCount: post.likesCount || 0,
         viewCount: newViewCount,
+        isLocked: Boolean(post.isLocked),
         createdAt: createdAtDate.toISOString(),
         updatedAt: updatedAtDate.toISOString(),
         timeAgo: this.getTimeAgo(createdAtDate),
