@@ -31,6 +31,7 @@ const NOTION_FIELDS = {
   PAYMENT_RESULT: '지급 결과',
   EXPIRATION_DATE: '만료 기한',
   SELECTED: '선택',
+  SUCCESSFUL_MEMBERS: '전송 성공 회원',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -416,6 +417,7 @@ class NotificationService {
     let rewardFailed = false;
     let fcmFailed = false;
     let paymentResult = null;
+    let successfulUserIds = [];
 
     try {
       const { title, content, userIds, nadumAmount, expiresAt } = await this.getNotificationData(pageId);
@@ -610,9 +612,11 @@ class NotificationService {
 
             const batchSuccessCount = batchResult?.successCount || batchResult?.sentCount || 0;
             const batchFailureCount = batchResult?.failureCount || batchResult?.failedCount || 0;
+            const batchSuccessfulUserIds = batchResult?.successfulUserIds || [];
 
             totalSuccessCount += batchSuccessCount;
             totalFailureCount += batchFailureCount;
+            successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
 
             console.log(`[알림 전송 배치 완료] 성공=${batchSuccessCount}, 실패=${batchFailureCount} (총 진행률: ${totalSuccessCount + totalFailureCount}/${rewardedUserIds.length})`);
 
@@ -667,6 +671,7 @@ class NotificationService {
         failureCount,
         rewardFailureCount,
         rewardedUsers: rewardedUserIds.length,
+        successfulUserIds: successfulUserIds,
         sendResult,
       };
     } catch (error) {
@@ -698,6 +703,7 @@ class NotificationService {
           shouldUpdateLastPaymentDate,
           paymentResult,
           clearSelected: true, // 전송 후 "선택" 체크박스 해제
+          successfulUserIds: successfulUserIds || [],
         });
       } catch (updateError) {
         console.warn("Notion 필드 업데이트 실패:", updateError.message);
@@ -933,6 +939,43 @@ class NotificationService {
   }
 
   /**
+   * Firebase UID로 Notion "회원 관리" DB에서 사용자 페이지 찾기
+   * @param {string} firebaseUid - Firebase UID
+   * @returns {Promise<string|null>} Notion 페이지 ID 또는 null
+   */
+  async findUserNotionPageId(firebaseUid) {
+    try {
+      const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2;
+      if (!userDbId) {
+        console.warn('[NotificationService] NOTION_USER_ACCOUNT_DB_ID2 환경변수가 설정되지 않음');
+        return null;
+      }
+
+      // Notion "회원 관리" DB에서 사용자ID로 검색
+      const response = await this.notion.dataSources.query({
+        data_source_id: userDbId,
+        filter: {
+          property: '사용자ID',
+          rich_text: {
+            equals: firebaseUid
+          }
+        },
+        page_size: 1
+      });
+
+      if (response.results && response.results.length > 0) {
+        return response.results[0].id;
+      }
+
+      console.warn(`[NotificationService] Notion "회원 관리"에서 사용자를 찾을 수 없음: ${firebaseUid}`);
+      return null;
+    } catch (error) {
+      console.error('[NotificationService] Notion 사용자 검색 오류:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Notion 필드 배치 업데이트 (한 번의 API 호출로 여러 필드 업데이트)
    * @param {string} pageId - Notion 페이지 ID
    * @param {Object} options - 업데이트 옵션
@@ -940,9 +983,10 @@ class NotificationService {
    * @param {boolean} options.shouldUpdateLastPaymentDate - 최근 지급 일시 업데이트 여부
    * @param {string} options.paymentResult - 지급 결과
    * @param {boolean} options.clearSelected - "선택" 체크박스 해제 여부
+   * @param {Array<string>} options.successfulUserIds - 전송 성공한 유저 ID 배열
    * @return {Promise<void>}
    */
-  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false }) {
+  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false, successfulUserIds = [] }) {
     try {
       const properties = {};
 
@@ -974,6 +1018,29 @@ class NotificationService {
         properties[NOTION_FIELDS.SELECTED] = {
           checkbox: false,
         };
+      }
+
+      // 전송 성공한 회원들을 Notion 관계형 필드에 추가
+      if (successfulUserIds && successfulUserIds.length > 0) {
+        try {
+          // 각 유저 ID로 회원 관리 DB에서 Notion 페이지 ID 조회 (병렬 처리)
+          const notionPageIdPromises = successfulUserIds.map(userId => 
+            this.findUserNotionPageId(userId)
+          );
+          const notionPageIds = await Promise.all(notionPageIdPromises);
+          
+          // null이 아닌 페이지 ID만 필터링
+          const validNotionPageIds = notionPageIds.filter(pageId => pageId !== null);
+          
+          if (validNotionPageIds.length > 0) {
+            properties[NOTION_FIELDS.SUCCESSFUL_MEMBERS] = {
+              relation: validNotionPageIds.map(pageId => ({ id: pageId })),
+            };
+          }
+        } catch (relationError) {
+          console.error('[NotificationService] 전송 성공 회원 관계형 필드 업데이트 실패:', relationError.message);
+          // 관계형 필드 업데이트 실패해도 다른 필드는 업데이트 진행
+        }
       }
 
       if (Object.keys(properties).length === 0) {
