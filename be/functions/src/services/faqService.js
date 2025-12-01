@@ -3,10 +3,11 @@ const {
   getTitleValue,
   getTextContent,
   getMultiSelectNames,
+  getSelectValue,
   getDateValue,
   getCreatedTimeValue,
   getLastEditedTimeValue,
-  formatNotionBlocks
+  formatNotionBlocks,
 } = require("../utils/notionHelper");
 
 class FaqService {
@@ -124,10 +125,19 @@ class FaqService {
   formatFaqData(pageData, blocks = []) {
     const props = pageData.properties;
     
+    const title = getTitleValue(props["FAQ"]);
+
+    // 카테고리: Multi-select 우선, 없으면 select 값을 단일 배열로 래핑
+    let category = getMultiSelectNames(props["주제"]);
+    if ((!category || category.length === 0) && props["주제"]) {
+      const singleCategory = getSelectValue(props["주제"]);
+      category = singleCategory ? [singleCategory] : [];
+    }
+
     return {
       id: pageData.id,
-      title: getTitleValue(props["FAQ"]),
-      category: getMultiSelectNames(props["주제"]),
+      title,
+      category,
       content: this.formatFaqBlocks(blocks),
       createdAt: getCreatedTimeValue(props["생성일"]) || pageData.created_time,
       updatedAt: getLastEditedTimeValue(props["수정일"]) || pageData.last_edited_time
@@ -141,7 +151,7 @@ class FaqService {
    */
   formatFaqBlocks(blocks) {
     return formatNotionBlocks(blocks, { 
-      includeRichText: false, 
+      includeRichText: true, 
       includeMetadata: false 
     });
   }

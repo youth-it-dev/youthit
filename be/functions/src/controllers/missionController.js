@@ -81,6 +81,7 @@ class MissionController {
     this.toggleMissionPostCommentLike = this.toggleMissionPostCommentLike.bind(this);
     this.reportMissionPost = this.reportMissionPost.bind(this);
     this.reportMissionComment = this.reportMissionComment.bind(this);
+    this.getMissionFaqs = this.getMissionFaqs.bind(this);
   }
 
   /**
@@ -93,6 +94,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -144,6 +146,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -412,6 +415,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -428,6 +432,32 @@ class MissionController {
 
     } catch (error) {
       console.error("[MissionController] 미션 상세 조회 오류:", error.message);
+      return next(error);
+    }
+  }
+
+  /**
+   * 미션 FAQ 목록 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getMissionFaqs(req, res, next) {
+    try {
+      const { missionId } = req.params;
+
+      if (!missionId) {
+        const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await notionMissionService.getFaqsForMission(missionId);
+
+      return res.success(result);
+    } catch (error) {
+      console.error("[MissionController] 미션 FAQ 조회 오류:", error.message);
       return next(error);
     }
   }

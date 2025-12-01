@@ -15,9 +15,11 @@ const { db } = require("../config/database");
 const {
   MISSION_LIKES_STATS_COLLECTION,
 } = require("../constants/missionConstants");
+const notionFaqService = require("./notionFaqService");
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
+const { NOTION_MISSION_FAQ_DB_ID } = process.env;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;
@@ -294,6 +296,41 @@ class NotionMissionService {
       serviceError.originalError = error;
       throw serviceError;
     }
+  }
+
+  /**
+   * 미션 기준 FAQ 목록 조회
+   * @param {string} missionId - 미션 ID (Notion 페이지 ID)
+   * @returns {Promise<{faqs: Object[], count: number, hasMore: boolean, nextCursor: string|null}>}
+   */
+  async getFaqsForMission(missionId) {
+    if (!missionId) {
+      const error = new Error("missionId가 필요합니다");
+      error.code = "MISSING_REQUIRED_FIELD";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (!NOTION_MISSION_FAQ_DB_ID) {
+      const error = new Error("NOTION_MISSION_FAQ_DB_ID가 필요합니다");
+      error.code = 'MISSING_NOTION_DB_ID';
+      error.statusCode = 500;
+      throw error;
+    }
+
+    // 미션 FAQ DB에서 Relation(미션 관리)으로 직접 조회
+    const result = await notionFaqService.getFaqsByRelation({
+      dataSourceId: NOTION_MISSION_FAQ_DB_ID,
+      relationProperty: "미션 관리",
+      pageId: missionId,
+    });
+
+    return {
+      faqs: result.faqs,
+      count: result.faqs.length,
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
+    };
   }
 
   /**
