@@ -36,7 +36,7 @@ const NOTION_FIELDS = {
 // 상황별 알림 내용 템플릿 필드명 상수
 const TEMPLATE_FIELDS = {
   PROGRAM_TYPE: '프로그램 유형',
-  NOTIFICATION_CONTENT: '알림 내용',
+  NOTIFICATION_CONTENT: '전송할 알림 문구',
   NADUM_AMOUNT: '지급할 나다움',
 };
 
@@ -1225,4 +1225,3 @@ class NotificationService {
 }
 
 module.exports = NotificationService;
-
