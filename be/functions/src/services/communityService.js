@@ -1397,6 +1397,7 @@ class CommunityService {
 
       const response = {
         ...postWithoutAuthorId,
+        authorId: authorId || null, // 작성자 UID 추가
         programType: resolvedProgramType,
         isReview: resolvedIsReview,
         viewCount: newViewCount,

@@ -151,15 +151,15 @@ class CommentService {
             }
           } else {
             // 멤버가 없으면 기존 nicknames 로직 사용
-            const nicknames = await this.firestoreService.getCollectionWhere(
-              "nicknames",
-              "uid",
-              "==",
-              userId
-            );
-            const nicknameDoc = nicknames && nicknames[0];
-            if (nicknameDoc) {
-              author = nicknameDoc.id || nicknameDoc.nickname || "익명";
+          const nicknames = await this.firestoreService.getCollectionWhere(
+            "nicknames",
+            "uid",
+            "==",
+            userId
+          );
+          const nicknameDoc = nicknames && nicknames[0];
+          if (nicknameDoc) {
+            author = nicknameDoc.id || nicknameDoc.nickname || "익명";
             }
           }
         }
@@ -426,9 +426,10 @@ class CommentService {
             .sort((a, b) => ts(a.createdAt) - ts(b.createdAt))
             .slice(0, 50)
             .map(reply => {
-              const { media, userId: _userId, parentAuthor: _parentAuthor, ...replyWithoutDeleted } = reply;
+              const { media, parentAuthor: _parentAuthor, ...replyWithoutDeleted } = reply;
               const replyResult = {
                 ...replyWithoutDeleted,
+                userId: reply.userId || null, // 작성자 UID 추가
                 isDeleted: reply.isDeleted || false,
                 isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
                 reportsCount: reply.reportsCount || 0,
@@ -438,10 +439,11 @@ class CommentService {
               return replyResult;
             });
 
-          const { media, userId: _userId, parentAuthor: _parentAuthor, ...commentWithoutDeleted } = comment;
+          const { media, parentAuthor: _parentAuthor, ...commentWithoutDeleted } = comment;
 
           const processedComment = {
             ...commentWithoutDeleted,
+            userId: comment.userId || null, // 작성자 UID 추가
             isDeleted: comment.isDeleted || false,
             replies: sortedReplies,
             repliesCount: replies.length,

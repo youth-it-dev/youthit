@@ -1481,6 +1481,12 @@ const options = {
               description: "작성자",
               example: "사용자닉네임",
             },
+            authorId: {
+              type: "string",
+              nullable: true,
+              description: "작성자 UID",
+              example: "user_123",
+            },
             title: {
               type: "string",
               description: "제목",
