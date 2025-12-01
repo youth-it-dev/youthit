@@ -308,6 +308,7 @@ class MissionPostService {
         commentsCount: 0,
         reportsCount: 0,
         viewCount: 0,
+        isLocked: false,
         createdAt: now,
         updatedAt: now,
       };
