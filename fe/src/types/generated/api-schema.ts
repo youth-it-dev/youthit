@@ -590,12 +590,12 @@ export interface Program {
   programName?: string;
   description?: string;
   programType?: "ROUTINE" | "TMI" | "GATHERING";
-  recruitmentStatus?: "모집 전" | "모집 중" | "모집 완료" | "모집 취소";
-  programStatus?: "진행 전" | "진행 중" | "종료됨" | "진행 취소됨";
-  startDate?: string;
-  endDate?: string;
+  recruitmentStatus?: "모집 전" | "모집 중" | "모집 완료";
+  programStatus?: "진행 전" | "진행 중" | "종료됨";
   recruitmentStartDate?: string;
   recruitmentEndDate?: string;
+  startDate?: string;
+  endDate?: string;
   displayStartDate?: string;
   orientationDate?: string;
   shareMeetingDate?: string;

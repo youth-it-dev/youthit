@@ -6,8 +6,8 @@
 import type * as Schema from "./api-schema";
 
 export interface TGETProgramsReq {
-  recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
-  programStatus?: "before" | "ongoing" | "completed" | "cancelled";
+  recruitmentStatus?: "before" | "ongoing" | "completed";
+  programStatus?: "before" | "ongoing" | "completed";
   programType?: "ROUTINE" | "TMI" | "GATHERING";
   pageSize?: number;
   cursor?: string;
@@ -40,8 +40,8 @@ export type TPOSTProgramsApplyByIdRes = Schema.ProgramApplicationResponse;
 
 export interface TGETProgramsSearchReq {
   q: string;
-  recruitmentStatus?: "before" | "ongoing" | "completed" | "cancelled";
-  programStatus?: "before" | "ongoing" | "completed" | "cancelled";
+  recruitmentStatus?: "before" | "ongoing" | "completed";
+  programStatus?: "before" | "ongoing" | "completed";
   programType?: "ROUTINE" | "TMI" | "GATHERING";
   pageSize?: number;
   cursor?: string;
