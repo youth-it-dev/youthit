@@ -188,6 +188,9 @@ class NotionUserService {
               },
               "신고 카운트": { number: reportCount },
               "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+              "관리자 타입": {
+                checkbox: user.userType === "admin"
+              },
             };
       
             // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
@@ -573,6 +576,9 @@ async syncAllUserAccounts() {
             },
             "신고 카운트": { number: reportCount },
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+            "관리자 타입": {
+              checkbox: user.userType === "admin"
+            },
           };
 
           // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
@@ -1170,6 +1176,10 @@ async syncSelectedUsers() {
 
       // 패널티 카운트 필드 추출 (number 타입)
       const penaltyCount = props["패널티 카운트"]?.number ?? 0;
+
+      // 관리자 타입 체크박스 필드 추출
+      const isAdminChecked = props["관리자 타입"]?.checkbox || false;
+      const userType = isAdminChecked ? "admin" : "user";
       
       // 업데이트할 데이터 객체 생성 (undefined가 아닌 값만 업데이트)
       const updateData = {};
@@ -1265,6 +1275,8 @@ async syncSelectedUsers() {
         }
       }
 
+      // userType 설정 (관리자 타입 체크박스에 따라)
+      updateData.userType = userType;
 
       // Firebase 업데이트 실행
       await userRef.update(updateData);
@@ -1347,7 +1359,12 @@ async syncSelectedUsers() {
         "선택": {
           checkbox: false
         },
-         "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+         "동기화 시간": { 
+            date: { start: lastUpdatedIso.toISOString() } 
+        },
+        "관리자 타입": {
+                checkbox: updatedUserData.userType === "admin"
+        },
       };
 
       // 노션 페이지 업데이트 (Firebase의 최신 데이터로)
@@ -1755,6 +1772,10 @@ async syncSelectedUsers() {
           // 패널티 카운트 필드 추출 (number 타입)
           const penaltyCount = props["패널티 카운트"]?.number ?? null;
 
+          // 관리자 타입 체크박스 필드 추출
+          const isAdminChecked = props["관리자 타입"]?.checkbox || false;
+          const userType = isAdminChecked ? "admin" : "user";
+
           // 업데이트할 데이터 객체 생성
           const updateData = {};
           
@@ -1790,6 +1811,9 @@ async syncSelectedUsers() {
           // lastUpdated 업데이트
           const now = new Date();
           updateData.lastUpdated = now;
+
+          // adminType 설정 (관리자 타입 체크박스에 따라)
+          updateData.userType = userType;
 
           if(!suspensionStartAt && !suspensionEndAt && suspensionReason){
             console.warn(`사용자 ${name}의 자격정지 기간(시작)과 자격정지 기간(종료)가 없는데 정지 사유가 설정되어 있습니다`);
@@ -2042,18 +2066,18 @@ async syncSingleUserToNotion(userId) {
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-      "상태": {
-        select: {
-          name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-            ? "탈퇴" 
-            : "가입"
-        }
-      },
+      // "상태": {
+      //   select: {
+      //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
+      //       ? "탈퇴" 
+      //       : "가입"
+      //   }
+      // },
       "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
       "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
       "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
       "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-      "가입 방법": { select: { name: user.authType || "email" } },
+      //"가입 방법": { select: { name: user.authType || "email" } },
       "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
       "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
       "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -2091,6 +2115,9 @@ async syncSingleUserToNotion(userId) {
         rich_text: []
       },
       "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
+      "관리자 타입": {
+        checkbox: false
+      },
     };
 
     // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
@@ -2107,6 +2134,7 @@ async syncSingleUserToNotion(userId) {
     // Firebase lastUpdated 업데이트
     await db.collection("users").doc(userId).update({
       lastUpdated: lastUpdatedIso,
+      userType: "user",
     });
 
     return { success: true, userId };
