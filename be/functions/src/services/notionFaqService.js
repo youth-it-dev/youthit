@@ -6,6 +6,16 @@ const {
   NOTION_VERSION = "2025-09-03",
 } = process.env;
 
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+const MIN_PAGE_SIZE = 1;
+
+function normalizePageSize(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.trunc(num)));
+}
+
 class NotionFaqService {
   constructor() {
     if (!NOTION_API_KEY) {
@@ -122,6 +132,133 @@ class NotionFaqService {
       );
       return [];
     }
+  }
+
+  /**
+   * Relation 필터를 사용하여 FAQ 페이지 목록 조회 (Notion 원본 응답)
+   * @param {Object} options
+   * @param {string} options.dataSourceId - Notion FAQ 데이터 소스 ID
+   * @param {string} options.relationProperty - Relation 필드명 (예: "미션 관리", "프로그램명")
+   * @param {string} options.pageId - 연결된 페이지 ID (미션/프로그램 Notion 페이지 ID)
+   * @param {number} [options.pageSize=20] - 페이지 크기 (1~100)
+   * @param {string} [options.startCursor] - 페이지네이션 커서
+   * @returns {Promise<Object>} Notion dataSources.query 응답
+   */
+  async queryPagesByRelation({
+    dataSourceId,
+    relationProperty,
+    pageId,
+    pageSize = DEFAULT_PAGE_SIZE,
+    startCursor,
+  } = {}) {
+    if (!dataSourceId) {
+      const error = new Error("FAQ 데이터 소스 ID가 필요합니다");
+      error.code = "MISSING_NOTION_DB_ID";
+      error.statusCode = 500;
+      throw error;
+    }
+
+    if (!relationProperty) {
+      const error = new Error("Relation 필드명이 필요합니다");
+      error.code = "MISSING_REQUIRED_FIELD";
+      error.statusCode = 500;
+      throw error;
+    }
+
+    if (!pageId) {
+      const error = new Error("pageId가 필요합니다");
+      error.code = "MISSING_REQUIRED_FIELD";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const size = normalizePageSize(pageSize);
+
+    const queryBody = {
+      page_size: size,
+      filter: {
+        property: relationProperty,
+        relation: {
+          contains: pageId,
+        },
+      },
+    };
+
+    if (startCursor) {
+      queryBody.start_cursor = String(startCursor);
+    }
+
+    try {
+      const data = await this.notion.dataSources.query({
+        data_source_id: dataSourceId,
+        ...queryBody,
+      });
+
+      return data;
+    } catch (error) {
+      console.error(
+        "[NotionFaqService] FAQ 페이지 목록 조회 오류:",
+        error.message,
+      );
+
+      const serviceError = new Error(
+        `FAQ 페이지 목록 조회 중 오류가 발생했습니다: ${error.message}`,
+      );
+      serviceError.code = "NOTION_API_ERROR";
+      serviceError.statusCode = 500;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * Relation 필터를 사용하여 포맷팅된 FAQ 목록 조회
+   * @param {Object} options - queryPagesByRelation과 동일 + pageSize/startCursor
+   * @returns {Promise<{faqs: Object[], hasMore: boolean, nextCursor: string|null}>}
+   */
+  async getFaqsByRelation(options = {}) {
+    const data = await this.queryPagesByRelation(options);
+    const pages = Array.isArray(data.results) ? data.results : [];
+
+    if (!pages.length) {
+      return {
+        faqs: [],
+        hasMore: Boolean(data.has_more),
+        nextCursor: data.next_cursor || null,
+      };
+    }
+
+    // 블록 병렬 조회
+    const blockPromises = pages.map((page) =>
+      faqService.getPageBlocks({ pageId: page.id }),
+    );
+    const blockResults = await Promise.allSettled(blockPromises);
+
+    const faqs = pages.map((page, index) => {
+      let blocks = [];
+      const blocksResult = blockResults[index];
+
+      if (blocksResult && blocksResult.status === "fulfilled") {
+        const raw = blocksResult.value;
+        blocks = Array.isArray(raw.results) ? raw.results : [];
+      } else if (blocksResult && blocksResult.status === "rejected") {
+        console.warn(
+          `[NotionFaqService] FAQ 블록 조회 실패 (Relation 기반) - pageId: ${
+            page.id
+          }, reason: ${
+            blocksResult.reason && blocksResult.reason.message
+          }`,
+        );
+      }
+
+      return faqService.formatFaqData(page, blocks);
+    });
+
+    return {
+      faqs,
+      hasMore: Boolean(data.has_more),
+      nextCursor: data.next_cursor || null,
+    };
   }
 }
 
