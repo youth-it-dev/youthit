@@ -32,6 +32,7 @@ const NOTION_FIELDS = {
   EXPIRATION_DATE: '만료 기한',
   SELECTED: '선택',
   FAILED_MEMBERS: '전송 실패 회원',
+  PAYMENT_FAILED_MEMBERS: '지급 실패 회원',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -53,6 +54,7 @@ const SEND_STATUS = {
 const PAYMENT_RESULT = {
   BEFORE: '지급 전',
   COMPLETED: '지급 완료',
+  PARTIAL: '부분 완료',
   FAILED: '지급 실패',
 };
 
@@ -419,6 +421,7 @@ class NotificationService {
     let paymentResult = null;
     let successfulUserIds = [];
     let failedUserIds = [];
+    let rewardFailedUserIds = [];
 
     try {
       const { title, content, userIds, nadumAmount, expiresAt } = await this.getNotificationData(pageId);
@@ -491,10 +494,15 @@ class NotificationService {
 
           console.log(`[나다움 지급 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`);
 
+          // 지급 실패한 유저 ID 계산
+          rewardFailedUserIds = userIds.filter(userId => !rewardedUserIds.includes(userId));
+
           // 지급 결과 결정
           if (totalRewardSuccessCount === 0) {
             paymentResult = PAYMENT_RESULT.FAILED;
             rewardFailed = true;
+            // 지급 실패한 유저는 모든 유저
+            rewardFailedUserIds = userIds;
             const error = new Error("모든 사용자에게 나다움 지급에 실패했습니다.");
             error.code = ERROR_CODES.REWARD_FAILED;
             error.statusCode = 500;
@@ -502,12 +510,15 @@ class NotificationService {
           } else if (totalRewardSuccessCount === userIds.length) {
             paymentResult = PAYMENT_RESULT.COMPLETED;
           } else {
-            // 부분 성공도 완료로 처리
-            paymentResult = PAYMENT_RESULT.COMPLETED;
+            paymentResult = PAYMENT_RESULT.PARTIAL;
           }
         } catch (rewardError) {
           paymentResult = PAYMENT_RESULT.FAILED;
           rewardFailed = true;
+          // 에러 발생 시 지급 실패한 유저는 모든 유저 (rewardedUserIds가 비어있거나 부분 성공)
+          if (rewardFailedUserIds.length === 0) {
+            rewardFailedUserIds = userIds.filter(userId => !rewardedUserIds.includes(userId));
+          }
           console.error("나다움 지급 처리 실패:", rewardError.message);
           if (!rewardError.code) {
             rewardError.code = ERROR_CODES.REWARD_FAILED;
@@ -570,8 +581,17 @@ class NotificationService {
 
           console.log(`[나다움 차감 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`);
 
+          // 지급 실패한 유저 ID 계산
+          rewardFailedUserIds = userIds.filter(userId => !rewardedUserIds.includes(userId));
+
           // 차감은 실패해도 알림 자체는 진행 가능하게 유지(정책에 따라 조정)
-          paymentResult = totalRewardSuccessCount > 0 ? PAYMENT_RESULT.COMPLETED : PAYMENT_RESULT.FAILED;
+          if (totalRewardSuccessCount === 0) {
+            paymentResult = PAYMENT_RESULT.FAILED;
+          } else if (totalRewardSuccessCount === userIds.length) {
+            paymentResult = PAYMENT_RESULT.COMPLETED;
+          } else {
+            paymentResult = PAYMENT_RESULT.PARTIAL;
+          }
         } catch (rewardError) {
           paymentResult = PAYMENT_RESULT.FAILED;
           rewardFailed = true;
@@ -584,8 +604,12 @@ class NotificationService {
         }
       } else {
         rewardedUserIds = userIds;
+        rewardFailedUserIds = []; // 나다움 지급이 없으면 지급 실패 없음
         // 나다움 지급이 없으면 지급 결과 업데이트 불필요
       }
+
+      // 지급 실패한 유저는 알림 전송도 실패한 것으로 처리
+      failedUserIds = failedUserIds.concat(rewardFailedUserIds);
 
       // 알림 전송 (나다움 지급 성공한 사용자에게만, 배치 처리)
       let totalSuccessCount = 0;
@@ -655,11 +679,14 @@ class NotificationService {
       const totalCount = userIds.length;
       const rewardFailureCount = nadumAmount > 0 ? userIds.length - rewardedUserIds.length : 0;
 
-      // 최종 상태 결정
-      if (successCount === totalCount && failureCount === 0) {
+
+      const successfulUserCount = successfulUserIds.length;
+      const totalUserCount = rewardedUserIds.length; 
+
+      if (successfulUserCount === totalUserCount && successfulUserCount > 0) {
         finalStatus = SEND_STATUS.COMPLETED;
         shouldUpdateLastPaymentDate = true;
-      } else if (successCount > 0) {
+      } else if (successfulUserCount > 0) {
         finalStatus = SEND_STATUS.PARTIAL;
         shouldUpdateLastPaymentDate = true;
       } else {
@@ -709,6 +736,7 @@ class NotificationService {
           paymentResult,
           clearSelected: true, // 전송 후 "선택" 체크박스 해제
           failedUserIds: failedUserIds || [],
+          rewardFailedUserIds: rewardFailedUserIds || [],
         });
       } catch (updateError) {
         console.warn("Notion 필드 업데이트 실패:", updateError.message);
@@ -989,9 +1017,10 @@ class NotificationService {
    * @param {string} options.paymentResult - 지급 결과
    * @param {boolean} options.clearSelected - "선택" 체크박스 해제 여부
    * @param {Array<string>} options.failedUserIds - 전송 실패한 유저 ID 배열
+   * @param {Array<string>} options.rewardFailedUserIds - 지급 실패한 유저 ID 배열
    * @return {Promise<void>}
    */
-  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false, failedUserIds = [] }) {
+  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false, failedUserIds = [], rewardFailedUserIds = [] }) {
     try {
       const properties = {};
 
@@ -1044,6 +1073,29 @@ class NotificationService {
           }
         } catch (relationError) {
           console.error('[NotificationService] 전송 실패 회원 관계형 필드 업데이트 실패:', relationError.message);
+          // 관계형 필드 업데이트 실패해도 다른 필드는 업데이트 진행
+        }
+      }
+
+      // 지급 실패한 회원들을 Notion 관계형 필드에 추가
+      if (rewardFailedUserIds && rewardFailedUserIds.length > 0) {
+        try {
+          // 각 유저 ID로 회원 관리 DB에서 Notion 페이지 ID 조회 (병렬 처리)
+          const notionPageIdPromises = rewardFailedUserIds.map(userId => 
+            this.findUserNotionPageId(userId)
+          );
+          const notionPageIds = await Promise.all(notionPageIdPromises);
+          
+          // null이 아닌 페이지 ID만 필터링
+          const validNotionPageIds = notionPageIds.filter(pageId => pageId !== null);
+          
+          if (validNotionPageIds.length > 0) {
+            properties[NOTION_FIELDS.PAYMENT_FAILED_MEMBERS] = {
+              relation: validNotionPageIds.map(pageId => ({ id: pageId })),
+            };
+          }
+        } catch (relationError) {
+          console.error('[NotificationService] 지급 실패 회원 관계형 필드 업데이트 실패:', relationError.message);
           // 관계형 필드 업데이트 실패해도 다른 필드는 업데이트 진행
         }
       }
