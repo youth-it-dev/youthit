@@ -308,6 +308,7 @@ class MissionPostService {
         commentsCount: 0,
         reportsCount: 0,
         viewCount: 0,
+        isLocked: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -422,6 +423,9 @@ class MissionPostService {
           );
         }
       }
+
+      // isLocked가 false인 게시글만 조회 (신고된 게시글은 목록에 표시하지 않음)
+      query = query.where("isLocked", "==", false);
 
       if (sort === "popular") {
         query = query.orderBy("viewCount", "desc").orderBy("createdAt", "desc");
@@ -587,7 +591,8 @@ class MissionPostService {
         missionTitle: post.missionTitle || "",
         missionNotionPageId: post.missionNotionPageId || "",
         categories: Array.isArray(post.categories) ? post.categories : [],
-        author: userProfile.nickname || "",
+        // 탈퇴한 사용자는 "알 수 없음"으로 표시
+        author: userProfile.nickname || "알 수 없음",
         profileImageUrl: userProfile.profileImageUrl || null,
         commentsCount: post.commentsCount || 0,
         likesCount: post.likesCount || 0,
@@ -1035,31 +1040,25 @@ class MissionPostService {
       ].filter(Boolean);
       const uniqueUserIds = Array.from(new Set(commentUserIds));
       
+      // 사용자 프로필 정보 조회 (nickname, profileImageUrl)
+      const profileMap = uniqueUserIds.length > 0 
+        ? await this.loadUserProfiles(uniqueUserIds)
+        : {};
+      
+      // authorMap: userId -> nickname (탈퇴한 사용자는 "알 수 없음")
+      const authorMap = {};
       const profileImageMap = {};
-      if (uniqueUserIds.length > 0) {
-        try {
-          // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
-          const firestoreService = new FirestoreService("users");
-          const chunks = [];
-          for (let i = 0; i < uniqueUserIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
-            chunks.push(uniqueUserIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
-          }
-
-          const userResults = await Promise.all(
-            chunks.map((chunk) =>
-              firestoreService.getCollectionWhereIn("users", "__name__", chunk),
-            ),
-          );
-          userResults
-            .flat()
-            .filter((user) => user?.id)
-            .forEach((user) => {
-              profileImageMap[user.id] = user.profileImageUrl || null;
-            });
-        } catch (error) {
-          console.warn("[MISSION_POST] 작성자 프로필 이미지 배치 조회 실패:", error.message);
+      uniqueUserIds.forEach((userId) => {
+        const userProfile = profileMap[userId];
+        if (userProfile && userProfile.nickname) {
+          authorMap[userId] = userProfile.nickname;
+          profileImageMap[userId] = userProfile.profileImageUrl || null;
+        } else {
+          // 사용자가 없거나 탈퇴한 경우
+          authorMap[userId] = "알 수 없음";
+          profileImageMap[userId] = null;
         }
-      }
+      });
 
       // 좋아요 상태 조회 (viewerId가 있는 경우)
       let likedCommentIds = new Set();
@@ -1106,10 +1105,14 @@ class MissionPostService {
         const limitedReplies = replies.slice(0, COMMENT_REPLIES_PREVIEW_LIMIT);
         return {
           ...comment,
+          // 탈퇴한 사용자는 "알 수 없음"으로 표시
+          author: comment.userId ? (authorMap[comment.userId] || "알 수 없음") : (comment.author || "알 수 없음"),
           profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
           isLiked: viewerId ? likedCommentIds.has(comment.id) : false,
           replies: limitedReplies.map(reply => ({
             ...reply,
+            // 탈퇴한 사용자는 "알 수 없음"으로 표시
+            author: reply.userId ? (authorMap[reply.userId] || "알 수 없음") : (reply.author || "알 수 없음"),
             profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
             isLiked: viewerId ? likedCommentIds.has(reply.id) : false,
           })),
