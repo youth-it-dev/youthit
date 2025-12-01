@@ -31,7 +31,7 @@ const NOTION_FIELDS = {
   PAYMENT_RESULT: '지급 결과',
   EXPIRATION_DATE: '만료 기한',
   SELECTED: '선택',
-  SUCCESSFUL_MEMBERS: '전송 성공 회원',
+  FAILED_MEMBERS: '전송 실패 회원',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -418,6 +418,7 @@ class NotificationService {
     let fcmFailed = false;
     let paymentResult = null;
     let successfulUserIds = [];
+    let failedUserIds = [];
 
     try {
       const { title, content, userIds, nadumAmount, expiresAt } = await this.getNotificationData(pageId);
@@ -618,6 +619,9 @@ class NotificationService {
             totalFailureCount += batchFailureCount;
             successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
 
+            const batchFailedUserIds = batch.filter(userId => !batchSuccessfulUserIds.includes(userId));
+            failedUserIds = failedUserIds.concat(batchFailedUserIds);
+
             console.log(`[알림 전송 배치 완료] 성공=${batchSuccessCount}, 실패=${batchFailureCount} (총 진행률: ${totalSuccessCount + totalFailureCount}/${rewardedUserIds.length})`);
 
             // 마지막 배치가 아니면 지연
@@ -628,6 +632,7 @@ class NotificationService {
           } catch (batchError) {
             console.error(`[알림 전송 배치 실패] 배치 ${Math.floor(i / BATCH_SIZE) + 1}:`, batchError.message);
             totalFailureCount += batch.length;
+            failedUserIds = failedUserIds.concat(batch);
             // 배치 실패해도 다음 배치 계속 진행
           }
         }
@@ -671,7 +676,7 @@ class NotificationService {
         failureCount,
         rewardFailureCount,
         rewardedUsers: rewardedUserIds.length,
-        successfulUserIds: successfulUserIds,
+        failedUserIds: failedUserIds, // 실패한 유저 ID 배열
         sendResult,
       };
     } catch (error) {
@@ -703,7 +708,7 @@ class NotificationService {
           shouldUpdateLastPaymentDate,
           paymentResult,
           clearSelected: true, // 전송 후 "선택" 체크박스 해제
-          successfulUserIds: successfulUserIds || [],
+          failedUserIds: failedUserIds || [],
         });
       } catch (updateError) {
         console.warn("Notion 필드 업데이트 실패:", updateError.message);
@@ -983,10 +988,10 @@ class NotificationService {
    * @param {boolean} options.shouldUpdateLastPaymentDate - 최근 지급 일시 업데이트 여부
    * @param {string} options.paymentResult - 지급 결과
    * @param {boolean} options.clearSelected - "선택" 체크박스 해제 여부
-   * @param {Array<string>} options.successfulUserIds - 전송 성공한 유저 ID 배열
+   * @param {Array<string>} options.failedUserIds - 전송 실패한 유저 ID 배열
    * @return {Promise<void>}
    */
-  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false, successfulUserIds = [] }) {
+  async updateNotionFieldsBatch(pageId, { finalStatus, shouldUpdateLastPaymentDate, paymentResult, clearSelected = false, failedUserIds = [] }) {
     try {
       const properties = {};
 
@@ -1020,11 +1025,11 @@ class NotificationService {
         };
       }
 
-      // 전송 성공한 회원들을 Notion 관계형 필드에 추가
-      if (successfulUserIds && successfulUserIds.length > 0) {
+      // 전송 실패한 회원들을 Notion 관계형 필드에 추가
+      if (failedUserIds && failedUserIds.length > 0) {
         try {
           // 각 유저 ID로 회원 관리 DB에서 Notion 페이지 ID 조회 (병렬 처리)
-          const notionPageIdPromises = successfulUserIds.map(userId => 
+          const notionPageIdPromises = failedUserIds.map(userId => 
             this.findUserNotionPageId(userId)
           );
           const notionPageIds = await Promise.all(notionPageIdPromises);
@@ -1033,12 +1038,12 @@ class NotificationService {
           const validNotionPageIds = notionPageIds.filter(pageId => pageId !== null);
           
           if (validNotionPageIds.length > 0) {
-            properties[NOTION_FIELDS.SUCCESSFUL_MEMBERS] = {
+            properties[NOTION_FIELDS.FAILED_MEMBERS] = {
               relation: validNotionPageIds.map(pageId => ({ id: pageId })),
             };
           }
         } catch (relationError) {
-          console.error('[NotificationService] 전송 성공 회원 관계형 필드 업데이트 실패:', relationError.message);
+          console.error('[NotificationService] 전송 실패 회원 관계형 필드 업데이트 실패:', relationError.message);
           // 관계형 필드 업데이트 실패해도 다른 필드는 업데이트 진행
         }
       }
