@@ -185,6 +185,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
     parentAuthor?: string;
     depth?: number;
     likesCount?: number;
+    isLiked?: boolean;
     isDeleted?: boolean;
     isLocked?: boolean;
     isMine?: boolean;
@@ -200,6 +201,7 @@ export type TGETMissionsPostsCommentsByIdRes = {
       parentAuthor?: string;
       depth?: number;
       likesCount?: number;
+      isLiked?: boolean;
       isDeleted?: boolean;
       isLocked?: boolean;
       isMine?: boolean;
