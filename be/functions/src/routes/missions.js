@@ -831,6 +831,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                           likesCount:
  *                             type: number
  *                             example: 0
+ *                           isLiked:
+ *                             type: boolean
+ *                             nullable: true
+ *                             description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                             example: false
  *                           isDeleted:
  *                             type: boolean
  *                           isLocked:
@@ -874,6 +879,11 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                                   type: number
  *                                 likesCount:
  *                                   type: number
+ *                                 isLiked:
+ *                                   type: boolean
+ *                                   nullable: true
+ *                                   description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                                   example: false
  *                                 isDeleted:
  *                                   type: boolean
  *                                 isLocked:
