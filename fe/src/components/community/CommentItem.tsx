@@ -12,12 +12,14 @@ import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-shee
 import {
   commentsKeys,
   communitiesKeys,
+  missionsKeys,
 } from "@/constants/generated/query-keys";
 import {
   COMMENT_ANONYMOUS_NAME,
   COMMENT_PLACEHOLDER,
   COMMENT_CANCEL_BUTTON,
   COMMENT_SUBMIT_BUTTON,
+  COMMENT_PAGE_SIZE,
 } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import { usePostMissionsPostsCommentsLikeByTwoIds } from "@/hooks/generated/missions-hooks";
@@ -403,6 +405,23 @@ const CommentItemComponent = ({
       }
     );
 
+  const invalidateMissionCommentQueries = useCallback(() => {
+    if (!postId) return;
+
+    // 미션 게시글 상세 정보 refetch (댓글 카운트 반영)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsById({ postId }),
+    });
+
+    // 미션 댓글 목록 refetch (무한 스크롤 쿼리 무효화)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsCommentsById({
+        postId,
+        pageSize: COMMENT_PAGE_SIZE,
+      }),
+    });
+  }, [postId, queryClient]);
+
   const isLikePending = isMissionCommentContext
     ? isMissionLikePending
     : isCommunityLikePending;
@@ -441,6 +460,9 @@ const CommentItemComponent = ({
                   setLikesCount(result.likesCount || 0);
                 }
               }
+
+              // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+              invalidateMissionCommentQueries();
             },
             onError: (
               _err: unknown,
@@ -472,6 +494,7 @@ const CommentItemComponent = ({
     }
   }, [
     commentId,
+    invalidateMissionCommentQueries,
     isLikePending,
     isMissionCommentContext,
     likeCommunityCommentAsync,
@@ -514,6 +537,9 @@ const CommentItemComponent = ({
                     setLikesCount(result.likesCount || 0);
                   }
                 }
+
+                // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+                invalidateMissionCommentQueries();
               },
               onError: (
                 _err: unknown,
@@ -546,6 +572,7 @@ const CommentItemComponent = ({
     },
     [
       commentId,
+      invalidateMissionCommentQueries,
       isLikePending,
       isMissionCommentContext,
       mutateMissionLike,
