@@ -480,6 +480,40 @@ class MissionPostService {
       const profileMap =
         userIds.length > 0 ? await this.loadUserProfiles(userIds) : {};
 
+      // 좋아요 상태 배치 조회 (viewerId가 있는 경우)
+      let likedPostIds = new Set();
+      if (viewerId && posts.length > 0) {
+        try {
+          const postIds = posts.map((post) => post.id);
+          const chunks = [];
+          for (let i = 0; i < postIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
+            chunks.push(postIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
+          }
+
+          const snapshots = await Promise.all(
+            chunks.map((chunk) =>
+              db
+                .collection("likes")
+                .where("userId", "==", viewerId)
+                .where("type", "==", "MISSION_POST")
+                .where("targetId", "in", chunk)
+                .get()
+            )
+          );
+
+          snapshots.forEach((snapshot) => {
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              if (data?.targetId) {
+                likedPostIds.add(data.targetId);
+              }
+            });
+          });
+        } catch (error) {
+          console.warn("[MISSION_POST] 좋아요 상태 배치 조회 실패:", error.message);
+        }
+      }
+
       const processedPosts = posts.map((post) => {
         const createdAtDate = post.createdAt?.toDate?.() || new Date(post.createdAt);
         const userProfile = profileMap[post.userId] || {};
@@ -494,9 +528,11 @@ class MissionPostService {
           preview: this.createPreview(post),
           mediaCount: Array.isArray(post.media) ? post.media.length : 0,
           commentsCount: post.commentsCount || 0,
+          likesCount: post.likesCount || 0,
           viewCount: post.viewCount || 0,
           categories: Array.isArray(post.categories) ? post.categories : [],
           isLocked: Boolean(post.isLocked),
+          isLiked: viewerId ? likedPostIds.has(post.id) : false,
           createdAt: createdAtDate.toISOString(),
           timeAgo: this.getTimeAgo(createdAtDate),
         };
@@ -1071,21 +1107,21 @@ class MissionPostService {
 
         if (allCommentIds.length > 0) {
           try {
-            const chunks = [];
+          const chunks = [];
             for (let i = 0; i < allCommentIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
               chunks.push(allCommentIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
-            }
+          }
 
             const likeSnapshots = await Promise.all(
-              chunks.map((chunk) =>
+            chunks.map((chunk) =>
                 db
                   .collection("likes")
                   .where("userId", "==", viewerId)
                   .where("type", "==", "MISSION_COMMENT")
                   .where("targetId", "in", chunk)
                   .get(),
-              ),
-            );
+            ),
+          );
 
             likeSnapshots.forEach((snapshot) => {
               snapshot.forEach((doc) => {
@@ -1095,7 +1131,7 @@ class MissionPostService {
                 }
               });
             });
-          } catch (error) {
+        } catch (error) {
             console.warn("[MISSION_POST] 댓글 좋아요 상태 조회 실패:", error.message);
           }
         }
