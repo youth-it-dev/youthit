@@ -1669,6 +1669,79 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
 
 /**
  * @swagger
+ * /missions/{missionId}/faqs:
+ *   get:
+ *     summary: 미션 FAQ 목록 조회
+ *     description: 특정 미션에 연결된 FAQ 목록을 조회합니다. 노션 FAQ 데이터베이스에서 미션 페이지와 Relation으로 연결된 FAQ만 반환합니다.
+ *     tags: [Missions]
+ *     parameters:
+ *       - in: path
+ *         name: missionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 미션 ID (Notion 페이지 ID)
+ *     responses:
+ *       200:
+ *         description: 미션 FAQ 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     faqs:
+ *                       type: array
+ *                       description: 미션과 연결된 FAQ 목록
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: FAQ 페이지 ID
+ *                           title:
+ *                             type: string
+ *                             description: FAQ 제목
+ *                           category:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: FAQ 카테고리(주제)
+ *                           content:
+ *                             type: array
+ *                             description: 포맷팅된 FAQ 내용 블록
+ *                     count:
+ *                       type: integer
+ *                       description: FAQ 개수
+ *                       example: 3
+ *       400:
+ *         description: 잘못된 요청 (미션 ID 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: 미션 또는 FAQ를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ */
+router.get("/:missionId/faqs", optionalAuth, missionController.getMissionFaqs);
+
+/**
+ * @swagger
  * /missions/{missionId}/like:
  *   post:
  *     summary: 미션 찜 토글
