@@ -15,6 +15,7 @@ const { db } = require("../config/database");
 const {
   MISSION_LIKES_STATS_COLLECTION,
 } = require("../constants/missionConstants");
+const notionFaqService = require("./notionFaqService");
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -294,6 +295,43 @@ class NotionMissionService {
       serviceError.originalError = error;
       throw serviceError;
     }
+  }
+
+  /**
+   * 미션 기준 FAQ 목록 조회
+   * @param {string} missionId - 미션 ID (Notion 페이지 ID)
+   * @returns {Promise<{faqs: Object[], count: number}>}
+   */
+  async getFaqsForMission(missionId) {
+    if (!missionId) {
+      const error = new Error("missionId가 필요합니다");
+      error.code = "MISSING_REQUIRED_FIELD";
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // 미션 상세 정보에서 FAQ Relation 가져오기 (페이지 블록은 불필요)
+    const missionData = await this.getMissionById(missionId, {
+      includePageContent: false,
+    });
+
+    const faqIds = notionFaqService.getFaqIdsFromRelation(
+      missionData.faqRelation,
+    );
+
+    if (!faqIds.length) {
+      return {
+        faqs: [],
+        count: 0,
+      };
+    }
+
+    const faqs = await notionFaqService.getFaqList(faqIds);
+
+    return {
+      faqs,
+      count: faqs.length,
+    };
   }
 
   /**
