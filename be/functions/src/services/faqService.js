@@ -1,13 +1,13 @@
 const {
   buildNotionHeadersFromEnv, 
   getTitleValue,
-  getTextContent,
   getMultiSelectNames,
   getSelectValue,
-  getDateValue,
   getCreatedTimeValue,
   getLastEditedTimeValue,
   formatNotionBlocks,
+  extractPlainText,
+  extractLinksFromRichText,
 } = require("../utils/notionHelper");
 
 class FaqService {
@@ -112,8 +112,12 @@ class FaqService {
       throw err;
     }
     
-    console.log(`[FAQ 서비스] 페이지 블록 조회 성공 - 페이지 ID: ${pageId}`);
-    return resp.json();
+    const json = await resp.json();
+    console.log(
+      "[FAQ 서비스] raw blocks:",
+      JSON.stringify(json.results?.slice(0, 3), null, 2)  // 앞 3개만
+    );
+    return json;
   }
 
   /**
@@ -127,17 +131,9 @@ class FaqService {
     
     const title = getTitleValue(props["FAQ"]);
 
-    // 카테고리: Multi-select 우선, 없으면 select 값을 단일 배열로 래핑
-    let category = getMultiSelectNames(props["주제"]);
-    if ((!category || category.length === 0) && props["주제"]) {
-      const singleCategory = getSelectValue(props["주제"]);
-      category = singleCategory ? [singleCategory] : [];
-    }
-
     return {
       id: pageData.id,
       title,
-      category,
       content: this.formatFaqBlocks(blocks),
       createdAt: getCreatedTimeValue(props["생성일"]) || pageData.created_time,
       updatedAt: getLastEditedTimeValue(props["수정일"]) || pageData.last_edited_time
@@ -150,9 +146,41 @@ class FaqService {
    * @returns {Array} 포맷팅된 FAQ 내용
    */
   formatFaqBlocks(blocks) {
-    return formatNotionBlocks(blocks, { 
-      includeRichText: true, 
-      includeMetadata: false 
+    if (!Array.isArray(blocks)) return [];
+
+    // 기본 포맷팅(이미지/특수 블록 포함)을 재사용하되,
+    // 응답에서는 내부용 id / richText 필드는 제거하고, 텍스트/링크 정보만 노출
+    const base = formatNotionBlocks(blocks, {
+      includeRichText: true,
+      includeMetadata: false,
+    });
+
+    return base.map((block, index) => {
+      const raw = blocks[index] || {};
+
+      // 응답에서 숨길 필드(id, richText)를 먼저 제거
+      const { id, richText, ...rest } = block || {};
+
+      const textTypes = [
+        "paragraph",
+        "heading_1",
+        "heading_2",
+        "heading_3",
+        "bulleted_list_item",
+        "numbered_list_item",
+      ];
+
+      if (textTypes.includes(raw.type)) {
+        const richTextSource = raw[raw.type]?.rich_text || [];
+        return {
+          ...rest,
+          text: extractPlainText(richTextSource) || "",
+          links: extractLinksFromRichText(richTextSource),
+        };
+      }
+
+      // 이미지/기타 블록은 formatNotionBlocks 결과에서 id/richText만 제거한 형태로 반환
+      return rest;
     });
   }
 }
