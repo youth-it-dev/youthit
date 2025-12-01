@@ -580,6 +580,7 @@ class MissionPostService {
 
       const response = {
         id: post.id,
+        authorId: post.userId || null,
         title: post.title || "",
         content: post.content || "",
         media: post.media || [],

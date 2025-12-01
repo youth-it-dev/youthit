@@ -651,6 +651,10 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *                     id:
  *                       type: string
  *                       example: "post-123"
+ *                     authorId:
+ *                       type: string
+ *                       description: 인증글 작성자 UID
+ *                       example: "user-123"
  *                     title:
  *                       type: string
  *                       example: "오늘 하늘이 이뻤어요!"
@@ -699,6 +703,7 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *               status: 200
  *               data:
  *                 id: "post-123"
+ *                 authorId: "user-123"
  *                 title: "오늘 하늘이 이뻤어요!"
  *                 content: "구름이 뭉게뭉게 있어서 하늘이 이뻐요!"
  *                 media: ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
