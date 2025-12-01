@@ -1070,6 +1070,10 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                       type: boolean
  *                       description: 잠금 여부
  *                       example: false
+ *                     isDeleted:
+ *                       type: boolean
+ *                       description: 삭제 여부
+ *                       example: false
  *                     createdAt:
  *                       type: string
  *                       format: date-time
@@ -1099,14 +1103,18 @@ router.get("/posts/:postId", optionalAuth, missionController.getMissionPostById)
  *                 value:
  *                   status: 400
  *                   message: "sanitize 후 유효한 텍스트 내용이 없습니다."
- *               MaxDepthExceeded:
- *                 value:
- *                   status: 400
- *                   message: "대댓글은 2레벨까지만 허용됩니다."
  *               InvalidParentComment:
  *                 value:
  *                   status: 400
  *                   message: "부모 댓글이 해당 인증글의 댓글이 아닙니다."
+ *               SelfParentError:
+ *                 value:
+ *                   status: 400
+ *                   message: "자기 자신을 부모 댓글로 지정할 수 없습니다."
+ *               CommunityCommentReplyError:
+ *                 value:
+ *                   status: 400
+ *                   message: "커뮤니티 댓글에는 답글을 남길 수 없습니다."
  *       401:
  *         description: 인증 필요
  *         content:
@@ -1240,6 +1248,11 @@ router.post("/posts/:postId/comments", authGuard, missionController.createMissio
  *                       nullable: true
  *                       description: 부모 댓글 ID
  *                       example: "comment_456"
+ *                     parentAuthor:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 부모 댓글 작성자 닉네임 (대댓글인 경우)
+ *                       example: "사용자닉네임"
  *                     depth:
  *                       type: number
  *                       description: "댓글 깊이 (0: 원댓글, 1: 대댓글)"
@@ -1251,6 +1264,10 @@ router.post("/posts/:postId/comments", authGuard, missionController.createMissio
  *                     isLocked:
  *                       type: boolean
  *                       description: 잠금 여부
+ *                       example: false
+ *                     isDeleted:
+ *                       type: boolean
+ *                       description: 삭제 여부
  *                       example: false
  *                     createdAt:
  *                       type: string
@@ -1289,6 +1306,10 @@ router.post("/posts/:postId/comments", authGuard, missionController.createMissio
  *                 value:
  *                   status: 400
  *                   message: "커뮤니티 댓글은 이 API로 수정할 수 없습니다."
+ *               InvalidPostComment:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글이 해당 인증글에 속하지 않습니다."
  *       403:
  *         description: 권한 없음
  *         content:
@@ -1363,6 +1384,10 @@ router.put("/posts/:postId/comments/:commentId", authGuard, missionController.up
  *                 value:
  *                   status: 400
  *                   message: "커뮤니티 댓글은 이 API로 삭제할 수 없습니다."
+ *               InvalidPostComment:
+ *                 value:
+ *                   status: 400
+ *                   message: "댓글이 해당 인증글에 속하지 않습니다."
  *       403:
  *         description: 권한 없음
  *         content:
