@@ -436,7 +436,7 @@ const CommentItemComponent = ({
                       likesCount: result.likesCount || 0,
                     },
                   }));
-                } else if (targetCommentId === comment.id) {
+                } else if (targetCommentId === commentId) {
                   setIsLiked(result.isLiked || false);
                   setLikesCount(result.likesCount || 0);
                 }
@@ -456,7 +456,7 @@ const CommentItemComponent = ({
                       [targetId]: context.previousState!,
                     }));
                   }
-                } else if (context.targetCommentId === comment.id) {
+                } else if (context.targetCommentId === commentId) {
                   setIsLiked(context.previousState.isLiked);
                   setLikesCount(context.previousState.likesCount);
                 }
@@ -477,6 +477,7 @@ const CommentItemComponent = ({
     likeCommunityCommentAsync,
     mutateMissionLike,
     postId,
+    replies,
   ]);
 
   const handleReplyLike = useCallback(
@@ -508,7 +509,7 @@ const CommentItemComponent = ({
                         likesCount: result.likesCount || 0,
                       },
                     }));
-                  } else if (targetCommentId === comment.id) {
+                  } else if (targetCommentId === commentId) {
                     setIsLiked(result.isLiked || false);
                     setLikesCount(result.likesCount || 0);
                   }
@@ -528,7 +529,7 @@ const CommentItemComponent = ({
                         [targetId]: context.previousState!,
                       }));
                     }
-                  } else if (context.targetCommentId === comment.id) {
+                  } else if (context.targetCommentId === commentId) {
                     setIsLiked(context.previousState.isLiked);
                     setLikesCount(context.previousState.likesCount);
                   }
@@ -544,11 +545,13 @@ const CommentItemComponent = ({
       }
     },
     [
+      commentId,
       isLikePending,
       isMissionCommentContext,
       mutateMissionLike,
       likeCommunityCommentAsync,
       postId,
+      replies,
     ]
   );
 
