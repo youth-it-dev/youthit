@@ -77,6 +77,25 @@ export const usePostMissionsApplyById = <
   });
 };
 
+export const useGetMissionsFaqsById = <TData = Types.TGETMissionsFaqsByIdRes>(
+  options: {
+    request: Types.TGETMissionsFaqsByIdReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETMissionsFaqsByIdRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETMissionsFaqsByIdRes, Error, TData>({
+    queryKey: missionsKeys.getMissionsFaqsById(request),
+    queryFn: async () => {
+      const response = await Api.getMissionsFaqsById(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
 export const usePostMissionsLikeById = <
   TContext = unknown,
   TVariables = Types.TPOSTMissionsLikeByIdReq,

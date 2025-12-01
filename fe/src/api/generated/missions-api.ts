@@ -23,6 +23,12 @@ export const postMissionsApplyById = (
   );
 };
 
+export const getMissionsFaqsById = (request: Types.TGETMissionsFaqsByIdReq) => {
+  return get<Types.TGETMissionsFaqsByIdRes>(
+    `/missions/${request.missionId}/faqs`
+  );
+};
+
 export const postMissionsLikeById = (
   request: Types.TPOSTMissionsLikeByIdReq
 ) => {

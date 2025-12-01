@@ -180,6 +180,11 @@ export const missionsKeys = {
       path: { missionId: request.missionId },
       query: {},
     }),
+  getMissionsFaqsById: (request: missionsTypes.TGETMissionsFaqsByIdReq) =>
+    __buildKey("missions", "getMissionsFaqsById", {
+      path: { missionId: request.missionId },
+      query: {},
+    }),
   getMissionsCategories: __buildKey("missions", "getMissionsCategories"),
   getMissionsMe: (request: missionsTypes.TGETMissionsMeReq) =>
     __buildKey("missions", "getMissionsMe", {
