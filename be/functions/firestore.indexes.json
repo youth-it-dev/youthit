@@ -437,6 +437,25 @@
       "collectionGroup": "missionPosts",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "missionNotionPageId", "order": "ASCENDING" },
+        { "fieldPath": "likesCount", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "missionPosts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "missionNotionPageId", "order": "ASCENDING" },
+        { "fieldPath": "categories", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "likesCount", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "missionPosts",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "isLocked", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]

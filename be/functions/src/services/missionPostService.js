@@ -427,7 +427,7 @@ class MissionPostService {
       // isLocked 필터 제거: 신고된 게시글도 목록에 포함하여 프론트엔드에서 처리
 
       if (sort === "popular") {
-        query = query.orderBy("viewCount", "desc").orderBy("createdAt", "desc");
+        query = query.orderBy("likesCount", "desc").orderBy("createdAt", "desc");
       } else {
         query = query.orderBy("createdAt", "desc");
       }
