@@ -180,7 +180,7 @@ router.get("/categories", missionController.getCategories);
  *       
  *       정렬:
  *       - latest: 최신순 (기본값)
- *       - popular: 인기순 (반응 수 많은 순)
+ *       - popular: 인기순 (좋아요 많은 순)
  *       
 *       필터:
 *       - category: 카테고리 칩 (예: 자기 탐색, 자기 만족 등)
@@ -445,7 +445,7 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *           type: string
  *           enum: [latest, popular]
  *           default: latest
- *         description: 정렬 기준 (latest=최신순, popular=조회수 인기순)
+ *         description: 정렬 기준 (latest=최신순, popular=좋아요 인기순)
  *         example: "latest"
  *       - in: query
  *         name: missionId
