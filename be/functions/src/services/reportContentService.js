@@ -1,5 +1,6 @@
 const { Client } = require('@notionhq/client');
 const { db, FieldValue, admin } = require("../config/database");
+const FirestoreService = require("./firestoreService");
 const { Timestamp } = require("firebase-admin/firestore");
 const notionUserService = require("./notionUserService");
 const { MISSION_POSTS_COLLECTION } = require("../constants/missionConstants");
@@ -453,20 +454,36 @@ async syncReportToNotion(reportData) {
     - 작성자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 작성자 이름 + 해당 작성자 이름을 클릭하면 작성자 정보 데이터베이스 추가필요
     - 신고자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 신고자 이름을 + 해당 신고자를 클릭하는 경우 해당 사용자에 대한 데이터베이스 만들기
     */
-    async function getUserDisplayNameById(userId) {
+    const userFirestoreService = new FirestoreService("users");
+
+    async function getUserDisplayNameById(userId, label) {
       if (!userId) return "";
-    
-      const userDoc = await db.collection("users").doc(userId).get();
-      if (!userDoc.exists) return "";
-    
-      const userData = userDoc.data();
-      // 닉네임이 있는 경우에만 표시, 없으면 빈 문자열
-      return userData.nickname || "";
+
+      try {
+        const user = await userFirestoreService.getById(userId);
+        if (!user) {
+          console.warn(
+            `[REPORT][USER_NOT_FOUND] ${label} 사용자 문서를 찾을 수 없습니다. userId=${userId}`,
+          );
+          return "";
+        }
+
+        // 닉네임이 있는 경우에만 표시, 없으면 빈 문자열
+        return user.nickname || "";
+      } catch (e) {
+        console.error(
+          `[REPORT][USER_LOOKUP_ERROR] ${label} 사용자 조회 실패 userId=${userId}:`,
+          e.message,
+        );
+        return "";
+      }
     }
 
-    
-    const reporterName = await getUserDisplayNameById(reporterId);
-    const authorName = await getUserDisplayNameById(targetUserId);
+    // 신고자 / 작성자 닉네임을 병렬로 조회 (N+1 방지)
+    const [reporterName, authorName] = await Promise.all([
+      getUserDisplayNameById(reporterId, "신고자"),
+      getUserDisplayNameById(targetUserId, "작성자"),
+    ]);
 
 
     // URL 생성 로직
@@ -886,15 +903,22 @@ async syncResolvedReports() {
       const firstReport = group.reports[0];
       if (!firstReport || !firstReport.notionPage) continue;
       
-      // 작성자 ID는 '작성자ID' 필드 우선, 없으면 하위 호환을 위해 '작성자' 필드에서 가져옴
+      // 작성자 ID는 '작성자ID' 필드에서만 읽는다. (작성자 닉네임 필드는 절대 UID로 사용하지 않음)
       const targetUserId =
         firstReport.notionPage.properties['작성자ID']?.rich_text?.[0]?.text?.content ||
-        firstReport.notionPage.properties['작성자']?.rich_text?.[0]?.text?.content ||
         null;
       const reportsCount = firstReport.notionPage.properties['신고 카운트']?.number ?? null;
+
+      // targetUserId 유효성 검사 (없거나 비어 있으면 패널티 스킵)
+      if (typeof targetUserId !== "string" || targetUserId.trim().length === 0) {
+        console.warn(
+          `[REPORT][SKIP] targetUserId가 없거나 비어 있어 패널티 적용을 건너뜁니다. key=${key}`,
+        );
+        continue;
+      }
       
       // 신고 카운트가 0이 아닌 경우에만 penaltyCount 증가 및 정지 기간 업데이트
-      if (targetUserId && reportsCount !== null && reportsCount > 0) {
+      if (reportsCount !== null && reportsCount > 0) {
         const userRef = db.collection("users").doc(targetUserId);
         
         await db.runTransaction(async (t) => {
