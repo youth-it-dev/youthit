@@ -544,9 +544,28 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                           commentsCount:
  *                             type: integer
  *                             example: 12
+ *                           likesCount:
+ *                             type: integer
+ *                             description: 좋아요 수
+ *                             example: 5
  *                           viewCount:
  *                             type: integer
  *                             example: 100
+ *                           categories:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: 미션 카테고리 목록
+ *                             example: ["자기만족", "취미생활"]
+ *                           isLocked:
+ *                             type: boolean
+ *                             description: 신고로 인한 잠금 상태
+ *                             example: false
+ *                           isLiked:
+ *                             type: boolean
+ *                             nullable: true
+ *                             description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                             example: false
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -586,7 +605,11 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                         blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
  *                     mediaCount: 3
  *                     commentsCount: 12
+ *                     likesCount: 5
  *                     viewCount: 100
+ *                     categories: ["자기만족", "취미생활"]
+ *                     isLocked: false
+ *                     isLiked: false
  *                     createdAt: "2024-01-20T10:00:00.000Z"
  *                     timeAgo: "1시간 전"
  *                 pageInfo:
@@ -682,9 +705,17 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *                     commentsCount:
  *                       type: integer
  *                       example: 12
+ *                     likesCount:
+ *                       type: integer
+ *                       description: 좋아요 수
+ *                       example: 5
  *                     viewCount:
  *                       type: integer
  *                       example: 101
+ *                     isLocked:
+ *                       type: boolean
+ *                       description: 신고로 인한 잠금 상태
+ *                       example: false
  *                     createdAt:
  *                       type: string
  *                       format: date-time
@@ -699,6 +730,11 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *                     isAuthor:
  *                       type: boolean
  *                       example: false
+ *                     isLiked:
+ *                       type: boolean
+ *                       nullable: true
+ *                       description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                       example: false
  *             example:
  *               status: 200
  *               data:
@@ -712,11 +748,14 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *                 author: "닉네임"
  *                 profileImageUrl: "https://example.com/profile.jpg"
  *                 commentsCount: 12
+ *                 likesCount: 5
  *                 viewCount: 101
+ *                 isLocked: false
  *                 createdAt: "2024-01-20T10:00:00.000Z"
  *                 updatedAt: "2024-01-20T10:00:00.000Z"
  *                 timeAgo: "1시간 전"
  *                 isAuthor: false
+ *                 isLiked: false
  *       400:
  *         description: 잘못된 요청
  *         content:
