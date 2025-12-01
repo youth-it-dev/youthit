@@ -186,19 +186,49 @@ class FCMService {
    * 여러 사용자에게 푸시 알림 전송
    * @param {Array<string>} userIds - 사용자 ID 배열
    * @param {Object} notification - 알림 데이터
-   * @return {Promise<Object>} 전송 결과
+   * @return {Promise<Object>} 전송 결과 { sentCount, failedCount, successfulUserIds }
    */
   async sendToUsers(userIds, notification) {
     try {
       const tokenPromises = userIds.map((userId) => this.getUserTokens(userId));
       const tokenResults = await Promise.all(tokenPromises);
-      const allTokens = tokenResults.flatMap((tokens) => tokens.map((t) => t.token));
+      
+      // 유저별 토큰 매핑 생성 (유저 ID -> 토큰 배열)
+      const userTokenMap = new Map();
+      const allTokens = [];
+      const tokenToUserMap = new Map(); // 토큰 -> 유저 ID 매핑
+      
+      userIds.forEach((userId, index) => {
+        const tokens = tokenResults[index] || [];
+        const tokenList = tokens.map((t) => t.token);
+        userTokenMap.set(userId, tokenList);
+        tokenList.forEach(token => {
+          allTokens.push(token);
+          tokenToUserMap.set(token, userId);
+        });
+      });
 
       if (allTokens.length === 0) {
-        return {sentCount: 0, failedCount: 0};
+        return {sentCount: 0, failedCount: 0, successfulUserIds: []};
       }
 
       const result = await this.sendToTokens(allTokens, notification);
+
+      // FCM 응답에서 성공한 토큰들을 확인하여 유저별 성공 여부 판단
+      const successfulUserIdsSet = new Set();
+      if (result.responses && Array.isArray(result.responses)) {
+        result.responses.forEach((response, index) => {
+          if (response.success) {
+            const token = allTokens[index];
+            const userId = tokenToUserMap.get(token);
+            if (userId) {
+              successfulUserIdsSet.add(userId);
+            }
+          }
+        });
+      }
+
+      const successfulUserIds = Array.from(successfulUserIdsSet);
 
       // FCM 전송 성공 시 각 사용자별로 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
       if (result.successCount > 0) {
@@ -222,6 +252,7 @@ class FCMService {
       return {
         sentCount: result.successCount,
         failedCount: result.failureCount,
+        successfulUserIds: successfulUserIds,
       };
     } catch (error) {
       console.error("다중 사용자 알림 전송 실패:", error);
