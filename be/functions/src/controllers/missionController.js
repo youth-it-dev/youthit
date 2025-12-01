@@ -94,6 +94,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -145,6 +146,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -413,6 +415,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
@@ -445,6 +448,7 @@ class MissionController {
 
       if (!missionId) {
         const error = new Error("미션 ID가 필요합니다.");
+        error.code = "MISSING_REQUIRED_FIELD";
         error.statusCode = 400;
         return next(error);
       }
