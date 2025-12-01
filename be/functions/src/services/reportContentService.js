@@ -453,18 +453,20 @@ async syncReportToNotion(reportData) {
     - 작성자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 작성자 이름 + 해당 작성자 이름을 클릭하면 작성자 정보 데이터베이스 추가필요
     - 신고자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 신고자 이름을 + 해당 신고자를 클릭하는 경우 해당 사용자에 대한 데이터베이스 만들기
     */
-    async function getReporterName(reporterId) {
-      if (!reporterId) return "알 수 없음";
+    async function getUserDisplayNameById(userId) {
+      if (!userId) return "";
     
-      const userDoc = await db.collection("users").doc(reporterId).get();
-      if (!userDoc.exists) return "알 수 없음";
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) return "";
     
       const userData = userDoc.data();
-      return userData.name || "알 수 없음";
+      // 닉네임이 있는 경우에만 표시, 없으면 빈 문자열
+      return userData.nickname || "";
     }
 
     
-    const reporterName = await getReporterName(reporterId);
+    const reporterName = await getUserDisplayNameById(reporterId);
+    const authorName = await getUserDisplayNameById(targetUserId);
 
 
     // URL 생성 로직
@@ -582,7 +584,10 @@ async syncReportToNotion(reportData) {
     const notionProperties = {
       '신고 타입': { title: [{ text: { content: this.mapTargetType(targetType) } }] },
       '신고 콘텐츠': { rich_text: [{ text: { content: `${targetId}` } }] },
-      '작성자': { rich_text: [{ text: { content: `${targetUserId}` } }] },
+      // 작성자: 닉네임(또는 이름)을 표시
+      '작성자': { rich_text: [{ text: { content: authorName } }] },
+      // 작성자 ID: 게시글/댓글 작성자 UID (null/undefined인 경우 빈 문자열)
+      '작성자ID': { rich_text: [{ text: { content: targetUserId ? `${targetUserId}` : "" } }] },
       '신고 사유': { rich_text: [{ text: { content: reportReason } }] },
       '신고자': { rich_text: [{ text: { content: reporterName } }] },
       '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
@@ -881,7 +886,11 @@ async syncResolvedReports() {
       const firstReport = group.reports[0];
       if (!firstReport || !firstReport.notionPage) continue;
       
-      const targetUserId = firstReport.notionPage.properties['작성자']?.rich_text?.[0]?.text?.content || null;
+      // 작성자 ID는 '작성자ID' 필드 우선, 없으면 하위 호환을 위해 '작성자' 필드에서 가져옴
+      const targetUserId =
+        firstReport.notionPage.properties['작성자ID']?.rich_text?.[0]?.text?.content ||
+        firstReport.notionPage.properties['작성자']?.rich_text?.[0]?.text?.content ||
+        null;
       const reportsCount = firstReport.notionPage.properties['신고 카운트']?.number ?? null;
       
       // 신고 카운트가 0이 아닌 경우에만 penaltyCount 증가 및 정지 기간 업데이트
