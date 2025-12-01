@@ -1,13 +1,13 @@
 const {
   buildNotionHeadersFromEnv, 
   getTitleValue,
-  getTextContent,
   getMultiSelectNames,
   getSelectValue,
-  getDateValue,
   getCreatedTimeValue,
   getLastEditedTimeValue,
   formatNotionBlocks,
+  extractPlainText,
+  extractLinksFromRichText,
 } = require("../utils/notionHelper");
 
 class FaqService {
@@ -112,8 +112,12 @@ class FaqService {
       throw err;
     }
     
-    console.log(`[FAQ 서비스] 페이지 블록 조회 성공 - 페이지 ID: ${pageId}`);
-    return resp.json();
+    const json = await resp.json();
+    console.log(
+      "[FAQ 서비스] raw blocks:",
+      JSON.stringify(json.results?.slice(0, 3), null, 2)  // 앞 3개만
+    );
+    return json;
   }
 
   /**
@@ -150,9 +154,38 @@ class FaqService {
    * @returns {Array} 포맷팅된 FAQ 내용
    */
   formatFaqBlocks(blocks) {
-    return formatNotionBlocks(blocks, { 
-      includeRichText: true, 
-      includeMetadata: false 
+    if (!Array.isArray(blocks)) return [];
+
+    // 기본 포맷팅(이미지/특수 블록 포함)을 재사용하되,
+    // paragraph 계열에서는 text/richText를 확실히 채워주기 위해 한 번 더 매핑
+    const base = formatNotionBlocks(blocks, {
+      includeRichText: true,
+      includeMetadata: false,
+    });
+
+    return base.map((block, index) => {
+      const raw = blocks[index] || {};
+
+      const textTypes = [
+        "paragraph",
+        "heading_1",
+        "heading_2",
+        "heading_3",
+        "bulleted_list_item",
+        "numbered_list_item",
+      ];
+
+      if (textTypes.includes(raw.type)) {
+        const richTextSource = raw[raw.type]?.rich_text || [];
+        return {
+          ...block,
+          text: extractPlainText(richTextSource) || "",
+          links: extractLinksFromRichText(richTextSource),
+          richText: richTextSource,
+        };
+      }
+
+      return block;
     });
   }
 }
