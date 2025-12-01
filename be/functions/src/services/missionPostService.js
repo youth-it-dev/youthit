@@ -1335,9 +1335,9 @@ class MissionPostService {
 
         const likesCollection = db.collection("likes");
         const likeQuery = likesCollection
+          .where("userId", "==", userId)
           .where("type", "==", "MISSION_POST")
           .where("targetId", "==", postId)
-          .where("userId", "==", userId)
           .limit(1);
         const likeSnapshot = await transaction.get(likeQuery);
         const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
@@ -1453,9 +1453,9 @@ class MissionPostService {
 
         const likesCollection = db.collection("likes");
         const likeQuery = likesCollection
+          .where("userId", "==", userId)
           .where("type", "==", "MISSION_COMMENT")
           .where("targetId", "==", commentId)
-          .where("userId", "==", userId)
           .limit(1);
         const likeSnapshot = await transaction.get(likeQuery);
         const existingLikeDoc = likeSnapshot.empty ? null : likeSnapshot.docs[0];
@@ -1486,7 +1486,7 @@ class MissionPostService {
         }
 
         const currentLikesCount = comment.likesCount || 0;
-        return {
+        const result = {
           commentId,
           userId,
           isLiked,
@@ -1494,6 +1494,9 @@ class MissionPostService {
             ? currentLikesCount + 1
             : Math.max(0, currentLikesCount - 1),
         };
+        
+        console.log(`[MISSION_POST] 댓글 좋아요 토글 결과: commentId=${commentId}, userId=${userId}, isLiked=${isLiked}, likesCount=${result.likesCount}, 기존 좋아요 존재=${!!existingLikeDoc}`);
+        return result;
       });
 
       // 알림 전송 (본인 댓글이 아닌 경우)
