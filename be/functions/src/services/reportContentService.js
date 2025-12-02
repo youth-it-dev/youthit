@@ -492,7 +492,7 @@ async syncReportToNotion(reportData) {
       // 게시글인 경우
       if (missionId) {
         // 미션 인증글
-        contentUrl = `https://yourdentity.vercel.app/mission/post/${targetId}?missionId=${missionId}`;
+        contentUrl = `https://yourdentity.vercel.app/community/mission/${targetId}`;
       } else if (communityId) {
         // 커뮤니티 게시글
         contentUrl = `https://yourdentity.vercel.app/community/post/${targetId}?communityId=${communityId}`;
@@ -507,10 +507,10 @@ async syncReportToNotion(reportData) {
           
           if (missionId && postId) {
             // 미션 댓글
-            contentUrl = `https://yourdentity.vercel.app/mission/post/${postId}?missionId=${missionId}`;
+            contentUrl = `https://yourdentity.vercel.app/community/mission/${postId}`;
           } else if (postId && communityId) {
             // 커뮤니티 댓글
-            contentUrl = `https://yourdentity.vercel.app/community/post/${postId}/comments?communityId=${communityId}`;
+            contentUrl = `https://yourdentity.vercel.app/community/post/${postId}?communityId=${communityId}`;
           }
         }
       } catch (commentError) {
