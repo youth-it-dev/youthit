@@ -1786,18 +1786,31 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *                           title:
  *                             type: string
  *                             description: FAQ 제목
- *                           category:
- *                             type: array
- *                             items:
- *                               type: string
- *                             description: FAQ 카테고리(주제)
- *                           content:
- *                             type: array
- *                             description: 포맷팅된 FAQ 내용 블록
+ *                           recordMap:
+ *                             type: object
+ *                             description: NotionRenderer에서 사용할 recordMap 데이터
+ *                             nullable: true
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: FAQ 생성일시
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: FAQ 수정일시
  *                     count:
  *                       type: integer
  *                       description: FAQ 개수
- *                       example: 3
+ *                       example: 8
+ *                     hasMore:
+ *                       type: boolean
+ *                       description: 다음 페이지 존재 여부
+ *                       example: false
+ *                     nextCursor:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 다음 페이지를 위한 커서
+ *                       example: "2a645f52-4cd0-80f3-b9b2-c796ab907c02"
  *       400:
  *         description: 잘못된 요청 (미션 ID 누락)
  *         content:
