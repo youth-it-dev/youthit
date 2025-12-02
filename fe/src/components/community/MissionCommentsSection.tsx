@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, RefObject } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { getMissionsPostsCommentsById } from "@/api/generated/missions-api";
 import CommentItem from "@/components/community/CommentItem";
@@ -16,6 +17,7 @@ import {
   COMMENT_DELETE_MODAL_CANCEL,
   COMMENT_PAGE_SIZE,
 } from "@/constants/shared/_comment-constants";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   usePostMissionsPostsCommentsById,
   usePutMissionsPostsCommentsByTwoIds,
@@ -30,6 +32,7 @@ import { showToast } from "@/utils/shared/toast";
 
 interface MissionCommentsSectionProps {
   postId: string;
+  missionId: string;
   commentInputRef?: React.RefObject<HTMLTextAreaElement | null>;
   onFocusRequestRef?: React.RefObject<(() => void) | null>;
 }
@@ -42,9 +45,11 @@ interface MissionCommentsSectionProps {
  */
 const MissionCommentsSection = ({
   postId,
+  missionId,
   commentInputRef,
   onFocusRequestRef,
 }: MissionCommentsSectionProps) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [commentInput, setCommentInput] = useState("");
@@ -291,6 +296,42 @@ const MissionCommentsSection = ({
     }
   }, [deleteTargetId, postId, deleteCommentAsync]);
 
+  // 댓글 신고 - 공통 신고 페이지로 이동
+  const handleReportComment = useCallback(
+    (commentId: string) => {
+      if (!postId || !missionId) return;
+
+      // 신고 대상 댓글 찾기 (원댓글 + 대댓글 포함)
+      const targetComment =
+        comments.find((comment) => comment.id === commentId) ||
+        comments
+          .flatMap((comment) => comment.replies || [])
+          .find((reply) => reply.id === commentId);
+
+      const targetUserId = targetComment?.userId;
+
+      if (!targetUserId) {
+        showToast(
+          "댓글 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+        );
+        return;
+      }
+
+      const searchParams = new URLSearchParams({
+        targetType: "comment",
+        targetId: commentId,
+        postId,
+        targetUserId,
+        missionId,
+      });
+
+      router.push(
+        `${LINK_URL.COMMUNITY_MISSION_REPORT}?${searchParams.toString()}`
+      );
+    },
+    [comments, missionId, postId, router]
+  );
+
   // 답글 더보기 토글
   const handleToggleReplies = useCallback((commentId: string) => {
     setExpandedReplies((prev) => {
@@ -366,10 +407,7 @@ const MissionCommentsSection = ({
                 onStartReplyToReply={handleStartReplyToReply}
                 onStartEdit={handleStartEdit}
                 onDelete={handleDeleteClick}
-                onReport={() => {
-                  // TODO: 신고 기능 구현
-                  alert("구현 예정 기능입니다");
-                }}
+                onReport={handleReportComment}
                 editingCommentId={editingCommentId}
                 editingContent={editingContent}
                 onEditContentChange={setEditingContent}

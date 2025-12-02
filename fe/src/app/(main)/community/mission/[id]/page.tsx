@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Heart, MessageCircleMore } from "lucide-react";
 import MissionCommentsSection from "@/components/community/MissionCommentsSection";
@@ -29,6 +29,7 @@ import { showToast } from "@/utils/shared/toast";
  */
 const Page = () => {
   const params = useParams();
+  const router = useRouter();
 
   // URL에서 postId 추출
   const postId = params.id as string;
@@ -62,6 +63,8 @@ const Page = () => {
 
   // 게시글 쿼리 키
   const postQueryKey = missionsKeys.getMissionsPostsById({ postId });
+
+  const isAuthor = post?.isAuthor ?? false;
 
   // 좋아요 mutation (onMutate는 선언 시에만 사용 가능)
   const { mutate: likePost, isPending: isLikePending } =
@@ -162,6 +165,24 @@ const Page = () => {
     });
   }, [post, postId]);
 
+  const handleReportClick = useCallback(() => {
+    if (!postId) return;
+
+    const authorId = post?.authorId || "";
+    const missionId = post?.missionNotionPageId || "";
+
+    const searchParams = new URLSearchParams({
+      targetType: "post",
+      targetId: postId,
+      targetUserId: authorId,
+      missionId,
+    });
+
+    router.push(
+      `${LINK_URL.COMMUNITY_MISSION_REPORT}?${searchParams.toString()}`
+    );
+  }, [postId, post?.authorId, post?.missionNotionPageId, router]);
+
   // 댓글 버튼 클릭 핸들러 - 입력창으로 스크롤 및 포커스
   const handleCommentClick = useCallback(() => {
     // MissionCommentsSection의 포커스 핸들러가 있으면 사용 (답글 상태 초기화 포함)
@@ -186,9 +207,10 @@ const Page = () => {
         onShare={handleShare}
         onEdit={undefined}
         onDelete={undefined}
+        onReport={!isAuthor ? handleReportClick : undefined}
       />
     );
-  }, [setRightSlot, handleShare]);
+  }, [setRightSlot, handleShare, isAuthor, handleReportClick]);
 
   // 로딩 중 - 스켈레톤 표시
   if (isLoading) {
@@ -286,6 +308,7 @@ const Page = () => {
       {postId && (
         <MissionCommentsSection
           postId={postId}
+          missionId={post?.missionNotionPageId || ""}
           commentInputRef={commentInputRef}
           onFocusRequestRef={focusCommentInputRef}
         />
