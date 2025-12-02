@@ -168,8 +168,20 @@ const Page = () => {
   const handleReportClick = useCallback(() => {
     if (!postId) return;
 
-    router.push(`${LINK_URL.COMMUNITY_MISSION}/${postId}/report`);
-  }, [postId, router]);
+    const authorId = post?.authorId || "";
+    const missionId = post?.missionNotionPageId || "";
+
+    const searchParams = new URLSearchParams({
+      targetType: "post",
+      targetId: postId,
+      targetUserId: authorId,
+      missionId,
+    });
+
+    router.push(
+      `${LINK_URL.COMMUNITY_MISSION_REPORT}?${searchParams.toString()}`
+    );
+  }, [postId, post?.authorId, post?.missionNotionPageId, router]);
 
   // 댓글 버튼 클릭 핸들러 - 입력창으로 스크롤 및 포커스
   const handleCommentClick = useCallback(() => {
@@ -296,6 +308,7 @@ const Page = () => {
       {postId && (
         <MissionCommentsSection
           postId={postId}
+          missionId={post?.missionNotionPageId || ""}
           commentInputRef={commentInputRef}
           onFocusRequestRef={focusCommentInputRef}
         />
