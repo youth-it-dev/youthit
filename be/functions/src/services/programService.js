@@ -43,7 +43,8 @@ const ERROR_CODES = {
   SEARCH_ERROR: 'SEARCH_ERROR',
   NICKNAME_DUPLICATE: 'NICKNAME_DUPLICATE',
   DUPLICATE_APPLICATION: 'DUPLICATE_APPLICATION',
-  NOT_FOUND: 'NOT_FOUND'
+  NOT_FOUND: 'NOT_FOUND',
+  RECRUITMENT_PERIOD_CLOSED: 'RECRUITMENT_PERIOD_CLOSED'
 };
 
 // Notion 필드명 상수
@@ -774,12 +775,23 @@ class ProgramService {
         throw error;
       }
 
+      // 1-1. 모집 기간 체크
+      if (program.recruitmentStatus !== '모집 중') {
+        const periodError = new Error('현재 모집 기간이 아닙니다.');
+        periodError.code = ERROR_CODES.RECRUITMENT_PERIOD_CLOSED;
+        periodError.statusCode = 400;
+        throw periodError;
+      }
+
       // 2. Community 존재 확인 및 생성 (Firestore용 ID로 정규화)
       const normalizedProgramId = normalizeProgramIdForFirestore(programId);
       let community = await this.communityService.getCommunityMapping(normalizedProgramId);
       if (!community) {
         // Community가 없으면 프로그램 정보로 생성
         community = await this.createCommunityFromProgram(normalizedProgramId, program);
+      } else {
+        // Community가 존재하는 경우 Notion 데이터와 동기화
+        await this.syncCommunityWithNotion(normalizedProgramId, program);
       }
 
       validateNicknameOrThrow(nickname);
@@ -1226,6 +1238,93 @@ class ProgramService {
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       serviceError.originalError = error;
       throw serviceError;
+    }
+  }
+
+  /**
+   * 두 날짜 값이 동일한지 비교 (Firestore Timestamp 및 다양한 형식 지원)
+   * @param {any} date1 - 첫 번째 날짜 (Firestore Timestamp, Date, string 등)
+   * @param {any} date2 - 두 번째 날짜 (Firestore Timestamp, Date, string 등)
+   * @returns {boolean} 두 날짜가 동일하면 true, 다르면 false
+   */
+  _compareDates(date1, date2) {
+    // CommunityService의 toDate 헬퍼 사용
+    const d1 = CommunityService.toDate(date1);
+    const d2 = CommunityService.toDate(date2);
+    
+    // 둘 다 null이면 동일
+    if (!d1 && !d2) return true;
+    
+    // 하나만 null이면 다름
+    if (!d1 || !d2) return false;
+    
+    // 타임스탬프 비교 (밀리초 단위)
+    return d1.getTime() === d2.getTime();
+  }
+
+  /**
+   * Community와 Notion 데이터 동기화
+   * @param {string} programId - 프로그램 ID (Community ID)
+   * @param {Object} program - Notion에서 가져온 최신 프로그램 정보
+   * @returns {Promise<Object|null>} 업데이트된 필드 정보 또는 null (동기화 불필요 시)
+   */
+  async syncCommunityWithNotion(programId, program) {
+    try {
+      // Community 전체 데이터 조회
+      const community = await this.firestoreService.getDocument('communities', programId);
+      if (!community) {
+        // Community가 없으면 동기화 불필요
+        return null;
+      }
+
+      // Notion 데이터에서 동기화할 필드 추출
+      const notionName = program?.programName || program?.title || null;
+      const notionProgramType = normalizeProgramTypeValue(program?.programType) || null;
+      const notionStartDate = toDateOrNull(program?.startDate);
+      const notionEndDate = toDateOrNull(program?.endDate);
+
+      // 업데이트할 필드 확인
+      const updateData = {};
+      let needsUpdate = false;
+
+      // name 비교 및 업데이트
+      if (community.name !== notionName) {
+        updateData.name = notionName;
+        needsUpdate = true;
+      }
+
+      // programType 비교 및 업데이트
+      const normalizedCommunityProgramType = normalizeProgramTypeValue(community.programType);
+      if (normalizedCommunityProgramType !== notionProgramType) {
+        updateData.programType = notionProgramType;
+        needsUpdate = true;
+      }
+
+      // startDate 비교 및 업데이트
+      if (!this._compareDates(community.startDate, notionStartDate)) {
+        updateData.startDate = notionStartDate;
+        needsUpdate = true;
+      }
+
+      // endDate 비교 및 업데이트
+      if (!this._compareDates(community.endDate, notionEndDate)) {
+        updateData.endDate = notionEndDate;
+        needsUpdate = true;
+      }
+
+      // 업데이트가 필요한 경우에만 실행
+      if (needsUpdate) {
+        updateData.updatedAt = FieldValue.serverTimestamp();
+        await this.firestoreService.updateDocument('communities', programId, updateData);
+        console.log(`[ProgramService] Community 동기화 완료 - programId: ${programId}, 업데이트된 필드: ${Object.keys(updateData).join(', ')}`);
+        return updateData;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[ProgramService] Community 동기화 오류:', error.message);
+      // 동기화 실패해도 신청 프로세스는 계속 진행
+      return null;
     }
   }
 
