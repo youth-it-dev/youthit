@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
+import "react-notion-x/src/styles.css";
 import MissionDetailActionBar from "@/components/mission/mission-detail-action-bar";
 import MissionInfoBox from "@/components/mission/mission-info-box";
 import MissionReviewCard from "@/components/mission/mission-review-card";
 import MissionTag from "@/components/mission/mission-tag";
+import { CustomImage, CustomPageLink } from "@/components/shared/notion";
 import { Typography } from "@/components/shared/typography";
 import AccordionItem from "@/components/shared/ui/accordion-item";
 import DetailImage from "@/components/shared/ui/detail-image";
@@ -21,10 +24,10 @@ import {
   MAX_MISSION_ERROR_MODAL,
   MAX_TITLE_LENGTH,
 } from "@/constants/mission/_mission-constants";
-import { MOCK_FAQ_ITEMS } from "@/constants/mission/_mock-faq";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import {
   useGetMissionsById,
+  useGetMissionsFaqsById,
   useGetMissionsPosts,
   usePostMissionsApplyById,
   usePostMissionsLikeById,
@@ -35,6 +38,12 @@ import { getTomorrow4AM59 } from "@/utils/shared/date";
 import { getErrorStatus } from "@/utils/shared/error";
 import { shareContent } from "@/utils/shared/share";
 import { showToast } from "@/utils/shared/toast";
+
+// NotionRenderer는 클라이언트 전용으로 렌더링하여 hydration 불일치 방지
+const NotionRenderer = dynamic(
+  () => import("react-notion-x").then((m) => m.NotionRenderer),
+  { ssr: false }
+);
 
 /**
  * @description 미션 상세 페이지
@@ -47,7 +56,6 @@ const Page = () => {
   const setTitle = useTopBarStore((state) => state.setTitle);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
-
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // 미션 상세 조회 API
@@ -60,6 +68,13 @@ const Page = () => {
   });
 
   const missionData = missionResponse?.mission;
+
+  // 미션 FAQ 조회 API
+  const { data: missionFaqsResponse } = useGetMissionsFaqsById({
+    request: { missionId },
+  });
+
+  const missionFaqs = missionFaqsResponse?.faqs ?? [];
 
   // 미션 인증글 목록 조회 API
   const { data: postsResponse } = useGetMissionsPosts({
@@ -334,23 +349,47 @@ const Page = () => {
         >
           자주 묻는 질문이에요!
         </Typography>
+        {missionFaqs.length > 0 ? (
+          missionFaqs.map((faq, index) => {
+            const isOpen = openFaqIndex === index;
+            const isLast = index === missionFaqs.length - 1;
 
-        {/* TODO: 실제 FAQ 데이터로 교체 */}
-        {MOCK_FAQ_ITEMS.map((faq, index) => {
-          const isOpen = openFaqIndex === index;
-          const isLast = index === MOCK_FAQ_ITEMS.length - 1;
-
-          return (
-            <AccordionItem
-              key={index}
-              title={faq.question}
-              content={faq.answer}
-              isOpen={isOpen}
-              onToggle={() => setOpenFaqIndex(isOpen ? null : index)}
-              isLast={isLast}
-            />
-          );
-        })}
+            return (
+              <AccordionItem
+                key={faq.id ?? index}
+                title={faq.title ?? "-"}
+                content={
+                  faq.recordMap ? (
+                    <div className="notion-page">
+                      <NotionRenderer
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        recordMap={faq.recordMap as any}
+                        fullPage={false}
+                        darkMode={false}
+                        forceCustomImages
+                        components={{
+                          Image: CustomImage,
+                          PageLink: CustomPageLink,
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    "내용이 없습니다."
+                  )
+                }
+                isOpen={isOpen}
+                onToggle={() => setOpenFaqIndex(isOpen ? null : index)}
+                isLast={isLast}
+              />
+            );
+          })
+        ) : (
+          <div className="px-5 py-4">
+            <Typography font="noto" variant="body2R" className="text-gray-500">
+              아직 등록된 질문이 없습니다.
+            </Typography>
+          </div>
+        )}
       </div>
       {/* 하단 액션 바 */}
       <MissionDetailActionBar
