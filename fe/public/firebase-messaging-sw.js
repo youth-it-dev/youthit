@@ -24,13 +24,14 @@ messaging.onBackgroundMessage((payload) => {
     payload
   );
 
+  const title = payload.data?.title || "알림";
+  const body = payload.data?.body || "";
   const link = payload.data?.link;
   const type = payload.data?.type;
   const relatedId = payload.data?.relatedId;
 
-  const notificationTitle = payload.notification.title;
   const notificationOptions = {
-    body: payload.notification.body,
+    body: body,
     icon: "./logo.png",
     data: {
       url: link,
@@ -39,7 +40,7 @@ messaging.onBackgroundMessage((payload) => {
     },
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, notificationOptions);
 });
 
 self.addEventListener("notificationclick", function (event) {

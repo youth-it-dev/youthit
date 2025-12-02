@@ -119,38 +119,34 @@ const useFcmToken = () => {
         if (Notification.permission !== "granted") return;
 
         debug.log("Foreground push notification received:", payload);
+
+        const title =
+          payload.data?.title || payload.notification?.title || "알림";
+        const body = payload.data?.body || payload.notification?.body || "";
         const link = payload.fcmOptions?.link || payload.data?.link;
 
         if (link) {
-          toast.info(
-            `${payload.notification?.title}: ${payload.notification?.body}`,
-            {
-              action: {
-                label: "Visit",
-                onClick: () => {
-                  const link = payload.fcmOptions?.link || payload.data?.link;
-                  if (link) {
-                    router.push(link);
-                  }
-                },
+          toast.info(`${title}: ${body}`, {
+            action: {
+              label: "Visit",
+              onClick: () => {
+                const link = payload.fcmOptions?.link || payload.data?.link;
+                if (link) {
+                  router.push(link);
+                }
               },
-            }
-          );
+            },
+          });
         } else {
-          toast.info(
-            `${payload.notification?.title}: ${payload.notification?.body}`
-          );
+          toast.info(`${title}: ${body}`);
         }
 
         // --------------------------------------------
         // Disable this if you only want toast notifications.
-        const n = new Notification(
-          payload.notification?.title || "New message",
-          {
-            body: payload.notification?.body || "This is a new message",
-            data: link ? { url: link } : undefined,
-          }
-        );
+        const n = new Notification(title, {
+          body: body,
+          data: link ? { url: link } : undefined,
+        });
 
         // Step 10: Handle notification click event to navigate to a link if present.
         n.onclick = (event) => {
