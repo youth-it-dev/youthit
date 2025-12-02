@@ -7,7 +7,7 @@
  * - Error 관련: middleware/errorHandler.js 사용
  */
 
-const {admin, Timestamp} = require("../config/database");
+const {admin, Timestamp, db} = require("../config/database");
 
 // Cloud Storage 관련 상수
 const SIGNED_URL_EXPIRY_HOURS = 1; // 서명된 URL 만료 시간 (시간)
@@ -375,6 +375,30 @@ function getTodayByUTC(dateOrTimestamp = null) {
   return new Date(Date.UTC(targetYear, targetMonth, targetDay, 20, 0, 0, 0));
 }
 
+/**
+ * 사용자가 관리자(admin)인지 확인
+ * @param {string} userId - 사용자 ID
+ * @returns {Promise<boolean>} 관리자 여부
+ */
+async function isAdminUser(userId) {
+  if (!userId) {
+    return false;
+  }
+  
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      return false;
+    }
+    
+    const userData = userDoc.data();
+    return userData?.userType === 'admin';
+  } catch (error) {
+    console.warn("[isAdminUser] 사용자 조회 실패:", error.message);
+    return false;
+  }
+}
+
 module.exports = {
   // Validation
   validateMissionStatus,
@@ -401,6 +425,9 @@ module.exports = {
   chunkArray,
   removeNullValues,
   deepClone,
+
+  // 사용자 권한
+  isAdminUser,
 
 };
 
