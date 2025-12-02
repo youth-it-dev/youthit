@@ -34,6 +34,26 @@ class NotionFaqService {
       auth: NOTION_API_KEY,
       notionVersion: NOTION_VERSION,
     });
+
+    // notion-client는 ES 모듈이므로 동적 import 필요
+    // lazy initialization을 위한 Promise 저장
+    this._notionClientPromise = null;
+  }
+
+  /**
+   * notion-client 인스턴스를 lazy initialization으로 가져오기
+   * @returns {Promise<NotionAPI>} NotionAPI 인스턴스
+   */
+  async getNotionClient() {
+    if (!this._notionClientPromise) {
+      this._notionClientPromise = (async () => {
+        const { NotionAPI } = await import("notion-client");
+        return new NotionAPI({
+          authToken: NOTION_API_KEY,
+        });
+      })();
+    }
+    return this._notionClientPromise;
   }
 
   /**
@@ -251,10 +271,7 @@ class NotionFaqService {
     }
 
     // notion-client로 각 FAQ의 recordMap 가져오기 (홈 화면과 동일)
-    const { NotionAPI } = await import("notion-client");
-    const notionClient = new NotionAPI({
-      authToken: NOTION_API_KEY,
-    });
+    const notionClient = await this.getNotionClient();
 
     // 각 FAQ의 recordMap 병렬 조회
     const recordMapPromises = pages.map((page) => {
