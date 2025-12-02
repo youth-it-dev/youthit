@@ -190,7 +190,37 @@ class FCMService {
    */
   async sendToUsers(userIds, notification) {
     try {
-      const tokenPromises = userIds.map((userId) => this.getUserTokens(userId));
+      // 사용자 ID 중복 제거
+      const uniqueUserIds = Array.from(new Set(userIds));
+      
+      // pushTermsAgreed가 true인 사용자만 필터링
+      const approvedUserIds = [];
+      if (uniqueUserIds.length > 0) {
+        // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
+        const chunks = [];
+        for (let i = 0; i < uniqueUserIds.length; i += 10) {
+          chunks.push(uniqueUserIds.slice(i, i + 10));
+        }
+
+        const userResults = await Promise.all(
+          chunks.map((chunk) =>
+            this.firestoreService.getCollectionWhereIn("users", "__name__", chunk)
+          )
+        );
+
+        const users = userResults.flat();
+        users.forEach((user) => {
+          if (user?.pushTermsAgreed === true) {
+            approvedUserIds.push(user.id);
+          }
+        });
+      }
+
+      if (approvedUserIds.length === 0) {
+        return {sentCount: 0, failedCount: 0, successfulUserIds: []};
+      }
+
+      const tokenPromises = approvedUserIds.map((userId) => this.getUserTokens(userId));
       const tokenResults = await Promise.all(tokenPromises);
       
       // 유저별 토큰 매핑 생성 (유저 ID -> 토큰 배열)
@@ -198,7 +228,7 @@ class FCMService {
       const allTokens = [];
       const tokenToUserMap = new Map(); // 토큰 -> 유저 ID 매핑
       
-      userIds.forEach((userId, index) => {
+      approvedUserIds.forEach((userId, index) => {
         const tokens = tokenResults[index] || [];
         const tokenList = tokens.map((t) => t.token);
         userTokenMap.set(userId, tokenList);
@@ -232,7 +262,7 @@ class FCMService {
 
       // FCM 전송 성공 시 각 사용자별로 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
       if (result.successCount > 0) {
-        const savePromises = userIds.map(userId =>
+        const savePromises = approvedUserIds.map(userId =>
           this.notificationService.saveNotification(userId, {
             title: notification.title,
             message: notification.message,
