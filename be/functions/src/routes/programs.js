@@ -309,11 +309,29 @@ router.get('/:programId', programController.getProgramById);
  *                 data:
  *                   $ref: '#/components/schemas/ProgramApplicationResponse'
  *       400:
- *         description: 잘못된 요청
+ *         description: 잘못된 요청 또는 모집 기간이 아님
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: 에러 유형에 따른 메시지
+ *                   examples:
+ *                     RECRUITMENT_PERIOD_CLOSED:
+ *                       value: "현재 모집 기간이 아닙니다."
+ *                     BAD_REQUEST:
+ *                       value: "프로그램 ID가 필요합니다."
+ *                 code:
+ *                   type: string
+ *                   example: "RECRUITMENT_PERIOD_CLOSED"
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 400
  *       409:
  *         description: 중복 신청
  *         content:
