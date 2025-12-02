@@ -275,12 +275,11 @@ class FCMService {
         return {successCount: 0, failureCount: 0};
       }
 
+      // notification 필드 제거, 모든 정보를 data 필드에 포함 (중복 알림 방지)
       const message = {
-        notification: {
-          title: notification.title,
-          body: notification.message,
-        },
         data: {
+          title: notification.title || "",
+          body: notification.message || "",
           type: notification.type || "general",
           postId: notification.postId || "",
           commentId: notification.commentId || "",
