@@ -358,6 +358,7 @@ const MissionCommentsSection = ({
               <CommentItem
                 key={comment.id}
                 comment={comment}
+                postId={postId}
                 userName={currentUserNickname}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}

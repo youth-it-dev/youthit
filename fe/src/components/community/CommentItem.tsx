@@ -12,14 +12,17 @@ import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-shee
 import {
   commentsKeys,
   communitiesKeys,
+  missionsKeys,
 } from "@/constants/generated/query-keys";
 import {
   COMMENT_ANONYMOUS_NAME,
   COMMENT_PLACEHOLDER,
   COMMENT_CANCEL_BUTTON,
   COMMENT_SUBMIT_BUTTON,
+  COMMENT_PAGE_SIZE,
 } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
+import { usePostMissionsPostsCommentsLikeByTwoIds } from "@/hooks/generated/missions-hooks";
 import type * as Types from "@/types/generated/comments-types";
 import { parseCommentContent } from "@/utils/community/parse-comment-content";
 import { cn } from "@/utils/shared/cn";
@@ -211,159 +214,334 @@ const CommentItemComponent = ({
     }
   }, [onMenuToggle, isCommentMenuOpen, commentMenuId]);
 
-  // 좋아요 mutation (optimistic update 적용)
-  const { mutateAsync: likeCommentAsync, isPending: isLikePending } =
-    usePostCommentsLikeById({
-      onMutate: (variables: { commentId?: string }) => {
-        // Optimistic update: 즉시 UI 업데이트
-        const targetCommentId = variables.commentId ?? "";
-        if (!targetCommentId) {
-          return { targetCommentId: "", isReply: false };
-        }
-        const reply = replies.find((r) => r.id === targetCommentId);
-        const isReply = !!reply;
+  const isMissionCommentContext = !communityId && !!postId;
 
-        let previousState:
-          | {
-              isLiked: boolean;
-              likesCount: number;
-            }
-          | undefined;
+  type CommunityLikeVariables = { commentId?: string };
+  type MissionLikeVariables = { postId?: string; commentId?: string };
+  type LikeContext = {
+    targetCommentId: string;
+    isReply: boolean;
+    previousState?: { isLiked: boolean; likesCount: number };
+  };
 
-        if (isReply && reply) {
-          // 댓글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
-          const currentState = replyLikes[targetCommentId];
-          const currentIsLiked =
-            currentState?.isLiked ?? reply.isLiked ?? false;
-          const currentLikesCount =
-            currentState?.likesCount ?? reply.likesCount ?? 0;
+  // 커뮤니티 댓글 좋아요 mutation (optimistic update 적용)
+  const {
+    mutateAsync: likeCommunityCommentAsync,
+    isPending: isCommunityLikePending,
+  } = usePostCommentsLikeById({
+    onMutate: (variables: CommunityLikeVariables): LikeContext => {
+      // Optimistic update: 즉시 UI 업데이트
+      const targetCommentId = variables.commentId ?? "";
+      if (!targetCommentId) {
+        return { targetCommentId: "", isReply: false };
+      }
+      const reply = replies.find((r) => r.id === targetCommentId);
+      const isReply = !!reply;
 
-          previousState = {
-            isLiked: currentIsLiked,
-            likesCount: currentLikesCount,
-          };
+      let previousState: LikeContext["previousState"];
 
-          // Optimistic update
+      if (isReply && reply) {
+        // 답글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
+        const currentState = replyLikes[targetCommentId];
+        const currentIsLiked = currentState?.isLiked ?? reply.isLiked ?? false;
+        const currentLikesCount =
+          currentState?.likesCount ?? reply.likesCount ?? 0;
+
+        previousState = {
+          isLiked: currentIsLiked,
+          likesCount: currentLikesCount,
+        };
+
+        // Optimistic update
+        setReplyLikes((prev) => ({
+          ...prev,
+          [targetCommentId]: {
+            isLiked: !currentIsLiked,
+            likesCount: currentIsLiked
+              ? Math.max(0, currentLikesCount - 1)
+              : currentLikesCount + 1,
+          },
+        }));
+      } else if (targetCommentId === comment.id) {
+        // 댓글 좋아요 - 실제 comment 데이터에서 초기 상태 가져오기
+        const currentIsLiked = isLiked;
+        const currentLikesCount = likesCount;
+
+        previousState = {
+          isLiked: currentIsLiked,
+          likesCount: currentLikesCount,
+        };
+
+        // Optimistic update
+        const newIsLiked = !currentIsLiked;
+        setIsLiked(newIsLiked);
+        setLikesCount(
+          newIsLiked
+            ? currentLikesCount + 1
+            : Math.max(0, currentLikesCount - 1)
+        );
+      }
+
+      return { targetCommentId, isReply, previousState };
+    },
+    onSuccess: (
+      response: { data?: { isLiked?: boolean; likesCount?: number } },
+      variables: CommunityLikeVariables
+    ) => {
+      // API 응답으로 정확한 값으로 업데이트
+      const result = response.data;
+      const targetCommentId = variables.commentId ?? "";
+
+      updateLikeStateFromResponse(result, targetCommentId);
+
+      // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+      if (communityId && postId) {
+        queryClient.invalidateQueries({
+          queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
+            communityId,
+            postId,
+          }),
+        });
+        queryClient.invalidateQueries({
+          queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
+            communityId,
+            postId,
+          }),
+        });
+      }
+    },
+    onError: (
+      _err: unknown,
+      variables: CommunityLikeVariables,
+      context?: LikeContext
+    ) => {
+      rollbackLikeState(context, commentId);
+    },
+  });
+
+  const updateLikeStateFromResponse = useCallback(
+    (
+      result: { isLiked?: boolean; likesCount?: number } | undefined,
+      targetCommentId?: string
+    ) => {
+      if (!result || !targetCommentId) return;
+
+      const isReply = replies.some((reply) => reply.id === targetCommentId);
+
+      if (isReply) {
+        setReplyLikes((prev) => ({
+          ...prev,
+          [targetCommentId]: {
+            isLiked: result.isLiked || false,
+            likesCount: result.likesCount || 0,
+          },
+        }));
+      } else if (targetCommentId === comment.id) {
+        setIsLiked(result.isLiked || false);
+        setLikesCount(result.likesCount || 0);
+      }
+    },
+    [comment.id, replies]
+  );
+
+  const rollbackLikeState = useCallback(
+    (context: LikeContext | undefined, baseCommentId: string) => {
+      if (!context?.previousState) return;
+
+      if (context.isReply) {
+        const targetId = context.targetCommentId;
+        if (targetId) {
           setReplyLikes((prev) => ({
             ...prev,
-            [targetCommentId]: {
-              isLiked: !currentIsLiked,
-              likesCount: currentIsLiked
-                ? Math.max(0, currentLikesCount - 1)
-                : currentLikesCount + 1,
-            },
+            [targetId]: context.previousState!,
           }));
-        } else if (targetCommentId === comment.id) {
-          // 댓글 좋아요 - 실제 comment 데이터에서 초기 상태 가져오기
-          const currentIsLiked = isLiked;
-          const currentLikesCount = likesCount;
-
-          previousState = {
-            isLiked: currentIsLiked,
-            likesCount: currentLikesCount,
-          };
-
-          // Optimistic update
-          const newIsLiked = !currentIsLiked;
-          setIsLiked(newIsLiked);
-          setLikesCount(
-            newIsLiked
-              ? currentLikesCount + 1
-              : Math.max(0, currentLikesCount - 1)
-          );
         }
+      } else if (context.targetCommentId === baseCommentId) {
+        setIsLiked(context.previousState.isLiked);
+        setLikesCount(context.previousState.likesCount);
+      }
+    },
+    []
+  );
 
-        return { targetCommentId, isReply, previousState };
-      },
-      onSuccess: (
-        response: { data?: { isLiked?: boolean; likesCount?: number } },
-        variables: { commentId?: string }
-      ) => {
-        // API 응답으로 정확한 값으로 업데이트
-        const result = response.data;
-        const targetCommentId = variables.commentId ?? "";
+  const { mutate: mutateMissionLike, isPending: isMissionLikePending } =
+    usePostMissionsPostsCommentsLikeByTwoIds<LikeContext, MissionLikeVariables>(
+      {
+        onMutate: (variables) => {
+          const targetCommentId = variables.commentId ?? "";
+          if (!targetCommentId) {
+            return { targetCommentId: "", isReply: false };
+          }
 
-        if (result && targetCommentId) {
-          const isReply = replies.some((reply) => reply.id === targetCommentId);
+          const reply = replies.find((r) => r.id === targetCommentId);
+          const isReply = !!reply;
 
-          if (isReply) {
+          let previousState: LikeContext["previousState"];
+
+          if (isReply && reply) {
+            const currentState = replyLikes[targetCommentId];
+            const currentIsLiked =
+              currentState?.isLiked ?? reply.isLiked ?? false;
+            const currentLikesCount =
+              currentState?.likesCount ?? reply.likesCount ?? 0;
+
+            previousState = {
+              isLiked: currentIsLiked,
+              likesCount: currentLikesCount,
+            };
+
+            const newIsLiked = !currentIsLiked;
+            const newLikesCount = newIsLiked
+              ? currentLikesCount + 1
+              : Math.max(0, currentLikesCount - 1);
+
             setReplyLikes((prev) => ({
               ...prev,
               [targetCommentId]: {
-                isLiked: result.isLiked || false,
-                likesCount: result.likesCount || 0,
+                isLiked: newIsLiked,
+                likesCount: newLikesCount,
               },
             }));
           } else if (targetCommentId === comment.id) {
-            setIsLiked(result.isLiked || false);
-            setLikesCount(result.likesCount || 0);
-          }
-        }
+            const currentIsLiked = isLiked;
+            const currentLikesCount = likesCount;
 
-        // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
-        if (communityId && postId) {
-          queryClient.invalidateQueries({
-            queryKey: commentsKeys.getCommentsCommunitiesPostsByTwoIds({
-              communityId,
-              postId,
-            }),
-          });
-          queryClient.invalidateQueries({
-            queryKey: communitiesKeys.getCommunitiesPostsByTwoIds({
-              communityId,
-              postId,
-            }),
-          });
-        }
-      },
-      onError: (
-        err: unknown,
-        variables: { commentId?: string },
-        context?: {
-          targetCommentId?: string;
-          isReply?: boolean;
-          previousState?: { isLiked: boolean; likesCount: number };
-        }
-      ) => {
-        // 에러 발생 시 이전 상태로 롤백
-        if (context?.previousState) {
-          if (context.isReply) {
-            const targetId = context.targetCommentId;
-            if (targetId) {
-              setReplyLikes((prev) => ({
-                ...prev,
-                [targetId]: context.previousState!,
-              }));
-            }
-          } else if (context.targetCommentId === comment.id) {
-            setIsLiked(context.previousState.isLiked);
-            setLikesCount(context.previousState.likesCount);
+            previousState = {
+              isLiked: currentIsLiked,
+              likesCount: currentLikesCount,
+            };
+
+            const newIsLiked = !currentIsLiked;
+            setIsLiked(newIsLiked);
+            setLikesCount(
+              newIsLiked
+                ? currentLikesCount + 1
+                : Math.max(0, currentLikesCount - 1)
+            );
           }
-        }
-      },
+
+          return { targetCommentId, isReply, previousState };
+        },
+      }
+    );
+
+  const invalidateMissionCommentQueries = useCallback(() => {
+    if (!postId) return;
+
+    // 미션 게시글 상세 정보 refetch (댓글 카운트 반영)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsById({ postId }),
     });
+
+    // 미션 댓글 목록 refetch (무한 스크롤 쿼리 무효화)
+    queryClient.invalidateQueries({
+      queryKey: missionsKeys.getMissionsPostsCommentsById({
+        postId,
+        pageSize: COMMENT_PAGE_SIZE,
+      }),
+    });
+  }, [postId, queryClient]);
+
+  const isLikePending = isMissionCommentContext
+    ? isMissionLikePending
+    : isCommunityLikePending;
 
   // 좋아요 핸들러
   const handleLike = useCallback(async () => {
     if (!commentId || isLikePending) return;
     try {
-      await likeCommentAsync({ commentId });
-      // onSuccess에서 상태 업데이트하므로 여기서는 제거
+      if (isMissionCommentContext) {
+        if (!postId) return;
+        mutateMissionLike(
+          { postId, commentId },
+          {
+            onSuccess: (
+              response: { data?: { isLiked?: boolean; likesCount?: number } },
+              variables: MissionLikeVariables
+            ) => {
+              const result = response.data;
+              const targetCommentId = variables.commentId ?? "";
+
+              updateLikeStateFromResponse(result, targetCommentId);
+
+              // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+              invalidateMissionCommentQueries();
+            },
+            onError: (
+              _err: unknown,
+              _variables: MissionLikeVariables,
+              context
+            ) => {
+              rollbackLikeState(context, commentId);
+            },
+          }
+        );
+      } else {
+        await likeCommunityCommentAsync({ commentId });
+      }
     } catch (error) {
       debug.error("좋아요 실패:", error);
     }
-  }, [commentId, likeCommentAsync, isLikePending]);
+  }, [
+    commentId,
+    invalidateMissionCommentQueries,
+    isLikePending,
+    isMissionCommentContext,
+    likeCommunityCommentAsync,
+    mutateMissionLike,
+    postId,
+    rollbackLikeState,
+    updateLikeStateFromResponse,
+  ]);
 
   const handleReplyLike = useCallback(
     async (targetReplyId: string) => {
       if (!targetReplyId || isLikePending) return;
       try {
-        await likeCommentAsync({ commentId: targetReplyId });
+        if (isMissionCommentContext) {
+          if (!postId) return;
+          mutateMissionLike(
+            { postId, commentId: targetReplyId },
+            {
+              onSuccess: (
+                response: { data?: { isLiked?: boolean; likesCount?: number } },
+                variables: MissionLikeVariables
+              ) => {
+                const result = response.data;
+                const targetCommentId = variables.commentId ?? "";
+
+                updateLikeStateFromResponse(result, targetCommentId);
+
+                // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
+                invalidateMissionCommentQueries();
+              },
+              onError: (
+                _err: unknown,
+                _variables: MissionLikeVariables,
+                context
+              ) => {
+                rollbackLikeState(context, commentId);
+              },
+            }
+          );
+        } else {
+          await likeCommunityCommentAsync({ commentId: targetReplyId });
+        }
       } catch (error) {
         debug.error("댓글 좋아요 실패:", error);
       }
     },
-    [isLikePending, likeCommentAsync]
+    [
+      commentId,
+      invalidateMissionCommentQueries,
+      isLikePending,
+      isMissionCommentContext,
+      mutateMissionLike,
+      likeCommunityCommentAsync,
+      postId,
+      rollbackLikeState,
+      updateLikeStateFromResponse,
+    ]
   );
 
   // 메뉴 핸들러
