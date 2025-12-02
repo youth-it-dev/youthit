@@ -27,7 +27,7 @@ import { getTimeAgo } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
 
 /**
- * 댓글/답글 콘텐츠 렌더링 컴포넌트
+ * 댓글/댓글 콘텐츠 렌더링 컴포넌트
  * - parseCommentContent는 순수 함수이므로 content가 동일하면 같은 결과 반환
  * - CommentItem이 이미 memo로 감싸져 있어 추가 메모이제이션 불필요
  */
@@ -77,8 +77,8 @@ interface CommentItemProps {
 
 /**
  * @description 댓글 아이템 컴포넌트
- * - 댓글 및 답글 표시
- * - 답글 더보기 기능
+ * - 댓글 및 댓글 표시
+ * - 댓글 더보기 기능
  * - 댓글 수정/삭제 메뉴
  * - 좋아요 기능
  */
@@ -121,6 +121,7 @@ const CommentItemComponent = ({
 
   const commentId = comment.id || "";
   const isRootComment = !comment.parentId;
+  const isCommentReported = (comment.reportsCount ?? 0) >= 3;
 
   // replies 배열 정규화 및 메모이제이션
   const replies = useMemo(() => {
@@ -143,7 +144,7 @@ const CommentItemComponent = ({
   const isReplying =
     replyingTo?.commentId === commentId && !replyingTo?.isReply;
 
-  // 답글에 대한 답글 입력창의 실제 입력값
+  // 댓글에 대한 댓글 입력창의 실제 입력값
   const actualReplyToReplyInput = replyToReplyInput ?? localReplyToReplyInput;
   const setReplyToReplyInputValue =
     onReplyToReplyInputChange ?? setLocalReplyToReplyInput;
@@ -154,7 +155,7 @@ const CommentItemComponent = ({
     setLikesCount(comment.likesCount || 0);
   }, [comment.isLiked, comment.likesCount]);
 
-  // 답글의 좋아요 상태와 카운트를 로컬 state에 동기화
+  // 댓글의 좋아요 상태와 카운트를 로컬 state에 동기화
   useEffect(() => {
     if (replies.length > 0) {
       setReplyLikes((prev) => {
@@ -182,17 +183,17 @@ const CommentItemComponent = ({
     }
   }, [replies]);
 
-  // 답글에 대한 답글 입력창이 닫힐 때 로컬 state 초기화
+  // 댓글에 대한 댓글 입력창이 닫힐 때 로컬 state 초기화
   useEffect(() => {
     if (!replyingTo?.isReply) {
-      // 답글에 대한 답글 입력창이 닫혔고, 로컬 state에 값이 있으면 초기화
+      // 댓글에 대한 댓글 입력창이 닫혔고, 로컬 state에 값이 있으면 초기화
       if (localReplyToReplyInput && !onReplyToReplyInputChange) {
         setLocalReplyToReplyInput("");
       }
     }
   }, [replyingTo?.isReply, localReplyToReplyInput, onReplyToReplyInputChange]);
 
-  // 답글 작성자 프로필 썸네일 추출 (메모이제이션)
+  // 댓글 작성자 프로필 썸네일 추출 (메모이제이션)
   const replyThumbnails = useMemo(() => {
     if (replies.length === 0) return [];
     if (replies.length === 1) return [replies[0]];
@@ -230,7 +231,7 @@ const CommentItemComponent = ({
           | undefined;
 
         if (isReply && reply) {
-          // 답글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
+          // 댓글 좋아요 - 실제 reply 데이터에서 초기 상태 가져오기
           const currentState = replyLikes[targetCommentId];
           const currentIsLiked =
             currentState?.isLiked ?? reply.isLiked ?? false;
@@ -359,7 +360,7 @@ const CommentItemComponent = ({
       try {
         await likeCommentAsync({ commentId: targetReplyId });
       } catch (error) {
-        debug.error("답글 좋아요 실패:", error);
+        debug.error("댓글 좋아요 실패:", error);
       }
     },
     [isLikePending, likeCommentAsync]
@@ -382,7 +383,7 @@ const CommentItemComponent = ({
     }
   }, [commentId, onReport]);
 
-  // 답글에 대한 답글 제출 핸들러
+  // 댓글에 대한 댓글 제출 핸들러
   const handleReplyToReplySubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
@@ -552,7 +553,7 @@ const CommentItemComponent = ({
     }
   }, [actualReplyToReplyInput]);
 
-  // 답글에 대한 답글 취소 핸들러
+  // 댓글에 대한 댓글 취소 핸들러
   const handleCancelReplyToReply = useCallback(() => {
     onCancelReply();
     if (!onReplyToReplyInputChange) {
@@ -560,7 +561,7 @@ const CommentItemComponent = ({
     }
   }, [onCancelReply, onReplyToReplyInputChange]);
 
-  // 답글 좋아요 상태 계산 (메모이제이션)
+  // 댓글 좋아요 상태 계산 (메모이제이션)
   const getReplyLikeState = useCallback(
     (replyId: string) => {
       const reply = replies.find((r) => r.id === replyId);
@@ -574,13 +575,35 @@ const CommentItemComponent = ({
     [replyLikes, replies]
   );
 
-  // 답글에 대한 답글 입력창에 내용이 있는지 확인 (텍스트 또는 이미지)
+  // 댓글에 대한 댓글 입력창에 내용이 있는지 확인 (텍스트 또는 이미지)
   const hasReplyToReplyContent = useMemo(() => {
     const textContent = actualReplyToReplyInput.replace(/<[^>]*>/g, "").trim();
     const hasImage = /<img[^>]*>/i.test(actualReplyToReplyInput);
     return textContent.length > 0 || hasImage;
   }, [actualReplyToReplyInput]);
 
+  if (isCommentReported) {
+    return (
+      <div className="flex flex-col gap-1">
+        <Typography
+          font="noto"
+          variant="label1M"
+          className="mb-2 text-gray-700"
+        >
+          신고 처리된 댓글 입니다.
+        </Typography>
+        {comment.createdAt && (
+          <Typography
+            font="noto"
+            variant="label2R"
+            className="shrink-0 text-gray-400"
+          >
+            {getTimeAgo(comment.createdAt)}
+          </Typography>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="space-y-3">
       {/* 메인 댓글 */}
@@ -708,7 +731,7 @@ const CommentItemComponent = ({
                   type="button"
                 >
                   <Typography font="noto" variant="label1R">
-                    답글 쓰기
+                    댓글 쓰기
                   </Typography>
                 </button>
                 <button
@@ -732,14 +755,14 @@ const CommentItemComponent = ({
           )}
         </div>
       </div>
-
-      {/* 답글 목록 */}
+      {/* 댓글 목록 */}
       {isRootComment && (replies.length > 0 || repliesCount > 0) && (
         <div className="ml-11 space-y-3">
           {visibleReplies.length > 0 ? (
             visibleReplies.map((reply) => {
               const replyId = reply.id || "";
               const replyAuthor = reply.author || COMMENT_ANONYMOUS_NAME;
+              const isReplyReported = (reply.reportsCount ?? 0) >= 3;
               const isEditingReply = editingCommentId === replyId;
               const isReplyingToThisReply =
                 replyingTo?.commentId === replyId &&
@@ -757,7 +780,28 @@ const CommentItemComponent = ({
               const replyLikeState = getReplyLikeState(replyId);
               const replyIsLiked = replyLikeState.isLiked;
               const replyLikesCount = replyLikeState.likesCount;
-
+              if (isReplyReported) {
+                return (
+                  <div key={replyId} className="flex flex-col gap-1">
+                    <Typography
+                      font="noto"
+                      variant="label1M"
+                      className="mb-2 text-gray-700"
+                    >
+                      신고 처리된 댓글 입니다.
+                    </Typography>
+                    {comment.createdAt && (
+                      <Typography
+                        font="noto"
+                        variant="label2R"
+                        className="shrink-0 text-gray-400"
+                      >
+                        {getTimeAgo(comment.createdAt)}
+                      </Typography>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div key={replyId} className="flex gap-3">
                   {/* 작성자 프로필 썸네일 */}
@@ -821,7 +865,7 @@ const CommentItemComponent = ({
                         />
                       )}
                     </div>
-                    {/* 답글 내용 또는 수정 입력칸 */}
+                    {/* 댓글 내용 또는 수정 입력칸 */}
                     {isEditingReply ? (
                       <div className="mb-2 space-y-2">
                         <div className="mb-2 flex items-center justify-between">
@@ -899,51 +943,55 @@ const CommentItemComponent = ({
                         {reply.content && (
                           <CommentContent content={reply.content} />
                         )}
-                        <div className="flex items-center gap-[6px]">
-                          {onStartReplyToReply && (
+                        {!isReplyReported && (
+                          <div className="flex items-center gap-[6px]">
+                            {onStartReplyToReply && (
+                              <button
+                                onClick={() => {
+                                  onStartReplyToReply(replyId, replyAuthor);
+                                }}
+                                className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
+                                type="button"
+                              >
+                                <Typography font="noto" variant="label1R">
+                                  댓글 쓰기
+                                </Typography>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
-                                onStartReplyToReply(replyId, replyAuthor);
+                                handleReplyLike(replyId);
                               }}
-                              className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
+                              className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
                               type="button"
                             >
-                              <Typography font="noto" variant="label1R">
-                                답글 쓰기
+                              <Heart
+                                className={cn(
+                                  "h-4 w-4 transition-colors",
+                                  replyIsLiked
+                                    ? "fill-main-500 text-main-500"
+                                    : "text-gray-600"
+                                )}
+                                fill={replyIsLiked ? "currentColor" : "none"}
+                              />
+                              <Typography
+                                font="noto"
+                                variant="label1R"
+                                className={cn(
+                                  "transition-colors",
+                                  replyIsLiked
+                                    ? "text-main-500"
+                                    : "text-gray-600"
+                                )}
+                              >
+                                {replyLikesCount}
                               </Typography>
                             </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              handleReplyLike(replyId);
-                            }}
-                            className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
-                            type="button"
-                          >
-                            <Heart
-                              className={cn(
-                                "h-4 w-4 transition-colors",
-                                replyIsLiked
-                                  ? "fill-main-500 text-main-500"
-                                  : "text-gray-600"
-                              )}
-                              fill={replyIsLiked ? "currentColor" : "none"}
-                            />
-                            <Typography
-                              font="noto"
-                              variant="label1R"
-                              className={cn(
-                                "transition-colors",
-                                replyIsLiked ? "text-main-500" : "text-gray-600"
-                              )}
-                            >
-                              {replyLikesCount}
-                            </Typography>
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </>
                     )}
-                    {/* 답글에 대한 답글 입력창 */}
+                    {/* 댓글에 대한 댓글 입력창 */}
                     {isReplyingToThisReply && (
                       <div className="mt-3 space-y-2">
                         <div className="mb-2 flex items-center justify-between">
@@ -1049,12 +1097,12 @@ const CommentItemComponent = ({
           ) : (
             <div className="text-sm text-gray-500">
               <Typography font="noto" variant="body2R">
-                답글을 불러오는 중...
+                댓글을 불러오는 중...
               </Typography>
             </div>
           )}
 
-          {/* 답글 더보기 버튼 */}
+          {/* 댓글 더보기 버튼 */}
           {shouldShowMoreButton && (
             <button
               onClick={onToggleReplies}
@@ -1078,7 +1126,7 @@ const CommentItemComponent = ({
                 ))}
               </div>
               <Typography font="noto" variant="body2R">
-                답글 {hiddenRepliesCount}개 더보기
+                댓글 {hiddenRepliesCount}개 더보기
               </Typography>
             </button>
           )}
