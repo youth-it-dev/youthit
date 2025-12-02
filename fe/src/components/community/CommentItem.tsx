@@ -292,22 +292,7 @@ const CommentItemComponent = ({
       const result = response.data;
       const targetCommentId = variables.commentId ?? "";
 
-      if (result && targetCommentId) {
-        const isReply = replies.some((reply) => reply.id === targetCommentId);
-
-        if (isReply) {
-          setReplyLikes((prev) => ({
-            ...prev,
-            [targetCommentId]: {
-              isLiked: result.isLiked || false,
-              likesCount: result.likesCount || 0,
-            },
-          }));
-        } else if (targetCommentId === comment.id) {
-          setIsLiked(result.isLiked || false);
-          setLikesCount(result.likesCount || 0);
-        }
-      }
+      updateLikeStateFromResponse(result, targetCommentId);
 
       // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
       if (communityId && postId) {
@@ -330,23 +315,54 @@ const CommentItemComponent = ({
       variables: CommunityLikeVariables,
       context?: LikeContext
     ) => {
-      // 에러 발생 시 이전 상태로 롤백
-      if (context?.previousState) {
-        if (context.isReply) {
-          const targetId = context.targetCommentId;
-          if (targetId) {
-            setReplyLikes((prev) => ({
-              ...prev,
-              [targetId]: context.previousState!,
-            }));
-          }
-        } else if (context.targetCommentId === comment.id) {
-          setIsLiked(context.previousState.isLiked);
-          setLikesCount(context.previousState.likesCount);
-        }
-      }
+      rollbackLikeState(context, commentId);
     },
   });
+
+  const updateLikeStateFromResponse = useCallback(
+    (
+      result: { isLiked?: boolean; likesCount?: number } | undefined,
+      targetCommentId?: string
+    ) => {
+      if (!result || !targetCommentId) return;
+
+      const isReply = replies.some((reply) => reply.id === targetCommentId);
+
+      if (isReply) {
+        setReplyLikes((prev) => ({
+          ...prev,
+          [targetCommentId]: {
+            isLiked: result.isLiked || false,
+            likesCount: result.likesCount || 0,
+          },
+        }));
+      } else if (targetCommentId === comment.id) {
+        setIsLiked(result.isLiked || false);
+        setLikesCount(result.likesCount || 0);
+      }
+    },
+    [comment.id, replies]
+  );
+
+  const rollbackLikeState = useCallback(
+    (context: LikeContext | undefined, baseCommentId: string) => {
+      if (!context?.previousState) return;
+
+      if (context.isReply) {
+        const targetId = context.targetCommentId;
+        if (targetId) {
+          setReplyLikes((prev) => ({
+            ...prev,
+            [targetId]: context.previousState!,
+          }));
+        }
+      } else if (context.targetCommentId === baseCommentId) {
+        setIsLiked(context.previousState.isLiked);
+        setLikesCount(context.previousState.likesCount);
+      }
+    },
+    []
+  );
 
   const { mutate: mutateMissionLike, isPending: isMissionLikePending } =
     usePostMissionsPostsCommentsLikeByTwoIds<LikeContext, MissionLikeVariables>(
@@ -446,47 +462,17 @@ const CommentItemComponent = ({
               const result = response.data;
               const targetCommentId = variables.commentId ?? "";
 
-              if (result && targetCommentId) {
-                const isReply = replies.some(
-                  (reply) => reply.id === targetCommentId
-                );
-
-                if (isReply) {
-                  setReplyLikes((prev) => ({
-                    ...prev,
-                    [targetCommentId]: {
-                      isLiked: result.isLiked || false,
-                      likesCount: result.likesCount || 0,
-                    },
-                  }));
-                } else if (targetCommentId === commentId) {
-                  setIsLiked(result.isLiked || false);
-                  setLikesCount(result.likesCount || 0);
-                }
-              }
+              updateLikeStateFromResponse(result, targetCommentId);
 
               // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
               invalidateMissionCommentQueries();
             },
             onError: (
               _err: unknown,
-              variables: MissionLikeVariables,
+              _variables: MissionLikeVariables,
               context
             ) => {
-              if (context?.previousState) {
-                if (context.isReply) {
-                  const targetId = context.targetCommentId;
-                  if (targetId) {
-                    setReplyLikes((prev) => ({
-                      ...prev,
-                      [targetId]: context.previousState!,
-                    }));
-                  }
-                } else if (context.targetCommentId === commentId) {
-                  setIsLiked(context.previousState.isLiked);
-                  setLikesCount(context.previousState.likesCount);
-                }
-              }
+              rollbackLikeState(context, commentId);
             },
           }
         );
@@ -504,7 +490,8 @@ const CommentItemComponent = ({
     likeCommunityCommentAsync,
     mutateMissionLike,
     postId,
-    replies,
+    rollbackLikeState,
+    updateLikeStateFromResponse,
   ]);
 
   const handleReplyLike = useCallback(
@@ -523,24 +510,7 @@ const CommentItemComponent = ({
                 const result = response.data;
                 const targetCommentId = variables.commentId ?? "";
 
-                if (result && targetCommentId) {
-                  const isReply = replies.some(
-                    (reply) => reply.id === targetCommentId
-                  );
-
-                  if (isReply) {
-                    setReplyLikes((prev) => ({
-                      ...prev,
-                      [targetCommentId]: {
-                        isLiked: result.isLiked || false,
-                        likesCount: result.likesCount || 0,
-                      },
-                    }));
-                  } else if (targetCommentId === commentId) {
-                    setIsLiked(result.isLiked || false);
-                    setLikesCount(result.likesCount || 0);
-                  }
-                }
+                updateLikeStateFromResponse(result, targetCommentId);
 
                 // 서버 데이터도 최신화하여 페이지 이탈 후 재진입 시 반영되도록 처리
                 invalidateMissionCommentQueries();
@@ -550,20 +520,7 @@ const CommentItemComponent = ({
                 _variables: MissionLikeVariables,
                 context
               ) => {
-                if (context?.previousState) {
-                  if (context.isReply) {
-                    const targetId = context.targetCommentId;
-                    if (targetId) {
-                      setReplyLikes((prev) => ({
-                        ...prev,
-                        [targetId]: context.previousState!,
-                      }));
-                    }
-                  } else if (context.targetCommentId === commentId) {
-                    setIsLiked(context.previousState.isLiked);
-                    setLikesCount(context.previousState.likesCount);
-                  }
-                }
+                rollbackLikeState(context, commentId);
               },
             }
           );
@@ -582,7 +539,8 @@ const CommentItemComponent = ({
       mutateMissionLike,
       likeCommunityCommentAsync,
       postId,
-      replies,
+      rollbackLikeState,
+      updateLikeStateFromResponse,
     ]
   );
 
