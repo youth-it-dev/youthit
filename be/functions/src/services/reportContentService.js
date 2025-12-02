@@ -28,7 +28,9 @@ async createReport(reportData) {
       communityId,
       missionId,
       reporterId, 
-      reportReason 
+      reportReason,
+      authorId, // 게시글 작성자 ID (targetType이 post일 때)
+      userId, // 댓글 작성자 ID (targetType이 comment일 때)
     } = reportData;
 
 
@@ -160,6 +162,8 @@ async createReport(reportData) {
       notionUpdatedAt: new Date().toISOString(),
       reportsCount,
       isLocked, // 잠김 상태 추가
+      ...(targetType === "post" && { authorId }), // 게시글인 경우 authorId 추가
+      ...(targetType === "comment" && { userId }), // 댓글인 경우 userId 추가
     };
     const notionPage = await this.syncToNotion(notionReport);
 
@@ -447,7 +451,7 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
+    const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false, authorId, userId} = reportData;
     
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
@@ -460,6 +464,10 @@ async syncReportToNotion(reportData) {
       if (!userId) return "";
 
       try {
+        console.log("11111==============================================")
+        console.log("userId", userId);
+        console.log("label", label);
+        console.log("111111==============================================")
         const user = await userFirestoreService.getById(userId);
         if (!user) {
           console.warn(
@@ -479,11 +487,48 @@ async syncReportToNotion(reportData) {
       }
     }
 
-    // 신고자 / 작성자 닉네임을 병렬로 조회 (N+1 방지)
-    const [reporterName, authorName] = await Promise.all([
-      getUserDisplayNameById(reporterId, "신고자"),
-      getUserDisplayNameById(targetUserId, "작성자"),
-    ]);
+    console.log("222222==============================================")
+    console.log("authorId", authorId);
+    console.log("targetUserId", targetUserId);
+    console.log("reporterId", reporterId);
+    console.log("targetType", targetType);
+    console.log("communityId", communityId);
+    console.log("missionId", missionId);
+    console.log("reportReason", reportReason);
+    console.log("firebaseUpdatedAt", firebaseUpdatedAt);
+    console.log("notionUpdatedAt", notionUpdatedAt);
+    console.log("2222222==============================================")
+
+
+    // reporterName과 authorName 변수 선언
+    let reporterName = "";
+    let authorName = "";
+
+    if(!communityId) {
+      // communityId가 없을 경우 (미션인 경우)
+      // 신고자 / 작성자 닉네임을 병렬로 조회 (N+1 방지)
+      [reporterName, authorName] = await Promise.all([
+        getUserDisplayNameById(reporterId, "신고자"),
+        getUserDisplayNameById(targetUserId, "작성자"),
+      ]);
+    } else {
+      // communityId가 있을 경우 (커뮤니티인 경우)
+      // reporterName: targetType에 따라 authorId 또는 userId의 nickname
+      if(targetType === "post") {
+        reporterName = await getUserDisplayNameById(authorId, "신고자");
+      } else if(targetType === "comment") {
+        reporterName = await getUserDisplayNameById(userId, "신고자");
+      }
+      // authorName: targetUserId 자체가 nickname
+      authorName = targetUserId;
+    }
+
+   
+
+    console.log("333333==============================================")
+    console.log("reporterName", reporterName);
+    console.log("authorName", authorName);
+    console.log("=333333=============================================")
 
 
     // URL 생성 로직
@@ -616,6 +661,15 @@ async syncReportToNotion(reportData) {
         date: { 
           start: new Date(new Date().getTime()).toISOString()
         },
+      },
+      '작성자ID': { 
+        rich_text: [{ 
+          text: { 
+            content: targetType === "post" 
+              ? (authorId ? `${authorId}` : "") 
+              : (userId ? `${userId}` : "") 
+          } 
+        }] 
       },
     };
     
