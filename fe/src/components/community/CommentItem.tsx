@@ -364,22 +364,26 @@ const CommentItemComponent = ({
 
           if (isReply && reply) {
             const currentState = replyLikes[targetCommentId];
+            const currentIsLiked =
+              currentState?.isLiked ?? reply.isLiked ?? false;
             const currentLikesCount =
               currentState?.likesCount ?? reply.likesCount ?? 0;
 
             previousState = {
-              isLiked: currentState?.isLiked ?? false,
+              isLiked: currentIsLiked,
               likesCount: currentLikesCount,
             };
+
+            const newIsLiked = !currentIsLiked;
+            const newLikesCount = newIsLiked
+              ? currentLikesCount + 1
+              : Math.max(0, currentLikesCount - 1);
 
             setReplyLikes((prev) => ({
               ...prev,
               [targetCommentId]: {
-                isLiked: !(currentState?.isLiked ?? false),
-                likesCount:
-                  (currentState?.isLiked ?? false)
-                    ? Math.max(0, currentLikesCount - 1)
-                    : currentLikesCount + 1,
+                isLiked: newIsLiked,
+                likesCount: newLikesCount,
               },
             }));
           } else if (targetCommentId === comment.id) {
