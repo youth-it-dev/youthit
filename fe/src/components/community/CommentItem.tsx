@@ -124,7 +124,7 @@ const CommentItemComponent = ({
 
   const commentId = comment.id || "";
   const isRootComment = !comment.parentId;
-  const isCommentReported = (comment.reportsCount ?? 0) >= 3;
+  const isCommentLocked = comment.isLocked === true;
 
   // replies 배열 정규화 및 메모이제이션
   const replies = useMemo(() => {
@@ -760,7 +760,7 @@ const CommentItemComponent = ({
     return textContent.length > 0 || hasImage;
   }, [actualReplyToReplyInput]);
 
-  if (isCommentReported) {
+  if (isCommentLocked) {
     return (
       <div className="flex flex-col gap-1">
         <Typography
@@ -768,7 +768,7 @@ const CommentItemComponent = ({
           variant="label1M"
           className="mb-2 text-gray-700"
         >
-          신고 처리된 댓글 입니다.
+          신고된 댓글입니다.
         </Typography>
         {comment.createdAt && (
           <Typography
@@ -940,7 +940,7 @@ const CommentItemComponent = ({
             visibleReplies.map((reply) => {
               const replyId = reply.id || "";
               const replyAuthor = reply.author || COMMENT_ANONYMOUS_NAME;
-              const isReplyReported = (reply.reportsCount ?? 0) >= 3;
+              const isReplyLocked = reply.isLocked === true;
               const isEditingReply = editingCommentId === replyId;
               const isReplyingToThisReply =
                 replyingTo?.commentId === replyId &&
@@ -958,7 +958,7 @@ const CommentItemComponent = ({
               const replyLikeState = getReplyLikeState(replyId);
               const replyIsLiked = replyLikeState.isLiked;
               const replyLikesCount = replyLikeState.likesCount;
-              if (isReplyReported) {
+              if (isReplyLocked) {
                 return (
                   <div key={replyId} className="flex flex-col gap-1">
                     <Typography
@@ -966,7 +966,7 @@ const CommentItemComponent = ({
                       variant="label1M"
                       className="mb-2 text-gray-700"
                     >
-                      신고 처리된 댓글 입니다.
+                      신고된 댓글입니다.
                     </Typography>
                     {comment.createdAt && (
                       <Typography
@@ -1121,52 +1121,48 @@ const CommentItemComponent = ({
                         {reply.content && (
                           <CommentContent content={reply.content} />
                         )}
-                        {!isReplyReported && (
-                          <div className="flex items-center gap-[6px]">
-                            {onStartReplyToReply && (
-                              <button
-                                onClick={() => {
-                                  onStartReplyToReply(replyId, replyAuthor);
-                                }}
-                                className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
-                                type="button"
-                              >
-                                <Typography font="noto" variant="label1R">
-                                  댓글 쓰기
-                                </Typography>
-                              </button>
-                            )}
+                        <div className="flex items-center gap-[6px]">
+                          {onStartReplyToReply && (
                             <button
                               onClick={() => {
-                                handleReplyLike(replyId);
+                                onStartReplyToReply(replyId, replyAuthor);
                               }}
-                              className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
+                              className="flex items-center rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
                               type="button"
                             >
-                              <Heart
-                                className={cn(
-                                  "h-4 w-4 transition-colors",
-                                  replyIsLiked
-                                    ? "fill-main-500 text-main-500"
-                                    : "text-gray-600"
-                                )}
-                                fill={replyIsLiked ? "currentColor" : "none"}
-                              />
-                              <Typography
-                                font="noto"
-                                variant="label1R"
-                                className={cn(
-                                  "transition-colors",
-                                  replyIsLiked
-                                    ? "text-main-500"
-                                    : "text-gray-600"
-                                )}
-                              >
-                                {replyLikesCount}
+                              <Typography font="noto" variant="label1R">
+                                댓글 쓰기
                               </Typography>
                             </button>
-                          </div>
-                        )}
+                          )}
+                          <button
+                            onClick={() => {
+                              handleReplyLike(replyId);
+                            }}
+                            className="flex items-center gap-1 rounded-sm border border-gray-200 px-2 py-1 text-gray-600 transition-opacity hover:text-gray-800 hover:opacity-80"
+                            type="button"
+                          >
+                            <Heart
+                              className={cn(
+                                "h-4 w-4 transition-colors",
+                                replyIsLiked
+                                  ? "fill-main-500 text-main-500"
+                                  : "text-gray-600"
+                              )}
+                              fill={replyIsLiked ? "currentColor" : "none"}
+                            />
+                            <Typography
+                              font="noto"
+                              variant="label1R"
+                              className={cn(
+                                "transition-colors",
+                                replyIsLiked ? "text-main-500" : "text-gray-600"
+                              )}
+                            >
+                              {replyLikesCount}
+                            </Typography>
+                          </button>
+                        </div>
                       </>
                     )}
                     {/* 댓글에 대한 댓글 입력창 */}
