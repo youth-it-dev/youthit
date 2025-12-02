@@ -15,7 +15,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   const [isChecking, setIsChecking] = useState(true);
 
   // FCM 토큰 관리 (로그인된 사용자만)
-  // useFcmToken();
+  useFcmToken();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange((user) => {
