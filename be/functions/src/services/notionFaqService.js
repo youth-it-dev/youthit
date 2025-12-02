@@ -4,6 +4,7 @@ const {
   getCreatedTimeValue,
   getLastEditedTimeValue,
 } = require("../utils/notionHelper");
+const faqService = require("./faqService");
 
 const {
   NOTION_API_KEY,
