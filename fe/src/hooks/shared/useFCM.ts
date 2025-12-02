@@ -2,6 +2,7 @@
  * @description FCM 토큰 관리 훅
  */
 import { useCallback } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { fetchToken } from "@/lib/firebase";
 import { auth } from "@/lib/firebase";
 import {
@@ -12,6 +13,28 @@ import {
 } from "@/types/shared/fcm";
 import { debug } from "@/utils/shared/debugger";
 import { useSaveFCMToken } from "./useSaveFCMToken";
+
+/**
+ * @description Firebase Auth가 초기화될 때까지 대기
+ *
+ * redirect 직후나 최초 로그인 직후에는 auth.currentUser가 잠시 null일 수 있어
+ * 이 경우 FCM 토큰 등록이 조기에 종료되면서 권한 팝업이 표시되지 않는 문제가 발생할 수 있습니다.
+ * onAuthStateChanged 리스너로 최대 1초까지 초기화를 기다린 뒤 다시 currentUser를 확인합니다.
+ */
+const waitForAuthReady = async (): Promise<void> => {
+  await new Promise<void>((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, () => {
+      unsubscribe();
+      resolve();
+    });
+
+    // 안전장치: 1초가 지나도 콜백이 오지 않으면 그대로 진행
+    setTimeout(() => {
+      unsubscribe();
+      resolve();
+    }, 1000);
+  });
+};
 
 /**
  * @description 알림 권한 요청
@@ -114,7 +137,13 @@ export const useFCM = () => {
   const registerFCMToken = useCallback(async (): Promise<FCMTokenResult> => {
     try {
       // 0. 사용자 인증 상태 확인
-      const user = auth.currentUser;
+      //    redirect 직후에는 currentUser가 바로 설정되지 않을 수 있으므로 한 번 더 대기
+      let user = auth.currentUser;
+      if (!user) {
+        await waitForAuthReady();
+        user = auth.currentUser;
+      }
+
       if (!user) {
         return {
           token: null,
