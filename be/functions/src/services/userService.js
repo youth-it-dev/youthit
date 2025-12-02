@@ -1,6 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const {admin, db} = require("../config/database");
 const FirestoreService = require("./firestoreService");
+const {isAdminUser} = require("../utils/helpers");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
 const {isValidPhoneNumber, normalizeKoreanPhoneNumber, formatDate} = require("../utils/helpers");
@@ -1128,6 +1129,115 @@ class UserService {
    */
   async getMyCommunities(userId, status = "ongoing") {
     try {
+      // Admin 사용자는 모든 커뮤니티 반환
+      const isAdmin = await isAdminUser(userId);
+      if (isAdmin) {
+        const allCommunities = await this.firestoreService.getCollection("communities");
+        const PROGRAM_TYPE_ALIASES = {
+          ROUTINE: ["ROUTINE", "한끗루틴", "루틴"],
+          GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
+          TMI: ["TMI", "티엠아이"],
+        };
+
+        const normalizeProgramType = (value) => {
+          if (!value || typeof value !== "string") {
+            return null;
+          }
+          const trimmed = value.trim();
+          const upper = trimmed.toUpperCase();
+
+          for (const [programType, aliases] of Object.entries(PROGRAM_TYPE_ALIASES)) {
+            if (aliases.some((alias) => {
+              if (typeof alias !== "string") return false;
+              const aliasTrimmed = alias.trim();
+              return aliasTrimmed === trimmed || aliasTrimmed.toUpperCase() === upper;
+            })) {
+              return programType;
+            }
+          }
+
+          return null;
+        };
+
+        const programTypeMapping = {
+          ROUTINE: {key: "routine", label: "한끗루틴"},
+          GATHERING: {key: "gathering", label: "월간 소모임"},
+          TMI: {key: "tmi", label: "TMI"},
+        };
+
+        const toDate = (value) => {
+          if (!value) return null;
+          if (typeof value.toDate === "function") {
+            try {
+              return value.toDate();
+            } catch (_) {
+              return null;
+            }
+          }
+          if (value instanceof Date) {
+            return value;
+          }
+          try {
+            return new Date(value);
+          } catch (_) {
+            return null;
+          }
+        };
+
+        const resolveProgramState = (community) => {
+          if (!community) return null;
+          const startDate = toDate(community.startDate);
+          const endDate = toDate(community.endDate);
+          const now = new Date();
+
+          if (startDate && endDate) {
+            if (now < startDate) {
+              return "ongoing"; // 시작 전이지만 "ongoing"으로 표시
+            } else if (now >= startDate && now <= endDate) {
+              return "ongoing";
+            } else {
+              return "finished";
+            }
+          } else if (startDate) {
+            return now >= startDate ? "ongoing" : "ongoing";
+          } else if (endDate) {
+            return now <= endDate ? "ongoing" : "finished";
+          }
+          return "ongoing";
+        };
+
+        const grouped = {
+          "routine": {label: "한끗루틴", items: []},
+          "gathering": {label: "월간 소모임", items: []},
+          "tmi": {label: "TMI", items: []}
+        };
+
+        allCommunities.forEach((community) => {
+          const programType = normalizeProgramType(community.programType);
+          const communityState = resolveProgramState(community);
+          
+          const statusToCheck = status === "completed" ? "finished" : status;
+          
+          if (statusToCheck === "ongoing" && communityState !== "ongoing") {
+            return;
+          }
+          if (statusToCheck === "finished" && communityState !== "finished") {
+            return;
+          }
+
+          if (programType && programTypeMapping[programType]) {
+            const mapping = programTypeMapping[programType];
+            grouped[mapping.key].items.push({
+              id: community.id,
+              name: community.name,
+              status: "approved", // Admin은 members에 없으므로 기본값으로 "approved" 설정
+            });
+          }
+        });
+
+        return grouped;
+      }
+
       const tempService = new FirestoreService("temp");
 
       let allMembers = [];

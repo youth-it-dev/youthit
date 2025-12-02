@@ -3,6 +3,7 @@ const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const UserService = require("./userService");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
+const {isAdminUser} = require("../utils/helpers");
 
 /**
  * Comment Service (비즈니스 로직 계층)
@@ -112,22 +113,48 @@ class CommentService {
         const isPrivatePost = post.isPublic === false;
 
         if (isPrivatePost) {
-          const members = await this.firestoreService.getCollectionWhere(
-            `communities/${communityId}/members`,
-            "userId",
-            "==",
-            userId
-          );
-          const memberData = members && members[0];
+          // Admin 사용자는 비공개 게시글에도 댓글 작성 가능
+          const isAdmin = await isAdminUser(userId);
+          
+          if (isAdmin) {
+            // Admin은 members에 없어도 users/nicknames에서 조회
+            if (programType === CommentService.PROGRAM_TYPES.TMI) {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              author = userProfile?.name || "익명";
+            } else {
+              const nicknames = await this.firestoreService.getCollectionWhere(
+                "nicknames",
+                "uid",
+                "==",
+                userId
+              );
+              const nicknameDoc = nicknames && nicknames[0];
+              if (nicknameDoc) {
+                author = nicknameDoc.id || nicknameDoc.nickname || "익명";
+              } else {
+                const userProfile = await this.firestoreService.getDocument("users", userId);
+                author = userProfile?.name || "익명";
+              }
+            }
+          } else {
+            // 일반 사용자는 members에서 조회
+            const members = await this.firestoreService.getCollectionWhere(
+              `communities/${communityId}/members`,
+              "userId",
+              "==",
+              userId
+            );
+            const memberData = members && members[0];
 
-          if (programType === CommentService.PROGRAM_TYPES.TMI) {
-            const userProfile = await this.firestoreService.getDocument("users", userId);
-            author =
-              userProfile?.name ||
-              memberData?.nickname ||
-              "익명";
-          } else if (memberData) {
-            author = memberData.nickname || "익명";
+            if (programType === CommentService.PROGRAM_TYPES.TMI) {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              author =
+                userProfile?.name ||
+                memberData?.nickname ||
+                "익명";
+            } else if (memberData) {
+              author = memberData.nickname || "익명";
+            }
           }
         } else {
           const members = await this.firestoreService.getCollectionWhere(

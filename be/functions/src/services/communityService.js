@@ -3,6 +3,7 @@ const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
+const {isAdminUser} = require("../utils/helpers");
 
 const PROGRAM_TYPES = {
   ROUTINE: "ROUTINE",
@@ -237,6 +238,13 @@ class CommunityService {
     }
 
     try {
+      // Admin 사용자는 모든 커뮤니티에 접근 가능
+      const isAdmin = await isAdminUser(userId);
+      if (isAdmin) {
+        const allCommunities = await this.firestoreService.getCollection("communities");
+        return new Set(allCommunities.map(c => c.id).filter(Boolean));
+      }
+
       const membershipIds = new Set();
       const membershipService = this.firestoreService;
       const pageSize = 100;
@@ -643,12 +651,36 @@ class CommunityService {
         }
         return true;
       };
-      const canViewPost = (post) => {
+      const canViewPost = async (post) => {
         if (resolveIsPublic(post)) return true;
         if (!viewerId) return false;
         if (!post.communityId) return false;
-        const allowed = membershipIds.has(post.communityId);
-        return allowed;
+        // Admin 사용자는 모든 게시글 조회 가능
+        const isAdmin = await isAdminUser(viewerId);
+        if (isAdmin) return true;
+        
+        // 비공개 게시글은 approved 멤버만 조회 가능
+        if (!membershipIds.has(post.communityId)) {
+          return false;
+        }
+        
+        // 해당 커뮤니티의 멤버 status 확인
+        try {
+          const members = await this.firestoreService.getCollectionWhere(
+            `communities/${post.communityId}/members`,
+            "userId",
+            "==",
+            viewerId
+          );
+          const memberData = members && members[0];
+          if (memberData && memberData.status === "approved") {
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.warn("[COMMUNITY] 멤버 status 확인 실패:", error.message);
+          return false;
+        }
       };
 
       const postsService = new FirestoreService();
@@ -713,7 +745,7 @@ class CommunityService {
                 ? communityCache.get(post.communityId)
                 : null;
             
-            if (canViewPost(post) && matchesFilter(post, community)) {
+            if (await canViewPost(post) && matchesFilter(post, community)) {
               allAccessiblePosts.push(post);
             }
           }
@@ -830,7 +862,7 @@ class CommunityService {
               post.communityId && communityCache.has(post.communityId)
                 ? communityCache.get(post.communityId)
                 : null;
-            if (canViewPost(post) && matchesFilter(post, community)) {
+            if (await canViewPost(post) && matchesFilter(post, community)) {
               accessibleCount += 1;
 
               if (accessibleCount > startIndex && pagePosts.length < size) {
@@ -1185,28 +1217,61 @@ class CommunityService {
 
       let author = "익명"; 
       try {
-        const members = await this.firestoreService.getCollectionWhere(
-          `communities/${communityId}/members`,
-          "userId",
-          "==",
-          userId
-        );
-        const memberData = members && members[0];
-        if (memberData) {
-          if (resolvedProgramType === PROGRAM_TYPES.TMI) {
-            // TMI 타입: users 컬렉션에서 name 가져오기
-            try {
-              const userProfile = await this.firestoreService.getDocument("users", userId);
+        const isAdmin = await isAdminUser(userId);
+        
+        if (isAdmin) {
+          // Admin 사용자는 members에 없어도 users 컬렉션에서 닉네임 조회
+          try {
+            const userProfile = await this.firestoreService.getDocument("users", userId);
+            if (resolvedProgramType === PROGRAM_TYPES.TMI) {
               author = userProfile?.name || "익명";
-            } catch (userError) {
-              console.warn("[COMMUNITY][createPost] 사용자 정보 조회 실패", {
-                userId,
-                error: userError.message,
-              });
-              author = "익명";
+            } else {
+              // Admin의 경우 nicknames 컬렉션에서 조회
+              const nicknames = await this.firestoreService.getCollectionWhere(
+                "nicknames",
+                "uid",
+                "==",
+                userId
+              );
+              const nicknameDoc = nicknames && nicknames[0];
+              if (nicknameDoc) {
+                author = nicknameDoc.id || nicknameDoc.nickname || "익명";
+              } else {
+                author = userProfile?.name || "익명";
+              }
             }
-          } else {
-            author = memberData.nickname || "익명";
+          } catch (userError) {
+            console.warn("[COMMUNITY][createPost] Admin 사용자 정보 조회 실패", {
+              userId,
+              error: userError.message,
+            });
+            author = "익명";
+          }
+        } else {
+          // 일반 사용자는 members에서 조회
+          const members = await this.firestoreService.getCollectionWhere(
+            `communities/${communityId}/members`,
+            "userId",
+            "==",
+            userId
+          );
+          const memberData = members && members[0];
+          if (memberData) {
+            if (resolvedProgramType === PROGRAM_TYPES.TMI) {
+              // TMI 타입: users 컬렉션에서 name 가져오기
+              try {
+                const userProfile = await this.firestoreService.getDocument("users", userId);
+                author = userProfile?.name || "익명";
+              } catch (userError) {
+                console.warn("[COMMUNITY][createPost] 사용자 정보 조회 실패", {
+                  userId,
+                  error: userError.message,
+                });
+                author = "익명";
+              }
+            } else {
+              author = memberData.nickname || "익명";
+            }
           }
         }
       } catch (memberError) {
@@ -1369,6 +1434,48 @@ class CommunityService {
 
       // 커뮤니티 정보 추가
       const community = await this.firestoreService.getDocument("communities", communityId);
+
+      // 비공개 게시글 권한 체크
+      const isPublic = typeof post.isPublic === "boolean" ? post.isPublic : true;
+      if (!isPublic && viewerId) {
+        const isAdmin = await isAdminUser(viewerId);
+        if (!isAdmin) {
+          const membershipIds = await this.getUserCommunityIds(viewerId);
+          if (!membershipIds.has(communityId)) {
+            const error = new Error("Post not found");
+            error.code = "NOT_FOUND";
+            throw error;
+          }
+          
+          // 비공개 게시글은 approved 멤버만 조회 가능
+          try {
+            const members = await this.firestoreService.getCollectionWhere(
+              `communities/${communityId}/members`,
+              "userId",
+              "==",
+              viewerId
+            );
+            const memberData = members && members[0];
+            if (!memberData || memberData.status !== "approved") {
+              const error = new Error("Post not found");
+              error.code = "NOT_FOUND";
+              throw error;
+            }
+          } catch (error) {
+            if (error.code === "NOT_FOUND") {
+              throw error;
+            }
+            console.warn("[COMMUNITY] 멤버 status 확인 실패:", error.message);
+            const notFoundError = new Error("Post not found");
+            notFoundError.code = "NOT_FOUND";
+            throw notFoundError;
+          }
+        }
+      } else if (!isPublic && !viewerId) {
+        const error = new Error("Post not found");
+        error.code = "NOT_FOUND";
+        throw error;
+      }
 
       const {authorId, ...postWithoutAuthorId} = post;
       const resolvedProgramType =
