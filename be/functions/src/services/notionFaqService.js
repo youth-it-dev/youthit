@@ -1,5 +1,9 @@
 const { Client } = require("@notionhq/client");
-const faqService = require("./faqService");
+const {
+  getTitleValue,
+  getCreatedTimeValue,
+  getLastEditedTimeValue,
+} = require("../utils/notionHelper");
 
 const {
   NOTION_API_KEY,
@@ -213,6 +217,7 @@ class NotionFaqService {
 
   /**
    * Relation 필터를 사용하여 포맷팅된 FAQ 목록 조회
+   * notion-client로 recordMap을 가져와서 react-notion-x에서 사용할 수 있도록 반환
    * @param {Object} options - queryPagesByRelation과 동일 + pageSize/startCursor
    * @returns {Promise<{faqs: Object[], hasMore: boolean, nextCursor: string|null}>}
    */
@@ -228,31 +233,71 @@ class NotionFaqService {
       };
     }
 
-    // 블록 병렬 조회
-    const blockPromises = pages.map((page) =>
-      faqService.getPageBlocks({ pageId: page.id }),
-    );
-    const blockResults = await Promise.allSettled(blockPromises);
+    // 디버깅: 첫 번째 페이지 구조 확인
+    if (pages.length > 0) {
+      console.log(
+        "[NotionFaqService] 첫 번째 FAQ 페이지 구조:",
+        JSON.stringify(
+          {
+            id: pages[0].id,
+            object: pages[0].object,
+            properties: pages[0].properties ? Object.keys(pages[0].properties) : [],
+          },
+          null,
+          2,
+        ),
+      );
+    }
 
-    const faqs = pages.map((page, index) => {
-      let blocks = [];
-      const blocksResult = blockResults[index];
-
-      if (blocksResult && blocksResult.status === "fulfilled") {
-        const raw = blocksResult.value;
-        blocks = Array.isArray(raw.results) ? raw.results : [];
-      } else if (blocksResult && blocksResult.status === "rejected") {
-        console.warn(
-          `[NotionFaqService] FAQ 블록 조회 실패 (Relation 기반) - pageId: ${
-            page.id
-          }, reason: ${
-            blocksResult.reason && blocksResult.reason.message
-          }`,
-        );
-      }
-
-      return faqService.formatFaqData(page, blocks);
+    // notion-client로 각 FAQ의 recordMap 가져오기 (홈 화면과 동일)
+    const { NotionAPI } = await import("notion-client");
+    const notionClient = new NotionAPI({
+      authToken: NOTION_API_KEY,
     });
+
+    // 각 FAQ의 recordMap 병렬 조회
+    const recordMapPromises = pages.map((page) => {
+      const pageId = page.id;
+      console.log(
+        `[NotionFaqService] FAQ recordMap 조회 시도 - pageId: ${pageId}`,
+      );
+      return notionClient.getPage(pageId).catch((error) => {
+        console.warn(
+          `[NotionFaqService] FAQ recordMap 조회 실패 - pageId: ${pageId}, reason: ${error.message}`,
+        );
+        return null;
+      });
+    });
+    const recordMapResults = await Promise.allSettled(recordMapPromises);
+
+    const faqs = pages
+      .map((page, index) => {
+        const recordMapResult = recordMapResults[index];
+        const recordMap =
+          recordMapResult.status === "fulfilled"
+            ? recordMapResult.value
+            : null;
+
+        if (!recordMap) {
+          return null;
+        }
+
+        // FAQ 제목 추출
+        const props = page.properties || {};
+        const title = getTitleValue(props["FAQ"]) || "";
+
+        return {
+          id: page.id,
+          title,
+          recordMap, // 프론트에서 NotionRenderer로 바로 사용
+          createdAt:
+            getCreatedTimeValue(props["생성일"]) || page.created_time,
+          updatedAt:
+            getLastEditedTimeValue(props["수정일"]) ||
+            page.last_edited_time,
+        };
+      })
+      .filter((faq) => faq !== null);
 
     return {
       faqs,

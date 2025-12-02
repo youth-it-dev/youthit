@@ -130,7 +130,7 @@ class FaqService {
     const props = pageData.properties;
     
     const title = getTitleValue(props["FAQ"]);
-
+    
     return {
       id: pageData.id,
       title,
