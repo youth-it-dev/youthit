@@ -49,10 +49,13 @@ export type TGETMissionsFaqsByIdRes = {
   faqs?: {
     id?: string;
     title?: string;
-    category?: string[];
-    content?: any[];
+    recordMap?: Record<string, any>;
+    createdAt?: string;
+    updatedAt?: string;
   }[];
   count?: number;
+  hasMore?: boolean;
+  nextCursor?: string;
 };
 
 export interface TPOSTMissionsLikeByIdReq {
@@ -135,7 +138,11 @@ export type TGETMissionsPostsRes = {
     };
     mediaCount?: number;
     commentsCount?: number;
+    likesCount?: number;
     viewCount?: number;
+    categories?: string[];
+    isLocked?: boolean;
+    isLiked?: boolean;
     createdAt?: string;
     timeAgo?: string;
   }[];
@@ -152,6 +159,7 @@ export interface TGETMissionsPostsByIdReq {
 
 export type TGETMissionsPostsByIdRes = {
   id?: string;
+  authorId?: string;
   title?: string;
   content?: string;
   media?: string[];
@@ -160,11 +168,14 @@ export type TGETMissionsPostsByIdRes = {
   author?: string;
   profileImageUrl?: string;
   commentsCount?: number;
+  likesCount?: number;
   viewCount?: number;
+  isLocked?: boolean;
   createdAt?: string;
   updatedAt?: string;
   timeAgo?: string;
   isAuthor?: boolean;
+  isLiked?: boolean;
 };
 
 export interface TGETMissionsPostsCommentsByIdReq {
@@ -238,6 +249,7 @@ export type TPOSTMissionsPostsCommentsByIdRes = {
   depth?: number;
   likesCount?: number;
   isLocked?: boolean;
+  isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -262,9 +274,11 @@ export type TPUTMissionsPostsCommentsByTwoIdsRes = {
   author?: string;
   content?: string;
   parentId?: string;
+  parentAuthor?: string;
   depth?: number;
   likesCount?: number;
   isLocked?: boolean;
+  isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };

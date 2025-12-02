@@ -340,6 +340,7 @@ export interface CommunityPost {
   type?: string;
   programType?: "ROUTINE" | "GATHERING" | "TMI";
   author?: string;
+  authorId?: string;
   title?: string;
   content?: string;
   media?: string[];
