@@ -265,6 +265,48 @@ class UserService {
   }
 
   /**
+   * 알림 설정 토글
+   * - pushTermsAgreed 필드를 현재 값의 반대로 변경
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<Object>} 업데이트된 사용자 정보
+   */
+  async togglePushNotification(uid) {
+    try {
+      // 현재 사용자 정보 조회
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const e = new Error("사용자를 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      // 현재 pushTermsAgreed 값 확인 및 토글
+      const currentValue = user.pushTermsAgreed === true;
+      const newValue = !currentValue;
+
+      // 업데이트
+      const updatePayload = {
+        pushTermsAgreed: newValue,
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      };
+
+      await this.firestoreService.update(uid, updatePayload);
+
+      // 업데이트된 사용자 정보 반환
+      const updatedUser = await this.firestoreService.getById(uid);
+      return updatedUser;
+    } catch (error) {
+      console.error("알림 설정 토글 에러:", error.message);
+      if (error.code) {
+        throw error;
+      }
+      const e = new Error("알림 설정을 변경할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
+
+  /**
    * 사용자 삭제 (Firebase Auth + Firestore)
    * @param {string} uid
    * @return {Promise<void>}

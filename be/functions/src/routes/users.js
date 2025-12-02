@@ -1364,6 +1364,55 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
 
 /**
  * @swagger
+ * /users/me/push-notification-toggle:
+ *   post:
+ *     summary: 알림 설정 토글
+ *     description: |
+ *       사용자의 푸시 알림 동의 설정을 토글합니다.
+ *       - pushTermsAgreed가 true이면 false로 변경
+ *       - pushTermsAgreed가 false이면 true로 변경
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 알림 설정 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/StandardResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         pushTermsAgreed:
+ *                           type: boolean
+ *                           example: true
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/me/push-notification-toggle", authGuard, userController.togglePushNotification);
+
+/**
+ * @swagger
  * /users:
  *   get:
  *     summary: 모든 사용자 조회 (인증 필요)

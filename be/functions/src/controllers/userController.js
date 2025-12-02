@@ -389,6 +389,23 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 알림 설정 토글 API
+   * - pushTermsAgreed 필드를 현재 값의 반대로 변경
+   */
+  async togglePushNotification(req, res, next) {
+    try {
+      const {uid} = req.user;
+      
+      const user = await userService.togglePushNotification(uid);
+      
+      // pushTermsAgreed 필드만 반환
+      return res.success({ pushTermsAgreed: user.pushTermsAgreed });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();
