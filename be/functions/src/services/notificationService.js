@@ -27,7 +27,7 @@ const NOTION_FIELDS = {
   MEMBER_MANAGEMENT: '회원 관리',
   SEND_STATUS: '전송 상태',
   USER_ID: '사용자ID',
-  LAST_PAYMENT_DATE: '가장 최근에 지급한 일시',
+  LAST_PAYMENT_DATE: '전송 일시',
   PAYMENT_RESULT: '지급 결과',
   EXPIRATION_DATE: '만료 기한',
   SELECTED: '선택',
@@ -914,7 +914,7 @@ class NotificationService {
   }
 
   /**
-   * "가장 최근에 지급한 일시" 필드 업데이트
+   * "전송 일시" 필드 업데이트
    * @param {string} pageId - Notion 페이지 ID
    * @return {Promise<void>}
    */
@@ -932,7 +932,7 @@ class NotificationService {
         },
       });
     } catch (error) {
-      console.error("가장 최근에 지급한 일시 업데이트 실패:", error.message);
+      console.error("전송 일시 업데이트 실패:", error.message);
     }
   }
 
