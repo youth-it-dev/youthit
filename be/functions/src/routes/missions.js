@@ -1788,8 +1788,8 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *                             description: FAQ 제목
  *                           recordMap:
  *                             type: object
- *                             description: react-notion-x에서 사용할 수 있는 recordMap 형식의 FAQ 내용
- *                             additionalProperties: true
+ *                             description: NotionRenderer에서 사용할 recordMap 데이터
+ *                             nullable: true
  *                           createdAt:
  *                             type: string
  *                             format: date-time
@@ -1801,16 +1801,16 @@ router.get("/:missionId", optionalAuth, missionController.getMissionById);
  *                     count:
  *                       type: integer
  *                       description: FAQ 개수
- *                       example: 3
+ *                       example: 8
  *                     hasMore:
  *                       type: boolean
- *                       description: 추가 FAQ 존재 여부
+ *                       description: 다음 페이지 존재 여부
  *                       example: false
  *                     nextCursor:
  *                       type: string
  *                       nullable: true
- *                       description: 다음 페이지 커서 (hasMore가 true일 때만 존재)
- *                       example: null
+ *                       description: 다음 페이지를 위한 커서
+ *                       example: "2a645f52-4cd0-80f3-b9b2-c796ab907c02"
  *       400:
  *         description: 잘못된 요청 (미션 ID 누락)
  *         content:
