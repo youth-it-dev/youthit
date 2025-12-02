@@ -191,6 +191,16 @@ class NotionUserService {
               "관리자 타입": {
                 checkbox: user.userType === "admin"
               },
+              "이벤트 및 홍보 동의": {
+                select: {
+                  name:
+                    user.marketingTermsAgreed === true
+                      ? "동의"
+                      : user.marketingTermsAgreed === false
+                      ? "거부"
+                      : "미설정",
+                },
+              },
             };
       
             // Upsert: 기존 페이지가 있으면 업데이트, 없으면 생성
@@ -578,6 +588,16 @@ async syncAllUserAccounts() {
             "동기화 시간": { date: { start: lastUpdatedIso.toISOString() } },
             "관리자 타입": {
               checkbox: user.userType === "admin"
+            },
+            "이벤트 및 홍보 동의": {
+              select: {
+                name:
+                  user.marketingTermsAgreed === true
+                    ? "동의"
+                    : user.marketingTermsAgreed === false
+                    ? "거부"
+                    : "미설정",
+              },
             },
           };
 
@@ -1160,6 +1180,10 @@ async syncSelectedUsers() {
         pushTermsAgreed = false;
       }
 
+      // 이벤트 및 홍보 동의
+      const marketingTermsSelect = props["이벤트 및 홍보 동의"]?.select?.name || "";
+      const marketingTermsAgreed = marketingTermsSelect === "동의" ? true : false;
+
       // 성별 매핑
       const genderSelect = props["성별"]?.select?.name || "";
       let gender = undefined;
@@ -1192,6 +1216,9 @@ async syncSelectedUsers() {
       if (email) updateData.email = email;
       if (pushTermsAgreed !== undefined) updateData.pushTermsAgreed = pushTermsAgreed;
       if (gender) updateData.gender = gender;
+
+      // 이벤트 및 홍보 동의 필드 처리
+      updateData.marketingTermsAgreed = marketingTermsAgreed;
       
       // 날짜 필드 처리
       if (createdAtDate) {
@@ -1214,7 +1241,7 @@ async syncSelectedUsers() {
         continue;
       }
 
-      // lastUpdated 업데이트
+      // lastUpdated 업데이트 (lastUpdated : 노션 동기화 시간, lastUpdatedAt : PWA에서 갱신한 시간)
       const now = new Date();
       updateData.lastUpdated = now;
 
@@ -1753,6 +1780,10 @@ async syncSelectedUsers() {
             pushTermsAgreed = false;
           }
 
+          // 이벤트 및 홍보 동의
+          const marketingTermsSelect = props["이벤트 및 홍보 동의"]?.select?.name || "";
+          const marketingTermsAgreed = marketingTermsSelect === "동의" ? true : false;
+
           // 성별 매핑
           const genderSelect = props["성별"]?.select?.name || "";
           let gender = undefined;
@@ -1787,6 +1818,9 @@ async syncSelectedUsers() {
           if (email) updateData.email = email;
           if (pushTermsAgreed !== undefined) updateData.pushTermsAgreed = pushTermsAgreed;
           if (gender) updateData.gender = gender;
+
+          // 이벤트 및 홍보 동의 필드 처리
+          updateData.marketingTermsAgreed = marketingTermsAgreed;
           
           // 날짜 필드 처리
           if (createdAtDate) {
