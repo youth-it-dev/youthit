@@ -135,19 +135,27 @@ export const getNextDay5AM = (startedAt: string | Date): Date => {
 };
 
 /**
- * 현재 시간 기준으로 내일 새벽 4시 59분의 Date 객체를 반환
- * @returns 내일 새벽 4시 59분의 Date 객체
+ * 현재 시간 기준으로 다음 인증 마감 시간(새벽 4시 59분)의 Date 객체를 반환
+ * - 현재 시간이 새벽 4시 59분 이전이면 → 오늘 새벽 4시 59분
+ * - 현재 시간이 새벽 4시 59분 이후이면 → 내일 새벽 4시 59분
+ * @returns 다음 인증 마감 시간(새벽 4시 59분)의 Date 객체
  */
 export const getTomorrow4AM59 = (): Date => {
-  const tomorrow = new Date();
+  const now = new Date();
+  const target = new Date();
 
-  // 다음날로 이동
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // 오늘 새벽 4시 59분으로 설정
+  target.setHours(4, 59, 0, 0);
 
-  // 새벽 4시 59분으로 설정
-  tomorrow.setHours(4, 59, 0, 0);
+  // 현재 시간이 오늘 새벽 4시 59분 이전이면 오늘 새벽 4시 59분 반환
+  // 현재 시간이 오늘 새벽 4시 59분 이후이면 내일 새벽 4시 59분 반환
+  if (now.getTime() < target.getTime()) {
+    return target;
+  }
 
-  return tomorrow;
+  // 내일로 이동
+  target.setDate(target.getDate() + 1);
+  return target;
 };
 
 /**
