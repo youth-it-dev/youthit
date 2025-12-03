@@ -3,7 +3,6 @@
 import { ChevronRight } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
-import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { cn } from "@/utils/shared/cn";
 
 interface SettingsItemProps {
@@ -14,6 +13,7 @@ interface SettingsItemProps {
   toggle?: {
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
+    disabled?: boolean;
   };
 }
 
@@ -45,15 +45,19 @@ const SettingsItem = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              if (toggle.disabled) return;
               toggle.onCheckedChange(!toggle.checked);
             }}
+            disabled={toggle.disabled}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              toggle.checked ? "bg-main-600" : "bg-gray-300"
+              toggle.checked ? "bg-main-600" : "bg-gray-300",
+              toggle.disabled && "cursor-not-allowed opacity-50"
             )}
             role="switch"
             aria-checked={toggle.checked}
             aria-label={text}
+            aria-disabled={toggle.disabled}
           >
             <span
               className={cn(
@@ -63,14 +67,7 @@ const SettingsItem = ({
             />
           </button>
         )}
-        {showArrow && (
-          <Icon
-            src={IMAGE_URL.ICON.settings.chevronRight.url}
-            width={20}
-            height={20}
-            className="text-gray-400"
-          />
-        )}
+        {showArrow && <ChevronRight className="text-gray-400" />}
       </div>
     </div>
   );

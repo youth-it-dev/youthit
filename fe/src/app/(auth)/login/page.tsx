@@ -270,6 +270,11 @@ const LoginPageContent = () => {
       // 1. 카카오 로그인
       const { kakaoAccessToken, isNewUser } = await signInWithKakao();
 
+      // 1-1. 카카오 액세스 토큰이 있으면 세션에 저장 (신규/기존 회원 공통)
+      if (kakaoAccessToken) {
+        setKakaoAccessToken(kakaoAccessToken);
+      }
+
       // 2. 신규 회원 처리
       if (isNewUser) {
         // 2-0. 신규 회원인데 토큰이 없는 경우 (권한 미동의, 프로바이더 오류 등)
@@ -282,13 +287,10 @@ const LoginPageContent = () => {
           return;
         }
 
-        // 2-1. 카카오 액세스 토큰을 sessionStorage에 저장 (온보딩 페이지에서 사용)
-        setKakaoAccessToken(kakaoAccessToken);
-
-        // 2-2. FCM 토큰 등록 (실패해도 계속 진행)
+        // 2-1. FCM 토큰 등록 (실패해도 계속 진행)
         await registerFCMTokenSafely();
 
-        // 2-3. 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
+        // 2-2. 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
         setIsLoading(false);
         router.replace(LINK_URL.MY_PAGE_EDIT);
       }
