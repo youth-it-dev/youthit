@@ -4,6 +4,7 @@ const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 const {isAdminUser} = require("../utils/helpers");
+const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
 
 const PROGRAM_TYPES = {
   ROUTINE: "ROUTINE",
@@ -1962,13 +1963,15 @@ class CommunityService {
               }
             }
 
+            const link = NOTIFICATION_LINKS.POST(postId, communityId);
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",
               `${likerName}님이 "${post.title}"에 좋아요를 눌렀습니다`,
               "POST_LIKE",
               postId,
-              communityId
+              communityId,
+              link
             ).catch((err) => {
               console.error("게시글 좋아요 알림 전송 실패:", err);
             });
