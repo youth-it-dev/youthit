@@ -1166,8 +1166,8 @@ class UserService {
   /**
    * 내가 참여한 커뮤니티 조회를 status 기준으로 필터링
    * @param {string} userId - 사용자 ID
-   * @param {"ongoing"|"completed"} status - 조회 상태
-   * @return {Promise<Object>} postType별로 그룹화된 커뮤니티 목록
+   * @param {"ongoing"|"completed"|null} status - 조회 상태 (null이면 필터링 없이 모두 반환)
+   * @return {Promise<Object>} postType별로 그룹화된 커뮤니티 목록 (programStatus 필드 포함)
    */
   async getMyCommunities(userId, status = "ongoing") {
     try {
@@ -1258,21 +1258,34 @@ class UserService {
           const programType = normalizeProgramType(community.programType);
           const communityState = resolveProgramState(community);
           
-          const statusToCheck = status === "completed" ? "finished" : status;
-          
-          if (statusToCheck === "ongoing" && communityState !== "ongoing") {
-            return;
-          }
-          if (statusToCheck === "finished" && communityState !== "finished") {
-            return;
+          // status가 null이면 시작 전인 것은 제외
+          if (status === null || status === undefined) {
+            const startDate = toDate(community.startDate);
+            const now = new Date();
+            // 시작 전인 것은 제외
+            if (startDate && startDate > now) {
+              return;
+            }
+          } else {
+            // status가 null이 아니면 필터링
+            const statusToCheck = status === "completed" ? "finished" : status;
+            
+            if (statusToCheck === "ongoing" && communityState !== "ongoing") {
+              return;
+            }
+            if (statusToCheck === "finished" && communityState !== "finished") {
+              return;
+            }
           }
 
           if (programType && programTypeMapping[programType]) {
             const mapping = programTypeMapping[programType];
+            const programStatus = communityState === "finished" ? "completed" : "ongoing";
             grouped[mapping.key].items.push({
               id: community.id,
               name: community.name,
               status: "approved", // Admin은 members에 없으므로 기본값으로 "approved" 설정
+              programStatus: programStatus,
             });
           }
         });
@@ -1440,6 +1453,16 @@ class UserService {
         const startDate = toDate(community.startDate);
         const endDate = toDate(community.endDate);
 
+        // status가 null이면 진행중 + 완료된 것만 반환 (시작 전 제외)
+        if (status === null || status === undefined) {
+          // 시작 전인 것은 제외
+          if (startDate && startDate > now) {
+            return false;
+          }
+          // 나머지는 모두 포함 (진행중 + 완료)
+          return true;
+        }
+
         if (status === "completed") {
           return !!endDate && endDate < now;
         }
@@ -1464,10 +1487,20 @@ class UserService {
 
         if (programType && programTypeMapping[programType]) {
           const typeInfo = programTypeMapping[programType];
+          const startDate = toDate(community.startDate);
+          const endDate = toDate(community.endDate);
+          
+          // programStatus 결정
+          let programStatus = "ongoing";
+          if (endDate && endDate < now) {
+            programStatus = "completed";
+          }
+          
           grouped[typeInfo.key].items.push({
             id: community.id,
             name: community.name,
             status: memberStatusMap[community.id] || null,
+            programStatus: programStatus,
           });
         }
       });
@@ -1485,12 +1518,13 @@ class UserService {
   }
 
   /**
-   * 내가 참여 중인 커뮤니티 조회 (진행 중)
+   * 내가 참여 중인 커뮤니티 조회 (진행 중 + 완료된 커뮤니티 모두 포함)
    * @param {string} userId - 사용자 ID
-   * @return {Promise<Object>}
+   * @return {Promise<Object>} programStatus 필드가 포함된 커뮤니티 목록
    */
   async getMyParticipatingCommunities(userId) {
-    return this.getMyCommunities(userId, "ongoing");
+    // status를 null로 전달하면 필터링 없이 모든 커뮤니티 반환
+    return this.getMyCommunities(userId, null);
   }
 
   /**
