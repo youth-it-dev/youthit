@@ -50,6 +50,8 @@ function sanitizeUrl(urlString) {
  */
 async function fetchKakaoAPI(url, accessToken, options = {}) {
   const {
+    method = "GET",
+    body = null,
     maxRetries = KAKAO_API_MAX_RETRIES,
     retryDelay = KAKAO_API_RETRY_DELAY,
     timeout = KAKAO_API_TIMEOUT,
@@ -68,16 +70,25 @@ async function fetchKakaoAPI(url, accessToken, options = {}) {
       // 타임아웃 설정
       timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      console.log(`[${serviceName}] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${sanitizedUrl}`);
+      console.log(`[${serviceName}] 카카오 API 호출 시도 ${attempt}/${maxRetries}: ${method} ${sanitizedUrl}`);
 
-      // fetch 호출
-      const response = await fetch(url, {
-        method: "GET",
+      // fetch 옵션 구성
+      const fetchOptions = {
+        method,
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
         signal: controller.signal,
-      });
+      };
+
+      // POST 요청일 때 Content-Type과 body 추가
+      if (method === "POST" && body) {
+        fetchOptions.headers["Content-Type"] = "application/x-www-form-urlencoded;charset=utf-8";
+        fetchOptions.body = body;
+      }
+
+      // fetch 호출
+      const response = await fetch(url, fetchOptions);
 
       // 성공
       if (response.ok) {

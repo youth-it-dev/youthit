@@ -1438,9 +1438,23 @@ router.post("/me/push-notification-toggle", authGuard, userController.togglePush
  *     summary: 마케팅 약관 동의/철회 토글
  *     description: |
  *       사용자의 마케팅 약관 동의 설정을 토글합니다.
- *       - marketingTermsAgreed가 true이면 false로 변경 (철회)
- *       - marketingTermsAgreed가 false이면 true로 변경 (동의)
- *       - 카카오 서비스 약관 API와 연동됩니다.
+ *       **동작 방식:**
+ *       - 현재 `marketingTermsAgreed`가 `false` → `true`로 변경 (동의)
+ *       - 현재 `marketingTermsAgreed`가 `true` → `false`로 변경 (철회)
+ *       
+ *       **카카오 API 연동:**
+ *       - 동의: `/v2/user/upgrade/service_terms` API 호출
+ *       - 철회: `/v2/user/revoke/service_terms` API 호출
+ *       - Firestore `marketingTermsAgreed` 필드 자동 동기화
+ *       
+ *       **사용 시나리오:**
+ *       - 사용자가 처음 가입 시 마케팅 약관에 동의하지 않음 (선택 약관)
+ *       - 나중에 앱 내에서 알림/이벤트 수신을 위해 동의
+ *       - 또는 언제든지 동의 철회 가능
+ *       
+ *       **카카오 액세스 토큰:**
+ *       - 프론트엔드에서 Firebase Auth의 카카오 credential에서 가져오기
+ *       - 또는 브라우저 sessionStorage: `sessionStorage.getItem('kakao_access_token')`
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -1455,8 +1469,17 @@ router.post("/me/push-notification-toggle", authGuard, userController.togglePush
  *             properties:
  *               accessToken:
  *                 type: string
- *                 description: 카카오 액세스 토큰
- *                 example: "kakao_access_token_here"
+ *                 description: 카카오 액세스 토큰 (필수)
+ *                 example: "2kaqNx_Zcfbd7t4yefemumvzF3vmW0lFAAAAAQoXAc8AAAGa4wGDLNIOHznOlwLN"
+ *           examples:
+ *             동의요청:
+ *               summary: 마케팅 약관 동의 요청
+ *               value:
+ *                 accessToken: "2kaqNx_Zcfbd7t4yefemumvzF3vmW0lFAAAAAQoXAc8AAAGa4wGDLNIOHznOlwLN"
+ *             철회요청:
+ *               summary: 마케팅 약관 철회 요청
+ *               value:
+ *                 accessToken: "2kaqNx_Zcfbd7t4yefemumvzF3vmW0lFAAAAAQoXAc8AAAGa4wGDLNIOHznOlwLN"
  *     responses:
  *       200:
  *         description: 마케팅 약관 토글 성공
@@ -1474,30 +1497,72 @@ router.post("/me/push-notification-toggle", authGuard, userController.togglePush
  *                           type: boolean
  *                           description: 변경된 마케팅 약관 동의 상태
  *                           example: true
+ *             examples:
+ *               동의성공:
+ *                 summary: 마케팅 약관 동의 성공 (false → true)
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     marketingTermsAgreed: true
+ *               철회성공:
+ *                 summary: 마케팅 약관 철회 성공 (true → false)
+ *                 value:
+ *                   status: 200
+ *                   data:
+ *                     marketingTermsAgreed: false
  *       400:
  *         description: 잘못된 요청 (accessToken 누락)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               토큰누락:
+ *                 summary: 카카오 액세스 토큰 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "INVALID_INPUT: accessToken required"
  *       401:
- *         description: 인증 실패
+ *         description: 인증 실패 (Firebase ID Token 만료 또는 유효하지 않음)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               인증실패:
+ *                 summary: Firebase ID Token 만료
+ *                 value:
+ *                   status: 401
+ *                   message: "토큰이 무효화되었습니다 (로그아웃됨)"
  *       404:
  *         description: 사용자를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               사용자없음:
+ *                 summary: 사용자를 찾을 수 없음
+ *                 value:
+ *                   status: 404
+ *                   message: "사용자를 찾을 수 없습니다"
  *       500:
- *         description: 서버 오류
+ *         description: 서버 오류 또는 카카오 API 오류
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               카카오API오류:
+ *                 summary: 카카오 API 호출 실패
+ *                 value:
+ *                   status: 500
+ *                   message: "카카오 API 호출 실패 (403)"
+ *               서버오류:
+ *                 summary: 서버 내부 오류
+ *                 value:
+ *                   status: 500
+ *                   message: "마케팅 약관 설정을 변경할 수 없습니다"
  */
 router.post("/me/marketing-terms/toggle", authGuard, userController.toggleMarketingTerms);
 
