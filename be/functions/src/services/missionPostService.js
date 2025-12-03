@@ -5,6 +5,7 @@ const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
 const UserService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
+const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
 const {
   parsePageSize,
   sanitizeCursor,
@@ -779,7 +780,7 @@ class MissionPostService {
 
       // 알림 전송 (본인 게시글이 아닌 경우)
       if (post.userId !== userId) {
-        const link = `https://youth-it.vercel.app/community/mission/${postId}`;
+        const link = NOTIFICATION_LINKS.MISSION_POST(postId);
         fcmHelper
           .sendNotification(
             post.userId,
@@ -800,7 +801,7 @@ class MissionPostService {
       if (parentId && parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
         const textOnly = typeof parentComment.content === "string" ? parentComment.content.replace(/<[^>]*>/g, "") : "";
         const previewText = textOnly.length > 10 ? textOnly.substring(0, 10) + "..." : textOnly;
-        const link = `https://youth-it.vercel.app/community/mission/${postId}`;
+        const link = NOTIFICATION_LINKS.MISSION_POST(postId);
 
         fcmHelper
           .sendNotification(
@@ -1432,7 +1433,7 @@ class MissionPostService {
             const likerProfile = await userService.getUserById(userId);
             const likerName = likerProfile?.nickname || "사용자";
 
-            const link = `https://youth-it.vercel.app/community/mission/${postId}`;
+            const link = NOTIFICATION_LINKS.MISSION_POST(postId);
             fcmHelper
               .sendNotification(
                 post.userId,
@@ -1564,7 +1565,7 @@ class MissionPostService {
                 ? commentPreview.substring(0, MissionPostService.MAX_PREVIEW_TEXT_LENGTH) + "..."
                 : commentPreview;
 
-            const link = `https://youth-it.vercel.app/community/mission/${comment.postId}`;
+            const link = NOTIFICATION_LINKS.MISSION_POST(comment.postId);
             fcmHelper
               .sendNotification(
                 comment.userId,

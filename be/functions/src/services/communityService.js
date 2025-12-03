@@ -4,6 +4,7 @@ const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 const {isAdminUser} = require("../utils/helpers");
+const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
 
 const PROGRAM_TYPES = {
   ROUTINE: "ROUTINE",
@@ -1962,7 +1963,7 @@ class CommunityService {
               }
             }
 
-            const link = `https://youth-it.vercel.app/community/post/${postId}?communityId=${communityId}`;
+            const link = NOTIFICATION_LINKS.POST(postId, communityId);
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",

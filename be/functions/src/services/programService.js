@@ -20,6 +20,7 @@ const CommunityService = require('./communityService');
 const { db, FieldValue } = require('../config/database');
 const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
 const fcmHelper = require('../utils/fcmHelper');
+const {NOTIFICATION_LINKS} = require('../constants/urlConstants');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -1163,7 +1164,7 @@ class ProgramService {
             "ANNOUNCEMENT",
             "",
             "",
-            `https://youth-it.vercel.app/programs/${programId}`
+            NOTIFICATION_LINKS.PROGRAM(programId)
           );
           
           console.log(`[ProgramService] 승인 알림 발송 완료 - userId: ${member.userId}, programName: ${programName}`);
