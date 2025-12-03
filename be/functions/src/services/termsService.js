@@ -250,6 +250,92 @@ class TermsService {
     await this.firestoreService.update(uid, update);
     return {success: true};
   }
+
+  /**
+   * 카카오 서비스 약관 동의 API 호출
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<{marketingTermsAgreed: boolean}>}
+   */
+  async agreeMarketingTerms(accessToken, uid) {
+    const agreeUrl = "https://kapi.kakao.com/v2/user/upgrade/service_terms";
+    
+    console.log(`[TermsService] 마케팅 약관 동의 요청 시작 (uid: ${uid})`);
+    
+    try {
+      // 카카오 API 호출 (POST with form data)
+      const response = await fetchKakaoAPI(agreeUrl, accessToken, {
+        method: "POST",
+        maxRetries: KAKAO_API_MAX_RETRIES,
+        retryDelay: KAKAO_API_RETRY_DELAY,
+        timeout: KAKAO_API_TIMEOUT,
+        throwOnError: true,
+        serviceName: "TermsService",
+        body: new URLSearchParams({
+          tags: TERMS_TAGS.MARKETING,
+        }),
+      });
+      
+      const result = await response.json();
+      console.log(`[TermsService] 카카오 약관 동의 API 응답:`, result);
+      
+      // Firestore 업데이트
+      await this.firestoreService.update(uid, {
+        marketingTermsAgreed: true,
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      });
+      
+      console.log(`[TermsService] 마케팅 약관 동의 완료 (uid: ${uid})`);
+      
+      return {marketingTermsAgreed: true};
+    } catch (error) {
+      console.error(`[TermsService] 마케팅 약관 동의 실패 (uid: ${uid}):`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 카카오 서비스 약관 철회 API 호출
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @param {string} uid - 사용자 ID
+   * @return {Promise<{marketingTermsAgreed: boolean}>}
+   */
+  async revokeMarketingTerms(accessToken, uid) {
+    const revokeUrl = "https://kapi.kakao.com/v2/user/revoke/service_terms";
+    
+    console.log(`[TermsService] 마케팅 약관 철회 요청 시작 (uid: ${uid})`);
+    
+    try {
+      // 카카오 API 호출 (POST with form data)
+      const response = await fetchKakaoAPI(revokeUrl, accessToken, {
+        method: "POST",
+        maxRetries: KAKAO_API_MAX_RETRIES,
+        retryDelay: KAKAO_API_RETRY_DELAY,
+        timeout: KAKAO_API_TIMEOUT,
+        throwOnError: true,
+        serviceName: "TermsService",
+        body: new URLSearchParams({
+          tags: TERMS_TAGS.MARKETING,
+        }),
+      });
+      
+      const result = await response.json();
+      console.log(`[TermsService] 카카오 약관 철회 API 응답:`, result);
+      
+      // Firestore 업데이트
+      await this.firestoreService.update(uid, {
+        marketingTermsAgreed: false,
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      });
+      
+      console.log(`[TermsService] 마케팅 약관 철회 완료 (uid: ${uid})`);
+      
+      return {marketingTermsAgreed: false};
+    } catch (error) {
+      console.error(`[TermsService] 마케팅 약관 철회 실패 (uid: ${uid}):`, error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = TermsService;
