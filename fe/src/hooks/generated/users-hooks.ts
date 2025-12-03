@@ -248,6 +248,32 @@ export const useGetUsersMePosts = <TData = Types.TGETUsersMePostsRes>(
   });
 };
 
+export const usePostUsersMePushNotificationToggle = <
+  TContext = unknown,
+  TVariables = void,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postUsersMePushNotificationToggle>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postUsersMePushNotificationToggle>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) =>
+      Api.postUsersMePushNotificationToggle(),
+    ...options,
+  });
+};
+
 export const useGetUsersMeRewardsEarned = <
   TData = Types.TGETUsersMeRewardsEarnedRes,
 >(

@@ -79,6 +79,12 @@ export const getUsersMePosts = (request: Types.TGETUsersMePostsReq) => {
   return get<Types.TGETUsersMePostsRes>(`/users/me/posts`, { params: request });
 };
 
+export const postUsersMePushNotificationToggle = () => {
+  return post<Types.TPOSTUsersMePushNotificationToggleRes>(
+    `/users/me/push-notification-toggle`
+  );
+};
+
 export const getUsersMeRewardsEarned = (
   request: Types.TGETUsersMeRewardsEarnedReq
 ) => {

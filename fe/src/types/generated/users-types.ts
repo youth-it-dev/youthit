@@ -278,6 +278,10 @@ export type TGETUsersMePostsRes = {
   };
 };
 
+export type TPOSTUsersMePushNotificationToggleRes = {
+  pushTermsAgreed?: boolean;
+};
+
 export interface TGETUsersMeRewardsEarnedReq {
   page?: number;
   size?: number;
