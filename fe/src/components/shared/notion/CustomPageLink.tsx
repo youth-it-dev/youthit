@@ -42,10 +42,10 @@ export const CustomPageLink = ({
       );
 
       // 같은 도메인인지 확인 (내부 링크인 경우)
-      // yourdentity 도메인은 모두 내부 링크로 처리
+      // youth-it 도메인은 모두 내부 링크로 처리
       if (
         urlObj.hostname === window.location.hostname ||
-        urlObj.hostname.includes("yourdentity") ||
+        urlObj.hostname.includes("youth-it") ||
         urlObj.hostname.includes("localhost")
       ) {
         // 경로만 추출하여 router.push 사용 (서비스 내 페이지 이동)
@@ -61,10 +61,10 @@ export const CustomPageLink = ({
     }
   };
 
-  // href가 yourdentity 도메인인 경우 내부 링크로 처리
+  // href가 youth-it 도메인인 경우 내부 링크로 처리
   const isInternalLink =
     href &&
-    (href.includes("yourdentity") ||
+    (href.includes("youth-it") ||
       href.includes("localhost") ||
       href.startsWith("/"));
 

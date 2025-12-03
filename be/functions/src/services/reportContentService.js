@@ -492,10 +492,10 @@ async syncReportToNotion(reportData) {
       // 게시글인 경우
       if (missionId) {
         // 미션 인증글
-        contentUrl = `https://yourdentity.vercel.app/community/mission/${targetId}`;
+        contentUrl = `https://youth-it.vercel.app/community/mission/${targetId}`;
       } else if (communityId) {
         // 커뮤니티 게시글
-        contentUrl = `https://yourdentity.vercel.app/community/post/${targetId}?communityId=${communityId}`;
+        contentUrl = `https://youth-it.vercel.app/community/post/${targetId}?communityId=${communityId}`;
       }
     } else if (targetType === 'comment') {
       // 댓글인 경우 - comments 컬렉션에서 postId 가져오기
@@ -507,10 +507,10 @@ async syncReportToNotion(reportData) {
           
           if (missionId && postId) {
             // 미션 댓글
-            contentUrl = `https://yourdentity.vercel.app/community/mission/${postId}`;
+            contentUrl = `https://youth-it.vercel.app/community/mission/${postId}`;
           } else if (postId && communityId) {
             // 커뮤니티 댓글
-            contentUrl = `https://yourdentity.vercel.app/community/post/${postId}?communityId=${communityId}`;
+            contentUrl = `https://youth-it.vercel.app/community/post/${postId}?communityId=${communityId}`;
           }
         }
       } catch (commentError) {

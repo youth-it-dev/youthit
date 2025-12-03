@@ -114,7 +114,7 @@ const homeController = require("../controllers/homeController");
  *                           caption:
  *                             type: string
  *                             description: 이미지/비디오 캡션 (미디어 블록인 경우)
- *                             example: "https://yourdentity.vercel.app/routines"
+ *                             example: "https://youth-it.vercel.app/routines"
  *                           links:
  *                             type: array
  *                             description: 블록에 포함된 링크 목록
@@ -124,11 +124,11 @@ const homeController = require("../controllers/homeController");
  *                                 text:
  *                                   type: string
  *                                   description: 링크 텍스트
- *                                   example: "https://yourdentity.vercel.app/routines"
+ *                                   example: "https://youth-it.vercel.app/routines"
  *                                 url:
  *                                   type: string
  *                                   description: 링크 URL
- *                                   example: "https://yourdentity.vercel.app/routines"
+ *                                   example: "https://youth-it.vercel.app/routines"
  *                             example: []
  *                           checked:
  *                             type: boolean
