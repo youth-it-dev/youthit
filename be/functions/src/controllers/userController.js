@@ -371,24 +371,6 @@ class UserController {
     }
   }
 
-  /**
-   * 사용한 나다움 목록 조회 API (스토어 구매만)
-   */
-  async getRewardsUsed(req, res, next) {
-    try {
-      const {uid} = req.user;
-      const { page = 0, size = 20 } = req.query;
-      
-      const result = await rewardService.getRewardsUsed(uid, {
-        page: parseInt(page),
-        size: parseInt(size),
-      });
-      
-      return res.success(result);
-    } catch (error) {
-      return next(error);
-    }
-  }
 
   /**
    * 알림 설정 토글 API
