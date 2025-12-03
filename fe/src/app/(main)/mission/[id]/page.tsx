@@ -395,6 +395,7 @@ const Page = () => {
       <MissionDetailActionBar
         deadline={getTomorrow4AM59()}
         isLiked={isLiked}
+        isRecruiting={missionData.isRecruiting}
         onLikeClick={async () => {
           if (isLikePending) return;
 
