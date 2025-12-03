@@ -75,6 +75,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   // 프로덕션 환경
   "https://yourdentity.vercel.app",
+  "https://youth-it.vercel.app",
   "https://yourdentity.web.app",
   "https://yourdentity.firebaseapp.com",
   "https://asia-northeast3-youthvoice-2025.cloudfunctions.net",
