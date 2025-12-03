@@ -779,6 +779,7 @@ class MissionPostService {
 
       // 알림 전송 (본인 게시글이 아닌 경우)
       if (post.userId !== userId) {
+        const link = `https://youth-it.vercel.app/community/mission/${postId}`;
         fcmHelper
           .sendNotification(
             post.userId,
@@ -787,7 +788,7 @@ class MissionPostService {
             "COMMENT",
             postId,
             undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
-            "", // link 없음
+            link,
             commentId,
           )
           .catch((error) => {
@@ -799,6 +800,7 @@ class MissionPostService {
       if (parentId && parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
         const textOnly = typeof parentComment.content === "string" ? parentComment.content.replace(/<[^>]*>/g, "") : "";
         const previewText = textOnly.length > 10 ? textOnly.substring(0, 10) + "..." : textOnly;
+        const link = `https://youth-it.vercel.app/community/mission/${postId}`;
 
         fcmHelper
           .sendNotification(
@@ -808,7 +810,7 @@ class MissionPostService {
             "COMMENT",
             postId,
             undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
-            "", // link 없음
+            link,
             commentId,
           )
           .catch((error) => {
@@ -1430,6 +1432,7 @@ class MissionPostService {
             const likerProfile = await userService.getUserById(userId);
             const likerName = likerProfile?.nickname || "사용자";
 
+            const link = `https://youth-it.vercel.app/community/mission/${postId}`;
             fcmHelper
               .sendNotification(
                 post.userId,
@@ -1438,7 +1441,7 @@ class MissionPostService {
                 "POST_LIKE",
                 postId,
                 undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
-                "", // link 없음
+                link,
               )
               .catch((error) => {
                 console.error("[MISSION_POST] 게시글 좋아요 알림 전송 실패:", error);
@@ -1561,6 +1564,7 @@ class MissionPostService {
                 ? commentPreview.substring(0, MissionPostService.MAX_PREVIEW_TEXT_LENGTH) + "..."
                 : commentPreview;
 
+            const link = `https://youth-it.vercel.app/community/mission/${comment.postId}`;
             fcmHelper
               .sendNotification(
                 comment.userId,
@@ -1569,7 +1573,7 @@ class MissionPostService {
                 "COMMENT_LIKE",
                 comment.postId,
                 undefined, // communityId 없음 (미션 인증글은 커뮤니티가 아님)
-                "", // link 없음
+                link,
                 commentId,
               )
               .catch((error) => {

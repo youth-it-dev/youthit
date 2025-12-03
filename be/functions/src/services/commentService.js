@@ -242,6 +242,7 @@ class CommentService {
 
       if (post.authorId !== userId) {
         const commenterName = author !== "익명" ? author : "사용자";
+        const link = `https://youth-it.vercel.app/community/post/${postId}?communityId=${communityId}`;
         fcmHelper.sendNotification(
           post.authorId,
           "새로운 댓글이 달렸습니다",
@@ -249,7 +250,7 @@ class CommentService {
           "COMMENT",
           postId,
           communityId,
-          "",
+          link,
           commentId
         ).catch(error => {
           console.error("댓글 알림 전송 실패:", error);
@@ -269,6 +270,7 @@ class CommentService {
         // author는 이미 게시글 isPublic에 따라 올바르게 설정됨
         const commenterName = author !== "익명" ? author : "사용자";
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
+        const link = `https://youth-it.vercel.app/community/post/${postId}?communityId=${communityId}`;
         fcmHelper.sendNotification(
           parentComment.userId,
           "새로운 답글이 달렸습니다",
@@ -276,7 +278,7 @@ class CommentService {
           "COMMENT",
           postId,
           communityId,
-          "",
+          link,
           commentId
         ).catch(error => {
           console.error("대댓글 알림 전송 실패:", error);
@@ -840,6 +842,7 @@ class CommentService {
                 ? commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
                 : commentPreview;
 
+            const link = `https://youth-it.vercel.app/community/post/${comment.postId}?communityId=${comment.communityId}`;
             fcmHelper
               .sendNotification(
                 comment.userId,
@@ -848,7 +851,7 @@ class CommentService {
                 "COMMENT_LIKE",
                 comment.postId,
                 comment.communityId,
-                "",
+                link,
                 comment.id
               )
               .catch((error) => {

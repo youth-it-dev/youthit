@@ -1962,13 +1962,15 @@ class CommunityService {
               }
             }
 
+            const link = `https://youth-it.vercel.app/community/post/${postId}?communityId=${communityId}`;
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",
               `${likerName}님이 "${post.title}"에 좋아요를 눌렀습니다`,
               "POST_LIKE",
               postId,
-              communityId
+              communityId,
+              link
             ).catch((err) => {
               console.error("게시글 좋아요 알림 전송 실패:", err);
             });
