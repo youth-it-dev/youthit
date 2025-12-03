@@ -1430,6 +1430,77 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
  */
 router.post("/me/push-notification-toggle", authGuard, userController.togglePushNotification);
 
+
+/**
+ * @swagger
+ * /users/me/marketing-terms/toggle:
+ *   post:
+ *     summary: 마케팅 약관 동의/철회 토글
+ *     description: |
+ *       사용자의 마케팅 약관 동의 설정을 토글합니다.
+ *       - marketingTermsAgreed가 true이면 false로 변경 (철회)
+ *       - marketingTermsAgreed가 false이면 true로 변경 (동의)
+ *       - 카카오 서비스 약관 API와 연동됩니다.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accessToken
+ *             properties:
+ *               accessToken:
+ *                 type: string
+ *                 description: 카카오 액세스 토큰
+ *                 example: "kakao_access_token_here"
+ *     responses:
+ *       200:
+ *         description: 마케팅 약관 토글 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/StandardResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         marketingTermsAgreed:
+ *                           type: boolean
+ *                           description: 변경된 마케팅 약관 동의 상태
+ *                           example: true
+ *       400:
+ *         description: 잘못된 요청 (accessToken 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 사용자를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post("/me/marketing-terms/toggle", authGuard, userController.toggleMarketingTerms);
+
 /**
  * @swagger
  * /users:
