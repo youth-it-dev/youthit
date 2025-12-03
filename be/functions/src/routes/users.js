@@ -780,7 +780,7 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  * /users/me/participating-communities:
  *   get:
  *     summary: 내가 참여 중인 커뮤니티 조회
- *     description: 로그인한 사용자가 참여 중인 커뮤니티를 조회합니다.
+ *     description: 로그인한 사용자가 참여 중인 커뮤니티(진행 중 + 완료된 커뮤니티 모두 포함)를 조회합니다.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -823,6 +823,11 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 신청 상태
  *                                 example: "approved"
+ *                               programStatus:
+ *                                 type: string
+ *                                 enum: [ongoing, completed]
+ *                                 description: 프로그램 상태 (ongoing=진행중, completed=종료)
+ *                                 example: "ongoing"
  *                     gathering:
  *                       type: object
  *                       description: 월간 소모임 그룹
@@ -848,6 +853,11 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 신청 상태
  *                                 example: "pending"
+ *                               programStatus:
+ *                                 type: string
+ *                                 enum: [ongoing, completed]
+ *                                 description: 프로그램 상태 (ongoing=진행중, completed=종료)
+ *                                 example: "ongoing"
  *                     tmi:
  *                       type: object
  *                       description: TMI 그룹
@@ -873,6 +883,11 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                                 type: string
  *                                 description: 신청 상태
  *                                 example: "approved"
+ *                               programStatus:
+ *                                 type: string
+ *                                 enum: [ongoing, completed]
+ *                                 description: 프로그램 상태 (ongoing=진행중, completed=종료)
+ *                                 example: "completed"
  *             example:
  *               status: 200
  *               data:
@@ -882,21 +897,25 @@ router.get("/me/commented-posts", authGuard, userController.getMyCommentedPosts)
  *                     - id: "CP:G7C66H69GK"
  *                       name: "15일 동안 음악 일기 쓰기"
  *                       status: "approved"
+ *                       programStatus: "ongoing"
  *                     - id: "CP:ABC123DEF456"
  *                       name: "플래너 작성하기"
  *                       status: "pending"
+ *                       programStatus: "completed"
  *                 gathering:
  *                   label: "월간 소모임"
  *                   items:
  *                     - id: "CP:VYTTZW33IH"
  *                       name: "하루 한조각, 일상 속 퍼즐 찾기"
  *                       status: "approved"
+ *                       programStatus: "ongoing"
  *                 tmi:
  *                   label: "TMI"
  *                   items:
  *                     - id: "CP:I4U3J7TM07"
  *                       name: "TMI 자아탐색"
  *                       status: "pending"
+ *                       programStatus: "completed"
  *       401:
  *         description: 인증 실패
  *         content:
