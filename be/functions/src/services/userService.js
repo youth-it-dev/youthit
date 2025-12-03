@@ -307,6 +307,46 @@ class UserService {
   }
 
   /**
+   * 마케팅 약관 토글
+   * - marketingTermsAgreed 필드를 현재 값의 반대로 변경
+   * - 카카오 서비스 약관 API 연동 (동의/철회)
+   * @param {string} uid - 사용자 ID
+   * @param {string} accessToken - 카카오 액세스 토큰
+   * @return {Promise<{marketingTermsAgreed: boolean}>}
+   */
+  async toggleMarketingTerms(uid, accessToken) {
+    try {
+      // 현재 사용자 정보 조회
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        const e = new Error("사용자를 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      // 현재 marketingTermsAgreed 값 확인
+      const currentValue = user.marketingTermsAgreed === true;
+
+      // 토글: true → false (철회), false → true (동의)
+      if (currentValue) {
+        // 현재 동의 상태 → 철회
+        return await this.termsService.revokeMarketingTerms(accessToken, uid);
+      } else {
+        // 현재 미동의 상태 → 동의
+        return await this.termsService.agreeMarketingTerms(accessToken, uid);
+      }
+    } catch (error) {
+      console.error("마케팅 약관 토글 에러:", error.message);
+      if (error.code) {
+        throw error;
+      }
+      const e = new Error("마케팅 약관 설정을 변경할 수 없습니다");
+      e.code = "INTERNAL_ERROR";
+      throw e;
+    }
+  }
+
+  /**
    * 사용자 삭제 (Firebase Auth + Firestore)
    * @param {string} uid
    * @return {Promise<void>}
