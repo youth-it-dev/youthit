@@ -19,6 +19,7 @@ const FirestoreService = require('./firestoreService');
 const CommunityService = require('./communityService');
 const { db, FieldValue } = require('../config/database');
 const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
+const fcmHelper = require('../utils/fcmHelper');
 
 // 상수 정의
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -1147,6 +1148,27 @@ class ProgramService {
           });
         } catch (notionError) {
           console.warn('[ProgramService] Notion 업데이트 실패:', notionError.message);
+        }
+      }
+
+      if (member.userId) {
+        try {
+          const community = await this.communityService.getCommunityMapping(normalizedProgramId);
+          const programName = community?.name || "프로그램";
+          
+          await fcmHelper.sendNotification(
+            member.userId,
+            "프로그램 신청 승인",
+            `"${programName}" 프로그램 신청이 승인되었습니다.`,
+            "ANNOUNCEMENT",
+            "",
+            "",
+            `https://youth-it.vercel.app/programs/${programId}`
+          );
+          
+          console.log(`[ProgramService] 승인 알림 발송 완료 - userId: ${member.userId}, programName: ${programName}`);
+        } catch (notificationError) {
+          console.warn('[ProgramService] 승인 알림 발송 실패:', notificationError.message);
         }
       }
 
