@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
+import { usersKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
-import { useGetUsersMe } from "@/hooks/generated/users-hooks";
+import {
+  useGetUsersMe,
+  usePostUsersMeMarketingTermsToggle,
+  usePostUsersMePushNotificationToggle,
+} from "@/hooks/generated/users-hooks";
+import { getKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
+import { useThrottle } from "@/utils/shared/useThrottle";
 
 /**
  * @description 설정 페이지
@@ -22,18 +29,41 @@ const SettingsPage = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false);
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [isMarketingConsentEnabled, setIsMarketingConsentEnabled] =
+    useState(false);
 
   const { mutate: logoutMutate } = useLogout();
   const { mutate: deleteAccountMutate, isPending: isDeleting } =
     useDeleteAccount();
+  const { mutate: pushNotificationToggleMutate } =
+    usePostUsersMePushNotificationToggle();
+  const { mutate: marketingTermsToggleMutate } =
+    usePostUsersMeMarketingTermsToggle();
 
   // 사용자 정보 가져오기
-  const { data: userData } = useGetUsersMe({
+  const { data: userData, isLoading: isUsersMeLoading } = useGetUsersMe({
     select: (data) => {
       return data?.user;
     },
   });
+
+  const pushTermsAgreed = userData?.pushTermsAgreed;
+  const marketingTermsAgreed = (
+    userData as { marketingTermsAgreed?: boolean } | undefined
+  )?.marketingTermsAgreed;
+
+  useEffect(() => {
+    if (typeof pushTermsAgreed === "boolean") {
+      setIsNotificationEnabled(pushTermsAgreed);
+    }
+  }, [pushTermsAgreed]);
+
+  useEffect(() => {
+    if (typeof marketingTermsAgreed === "boolean") {
+      setIsMarketingConsentEnabled(marketingTermsAgreed);
+    }
+  }, [marketingTermsAgreed]);
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true);
@@ -135,14 +165,60 @@ const SettingsPage = () => {
 
   const handleHistoryClick = () => {
     // TODO: 나다움 내역 페이지로 이동
-    console.log("나다움 내역 클릭");
+    debug.log("나다움 내역 클릭");
   };
 
-  const handleNotificationToggle = (checked: boolean) => {
+  const handleNotificationToggle = useThrottle((checked: boolean) => {
+    const previousValue = isNotificationEnabled;
     setIsNotificationEnabled(checked);
-    // TODO: 알림 설정 백엔드 API 호출
-    console.log("알림 설정 변경:", checked);
-  };
+
+    pushNotificationToggleMutate(undefined, {
+      onSuccess: (response) => {
+        const nextPushTermsAgreed = response.data?.pushTermsAgreed;
+
+        if (typeof nextPushTermsAgreed === "boolean") {
+          setIsNotificationEnabled(nextPushTermsAgreed);
+        }
+
+        queryClient.invalidateQueries({ queryKey: usersKeys.getUsersMe });
+      },
+      onError: (error) => {
+        debug.error("알림 설정 변경 오류:", error);
+        setIsNotificationEnabled(previousValue);
+      },
+    });
+  }, 2000);
+
+  const handleMarketingConsentToggle = useThrottle((checked: boolean) => {
+    const previousValue = isMarketingConsentEnabled;
+    setIsMarketingConsentEnabled(checked);
+
+    const kakaoAccessToken = getKakaoAccessToken();
+
+    if (!kakaoAccessToken) {
+      setIsMarketingConsentEnabled(previousValue);
+      return;
+    }
+
+    marketingTermsToggleMutate(
+      { data: { accessToken: kakaoAccessToken } },
+      {
+        onSuccess: (response) => {
+          const nextMarketingTermsAgreed = response.data?.marketingTermsAgreed;
+
+          if (typeof nextMarketingTermsAgreed === "boolean") {
+            setIsMarketingConsentEnabled(nextMarketingTermsAgreed);
+          }
+
+          queryClient.invalidateQueries({ queryKey: usersKeys.getUsersMe });
+        },
+        onError: (error) => {
+          debug.error("마케팅 정보 수신 동의 변경 오류:", error);
+          setIsMarketingConsentEnabled(previousValue);
+        },
+      }
+    );
+  }, 2000);
 
   const settingsItems = [
     {
@@ -158,11 +234,21 @@ const SettingsPage = () => {
       showArrow: true,
     },
     {
-      text: "알림 설정",
+      text: "활동 푸시 알림",
       iconUrl: IMAGE_URL.ICON.settings.bell.url,
       toggle: {
         checked: isNotificationEnabled,
         onCheckedChange: handleNotificationToggle,
+        disabled: isUsersMeLoading,
+      },
+    },
+    {
+      text: "마케팅 목적의 개인정보 수집 및 이용 동의 (선택)",
+      iconUrl: IMAGE_URL.ICON.settings.bell.url,
+      toggle: {
+        checked: isMarketingConsentEnabled,
+        onCheckedChange: handleMarketingConsentToggle,
+        disabled: isUsersMeLoading,
       },
     },
     {
