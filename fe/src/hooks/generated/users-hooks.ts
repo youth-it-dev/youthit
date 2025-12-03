@@ -169,6 +169,34 @@ export const useGetUsersMeLikedPosts = <TData = Types.TGETUsersMeLikedPostsRes>(
   });
 };
 
+export const usePostUsersMeMarketingTermsToggle = <
+  TContext = unknown,
+  TVariables = Types.TPOSTUsersMeMarketingTermsToggleReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postUsersMeMarketingTermsToggle>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postUsersMeMarketingTermsToggle>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postUsersMeMarketingTermsToggle(
+        variables as Types.TPOSTUsersMeMarketingTermsToggleReq
+      ),
+    ...options,
+  });
+};
+
 export const useGetUsersMeMyPage = <TData = Types.TGETUsersMeMyPageRes>(
   options?: Omit<
     UseQueryOptions<Types.TGETUsersMeMyPageRes, Error, TData>,

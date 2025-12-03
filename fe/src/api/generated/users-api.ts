@@ -56,6 +56,15 @@ export const getUsersMeLikedPosts = (
   });
 };
 
+export const postUsersMeMarketingTermsToggle = (
+  request: Types.TPOSTUsersMeMarketingTermsToggleReq
+) => {
+  return post<Types.TPOSTUsersMeMarketingTermsToggleRes>(
+    `/users/me/marketing-terms/toggle`,
+    request.data ?? request
+  );
+};
+
 export const getUsersMeMyPage = () => {
   return get<Types.TGETUsersMeMyPageRes>(`/users/me/my-page`);
 };

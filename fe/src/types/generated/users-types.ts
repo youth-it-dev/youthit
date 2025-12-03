@@ -179,6 +179,16 @@ export type TGETUsersMeLikedPostsRes = {
   };
 };
 
+export interface TPOSTUsersMeMarketingTermsToggleReq {
+  data: {
+    accessToken: string;
+  };
+}
+
+export type TPOSTUsersMeMarketingTermsToggleRes = {
+  marketingTermsAgreed?: boolean;
+};
+
 export type TGETUsersMeMyPageRes = {
   activityParticipationCount?: number;
   certificationPosts?: number;
@@ -207,6 +217,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
       id?: string;
       name?: string;
       status?: string;
+      programStatus?: "ongoing" | "completed";
     }[];
   };
   gathering?: {
@@ -215,6 +226,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
       id?: string;
       name?: string;
       status?: string;
+      programStatus?: "ongoing" | "completed";
     }[];
   };
   tmi?: {
@@ -223,6 +235,7 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
       id?: string;
       name?: string;
       status?: string;
+      programStatus?: "ongoing" | "completed";
     }[];
   };
 };
