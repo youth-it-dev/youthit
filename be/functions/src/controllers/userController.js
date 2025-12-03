@@ -406,6 +406,30 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 마케팅 약관 토글 API
+   * - marketingTermsAgreed 필드를 현재 값의 반대로 변경
+   * - 카카오 서비스 약관 API 연동 (동의/철회)
+   */
+  async toggleMarketingTerms(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const {accessToken} = req.body || {};
+
+      if (!accessToken || typeof accessToken !== "string") {
+        const err = new Error("INVALID_INPUT: accessToken required");
+        err.code = "INVALID_INPUT";
+        throw err;
+      }
+
+      const result = await userService.toggleMarketingTerms(uid, accessToken);
+      
+      return res.success({marketingTermsAgreed: result.marketingTermsAgreed});
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();
