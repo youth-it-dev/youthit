@@ -184,8 +184,11 @@ const PostDetailPage = () => {
   // 신고 클릭 핸들러
   const handleReportClick = useCallback(() => {
     if (!postId || !post) return;
+
+    const authorId = post?.authorId || "";
+
     router.push(
-      `${LINK_URL.COMMUNITY_REPORT}?targetType=post&targetId=${postId}&targetUserId=${post.author || ""}&communityId=${communityId}`
+      `${LINK_URL.COMMUNITY_REPORT}?targetType=post&targetId=${postId}&targetUserId=${authorId}&communityId=${communityId}`
     );
   }, [postId, post, communityId, router]);
 

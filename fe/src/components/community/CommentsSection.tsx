@@ -330,7 +330,7 @@ const CommentsSection = ({
       if (!targetComment) return;
 
       // 신고 페이지로 이동
-      const reportUrl = `${LINK_URL.COMMUNITY_REPORT}?targetType=comment&targetId=${commentId}&targetUserId=${targetComment.author || ""}&communityId=${communityId}&postId=${postId}`;
+      const reportUrl = `${LINK_URL.COMMUNITY_REPORT}?targetType=comment&targetId=${commentId}&targetUserId=${targetComment.userId || ""}&communityId=${communityId}&postId=${postId}`;
       router.push(reportUrl);
     },
     [comments, communityId, postId, router]
