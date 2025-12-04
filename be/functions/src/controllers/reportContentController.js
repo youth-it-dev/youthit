@@ -102,10 +102,7 @@ class ReportContentController {
   async syncNotionReports(req, res, next) {
     try {
       const syncedReports = await reportContentService.syncResolvedReports();
-      // res.success({ 
-      //   message: "동기화가 완료되었습니다.", 
-      //   count: syncedReports.length 
-      // });
+
       res.success({
            message: "동기화가 완료되었습니다.",
            total: syncedReports.total,

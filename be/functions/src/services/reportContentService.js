@@ -464,10 +464,6 @@ async syncReportToNotion(reportData) {
       if (!userId) return "";
 
       try {
-        console.log("11111==============================================")
-        console.log("userId", userId);
-        console.log("label", label);
-        console.log("111111==============================================")
         const user = await userFirestoreService.getById(userId);
         if (!user) {
           console.warn(
@@ -486,18 +482,6 @@ async syncReportToNotion(reportData) {
         return "";
       }
     }
-
-    console.log("222222==============================================")
-    console.log("authorId", authorId);
-    console.log("targetUserId", targetUserId);
-    console.log("reporterId", reporterId);
-    console.log("targetType", targetType);
-    console.log("communityId", communityId);
-    console.log("missionId", missionId);
-    console.log("reportReason", reportReason);
-    console.log("firebaseUpdatedAt", firebaseUpdatedAt);
-    console.log("notionUpdatedAt", notionUpdatedAt);
-    console.log("2222222==============================================")
 
 
     // reporterName과 authorName 변수 선언
@@ -523,12 +507,6 @@ async syncReportToNotion(reportData) {
       authorName = targetUserId;
     }
 
-   
-
-    console.log("333333==============================================")
-    console.log("reporterName", reporterName);
-    console.log("authorName", authorName);
-    console.log("=333333=============================================")
 
 
     // URL 생성 로직
