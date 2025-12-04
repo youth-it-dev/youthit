@@ -27,7 +27,7 @@ export const CommunitySearchBar = ({
   onFilterClick,
 }: CommunitySearchBarProps) => {
   return (
-    <div className="mt-3 mb-5 flex items-center gap-[10px]">
+    <div className="my-3 flex items-center gap-[10px]">
       <div className="flex h-[40px] flex-1 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3">
         <input
           ref={inputRef}

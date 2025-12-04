@@ -77,7 +77,7 @@ const FilterChipsSection = memo(({ chips }: FilterChipsSectionProps) => {
   if (chips.length === 0) return null;
 
   return (
-    <div className="relative mt-4">
+    <div className="relative mb-2">
       <div
         ref={chipScrollContainerRef}
         className="scrollbar-hide flex flex-nowrap gap-2 overflow-x-auto pr-8"

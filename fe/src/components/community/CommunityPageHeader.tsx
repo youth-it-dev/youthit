@@ -68,6 +68,7 @@ const CommunityPageHeader = ({
           onFilterClick={onFilterClick}
           placeholder={searchPlaceholder}
         />
+        <FilterChipsSection chips={filterChips} />
         {toggleSection?.show && (
           <MyCertificationToggle
             id={toggleSection.id}
@@ -77,7 +78,6 @@ const CommunityPageHeader = ({
             onChange={toggleSection.onChange}
           />
         )}
-        <FilterChipsSection chips={filterChips} />
       </div>
     </div>
   );

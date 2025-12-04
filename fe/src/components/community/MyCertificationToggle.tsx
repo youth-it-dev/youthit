@@ -22,7 +22,7 @@ export function MyCertificationToggle({
 
   return (
     <div
-      className="flex w-fit cursor-pointer items-center gap-2 pb-2"
+      className="flex w-fit cursor-pointer items-center gap-2 py-2"
       onClick={handleContainerClick}
     >
       <GrayCheckbox
