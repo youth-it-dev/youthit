@@ -84,7 +84,7 @@ const router = express.Router();
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
-*     requestBody:
+ *     requestBody:
  *       required: true
  *       content:
  *         application/json:
@@ -96,7 +96,6 @@ const router = express.Router();
  *                   - targetId
  *                   - targetUserId
  *                   - reportReason
- *                   - authorId
  *                   - communityId
  *                 properties:
  *                   targetType:
@@ -112,10 +111,6 @@ const router = express.Router();
  *                     type: string
  *                     description: 신고 대상 작성자 ID
  *                     example: "user1"
- *                   authorId:
- *                     type: string
- *                     description: 게시글 작성자 ID (targetType이 post일 때 필수)
- *                     example: "author_123"
  *                   communityId:
  *                     type: string
  *                     description: 커뮤니티 ID (게시글 신고 시 필수)
@@ -130,7 +125,6 @@ const router = express.Router();
  *                   - targetId
  *                   - targetUserId
  *                   - reportReason
- *                   - userId
  *                 properties:
  *                   targetType:
  *                     type: string
@@ -145,10 +139,6 @@ const router = express.Router();
  *                     type: string
  *                     description: 신고 대상 작성자 ID
  *                     example: "user1"
- *                   userId:
- *                     type: string
- *                     description: 댓글 작성자 ID (targetType이 comment일 때 필수)
- *                     example: "comment_author_123"
  *                   reportReason:
  *                     type: string
  *                     description: 신고 사유
