@@ -64,9 +64,9 @@ const PostCard = ({
       </div>
 
       {/* 게시글 정보 */}
-      <div className="flex h-full max-h-27 flex-col justify-between gap-1 p-2">
+      <div className="flex h-27 flex-col justify-between gap-1 p-2">
         {/* 제목/태그 */}
-        <Typography font="noto" variant="label2M" className="text-pink-600">
+        <Typography font="noto" variant="label2M" className="truncate text-pink-600">
           {title}
         </Typography>
 
