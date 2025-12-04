@@ -102,14 +102,6 @@ export const getUsersMeRewardsEarned = (
   });
 };
 
-export const getUsersMeRewardsUsed = (
-  request: Types.TGETUsersMeRewardsUsedReq
-) => {
-  return get<Types.TGETUsersMeRewardsUsedRes>(`/users/me/rewards-used`, {
-    params: request,
-  });
-};
-
 export const postUsersMeSyncKakaoProfile = (
   request: Types.TPOSTUsersMeSyncKakaoProfileReq
 ) => {

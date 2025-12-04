@@ -323,27 +323,6 @@ export const useGetUsersMeRewardsEarned = <
   });
 };
 
-export const useGetUsersMeRewardsUsed = <
-  TData = Types.TGETUsersMeRewardsUsedRes,
->(
-  options: {
-    request: Types.TGETUsersMeRewardsUsedReq;
-  } & Omit<
-    UseQueryOptions<Types.TGETUsersMeRewardsUsedRes, Error, TData>,
-    "queryKey" | "queryFn"
-  >
-) => {
-  const { request, ...queryOptions } = options;
-  return useQuery<Types.TGETUsersMeRewardsUsedRes, Error, TData>({
-    queryKey: usersKeys.getUsersMeRewardsUsed(request),
-    queryFn: async () => {
-      const response = await Api.getUsersMeRewardsUsed(request);
-      return response.data;
-    },
-    ...queryOptions,
-  });
-};
-
 export const usePostUsersMeSyncKakaoProfile = <
   TContext = unknown,
   TVariables = Types.TPOSTUsersMeSyncKakaoProfileReq,

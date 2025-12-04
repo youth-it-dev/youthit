@@ -405,11 +405,6 @@ export const usersKeys = {
       path: {},
       query: { page: request.page, size: request.size },
     }),
-  getUsersMeRewardsUsed: (request: usersTypes.TGETUsersMeRewardsUsedReq) =>
-    __buildKey("users", "getUsersMeRewardsUsed", {
-      path: {},
-      query: { page: request.page, size: request.size },
-    }),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq
   ) =>

@@ -322,29 +322,6 @@ export type TGETUsersMeRewardsEarnedRes = {
   };
 };
 
-export interface TGETUsersMeRewardsUsedReq {
-  page?: number;
-  size?: number;
-}
-
-export type TGETUsersMeRewardsUsedRes = {
-  history?: {
-    id?: string;
-    amount?: number;
-    reason?: string;
-    changeType?: "deduct";
-    createdAt?: string;
-  }[];
-  pagination?: {
-    pageNumber?: number;
-    pageSize?: number;
-    totalElements?: number;
-    totalPages?: number;
-    hasNext?: boolean;
-    hasPrevious?: boolean;
-  };
-};
-
 export interface TPOSTUsersMeSyncKakaoProfileReq {
   data: {
     accessToken: string;
