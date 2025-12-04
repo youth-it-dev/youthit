@@ -482,7 +482,7 @@ const StoreProductDetailPage = () => {
       </div>
 
       {/* 하단 고정 버튼 */}
-      <div className="sticky bottom-0 z-20 bg-transparent p-4">
+      <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-transparent p-4">
         <button
           onClick={() => setIsQuantityPopupOpen(true)}
           className="bg-main-600 hover:bg-main-700 w-full rounded-lg px-4 py-3 text-white transition-colors"
