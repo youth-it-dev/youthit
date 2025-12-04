@@ -270,7 +270,8 @@ const WritePageContent = () => {
     content: string,
     category: string,
     media: string[],
-    isPublic: boolean
+    isPublic: boolean,
+    isReview: boolean
   ): Promise<{ postId: string; communityId: string }> => {
     return new Promise((resolve, reject) => {
       const requestParam = {
@@ -281,6 +282,7 @@ const WritePageContent = () => {
           category,
           media,
           isPublic,
+          isReview,
         },
       } as unknown as CommunityTypes.TPOSTCommunitiesPostsByIdReq;
 
@@ -363,7 +365,8 @@ const WritePageContent = () => {
         finalContent,
         values.category,
         [...uploadedImagePaths, ...uploadedFilePaths],
-        !values.isPublic
+        !values.isPublic,
+        isReview
       );
 
       // 5. 성공 후 처리
