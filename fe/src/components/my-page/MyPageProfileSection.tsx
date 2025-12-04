@@ -140,30 +140,30 @@ const MyPageProfileSection = ({
           {/* 인증 글 */}
           <div className="flex flex-col items-center gap-2">
             <Typography font="noto" variant="body2B" className="text-gray-950">
-              {postCount ?? 0}
+              {postCount ?? 0}개
             </Typography>
             <Typography font="noto" variant="label1R" className="text-gray-600">
-              인증 글
+              인증글
             </Typography>
           </div>
 
           {/* 활동 참여 */}
           <div className="flex flex-col items-center gap-2">
             <Typography font="noto" variant="body2B" className="text-gray-950">
-              {activityCount ?? 0}
+              {activityCount ?? 0}회
             </Typography>
             <Typography font="noto" variant="label1R" className="text-gray-600">
-              활동 참여
+              활동참여
             </Typography>
           </div>
 
-          {/* 포인트 */}
+          {/* 나다움 */}
           <div className="flex flex-col items-center gap-2">
             <Typography font="noto" variant="body2B" className="text-gray-950">
-              {points ?? 0}
+              {points ?? 0}N
             </Typography>
             <Typography font="noto" variant="label1R" className="text-gray-600">
-              포인트
+              나다움
             </Typography>
           </div>
         </div>
