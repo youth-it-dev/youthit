@@ -97,6 +97,32 @@ class NotificationService {
   }
 
   /**
+   * 템플릿 페이지 ID로 알림 내용 템플릿 조회
+   * @param {string} templatePageId - 템플릿 페이지 ID
+   * @return {Promise<Object|null>} 템플릿 데이터 {content, nadumAmount} 또는 null
+   */
+  async getNotificationTemplateByPageId(templatePageId) {
+    try {
+      if (!templatePageId) {
+        return null;
+      }
+
+      const templatePage = await this.notion.pages.retrieve({ page_id: templatePageId });
+      const props = templatePage.properties;
+      const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
+      const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
+
+      return {
+        content: notificationContent,
+        nadumAmount,
+      };
+    } catch (error) {
+      console.error(`[NotificationService] 템플릿 페이지 조회 실패 (pageId: ${templatePageId}):`, error.message);
+      return null;
+    }
+  }
+
+  /**
    * 프로그램 유형별 알림 내용 템플릿 조회
    * @param {string} programType - 프로그램 유형 (예: "한끗루틴", "TMI 프로젝트" 등)
    * @return {Promise<string>} 알림 내용 템플릿
@@ -240,9 +266,23 @@ class NotificationService {
 
       const contentField = props[NOTION_FIELDS.CONTENT];
       
-      let programTypeName = '';
+      let content = '';
+      let nadumAmount = 0;
       
-      if (contentField) {
+      // 관계형 필드로 템플릿이 연결된 경우
+      if (contentField && contentField.type === 'relation' && contentField.relation?.length > 0) {
+        const templatePageId = contentField.relation[0].id;
+        const templateData = await this.getNotificationTemplateByPageId(templatePageId);
+        if (templateData) {
+          content = templateData.content || '';
+          nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
+        }
+      }
+      
+      // 관계형 필드가 없거나 템플릿 조회 실패한 경우: 기존 문자열 파싱 로직 사용 (폴백)
+      if (!content && contentField) {
+        let programTypeName = '';
+        
         if (contentField.type === 'rich_text' && contentField.rich_text) {
           programTypeName = contentField.rich_text.map(text => text.plain_text).join('').trim();
         } else if (contentField.type === 'title' && contentField.title) {
@@ -258,20 +298,18 @@ class NotificationService {
               (contentField.title || []).map(text => text.plain_text).join('').trim() || '';
           }
         }
-      }
 
-      let content = '';
-      let nadumAmount = 0;
-      if (programTypeName && programTypeName.trim()) {
-        const templateData = await this.getNotificationTemplateByType(programTypeName.trim());
-        if (templateData) {
-          content = templateData.content || '';
-          nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
+        if (programTypeName && programTypeName.trim()) {
+          const templateData = await this.getNotificationTemplateByType(programTypeName.trim());
+          if (templateData) {
+            content = templateData.content || '';
+            nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
+          }
         }
-      }
 
-      if (!content) {
-        content = getTextContent(contentField) || '';
+        if (!content) {
+          content = getTextContent(contentField) || '';
+        }
       }
 
       const userRelations = props[NOTION_FIELDS.MEMBER_MANAGEMENT]?.relation || [];
