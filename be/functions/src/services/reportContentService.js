@@ -28,7 +28,7 @@ async createReport(reportData) {
       communityId,
       missionId,
       reporterId, 
-      reportReason 
+      reportReason,
     } = reportData;
 
 
@@ -479,11 +479,24 @@ async syncReportToNotion(reportData) {
       }
     }
 
-    // 신고자 / 작성자 닉네임을 병렬로 조회 (N+1 방지)
-    const [reporterName, authorName] = await Promise.all([
-      getUserDisplayNameById(reporterId, "신고자"),
-      getUserDisplayNameById(targetUserId, "작성자"),
-    ]);
+
+    // reporterName과 authorName 변수 선언
+    let reporterName = "";
+    let authorName = "";
+
+    if(!communityId) {
+      // communityId가 없을 경우 (미션인 경우)
+      // 신고자 / 작성자 닉네임을 병렬로 조회 (N+1 방지)
+      [reporterName, authorName] = await Promise.all([
+        getUserDisplayNameById(reporterId, "신고자"),
+        getUserDisplayNameById(targetUserId, "작성자"),
+      ]);
+    } else {
+      // communityId가 있을 경우 (커뮤니티인 경우)
+      // reporterName: targetType에 따라 authorId 또는 userId의 nickname
+      reporterName = await getUserDisplayNameById(reporterId, "신고자");
+      authorName = await getUserDisplayNameById(targetUserId, "작성자");
+    }
 
 
     // URL 생성 로직
@@ -799,6 +812,7 @@ async syncResolvedReports() {
     }
 
     // 2-1. 신고 카운트가 0인 그룹 처리 (삭제 및 Firestore 업데이트)
+    // 관리자가 봤을때 신고 게시글이 아니라고 판단이 되면 신고 카운트 필드를 0으로 해서 동기화 -> 해당 신고 카운트를 초기화 하고 노션 신고 콘텐츠 데이텁에시스에서 삭제!
     const groupsToDelete = [];
     for (const key in reportsByTarget) {
       const group = reportsByTarget[key];

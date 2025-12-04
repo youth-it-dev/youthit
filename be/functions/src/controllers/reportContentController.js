@@ -22,7 +22,7 @@ class ReportContentController {
         reportReason, // 신고 사유
       } = req.body;
 
-      // 요청 데이터 검증
+      // 기본 필수 필드 검증
       if (!targetType || !targetId || !reportReason || !targetUserId) {
         return res.error(400, "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)");
       }
@@ -87,10 +87,7 @@ class ReportContentController {
   async syncNotionReports(req, res, next) {
     try {
       const syncedReports = await reportContentService.syncResolvedReports();
-      // res.success({ 
-      //   message: "동기화가 완료되었습니다.", 
-      //   count: syncedReports.length 
-      // });
+
       res.success({
            message: "동기화가 완료되었습니다.",
            total: syncedReports.total,

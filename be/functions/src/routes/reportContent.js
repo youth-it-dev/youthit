@@ -89,35 +89,60 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - targetType
- *               - targetId
- *               - targetUserId
- *               - reportReason
- *             properties:
- *               targetType:
- *                 type: string
- *                 enum: [post, comment]
- *                 description: 신고 대상 타입
- *                 example: "post"
- *               targetId:
- *                 type: string
- *                 description: 신고 대상 ID
- *                 example: "post_123"
- *               targetUserId:
- *                 type: string
- *                 description: 신고 대상 작성자 ID
- *                 example: "user1"
- *               communityId:
- *                 type: string
- *                 nullable: true
- *                 description: 커뮤니티 ID (게시글 신고 시 필수)
- *                 example: "community_456"
- *               reportReason:
- *                 type: string
- *                 description: 신고 사유
- *                 example: "욕설"
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - targetType
+ *                   - targetId
+ *                   - targetUserId
+ *                   - reportReason
+ *                   - communityId
+ *                 properties:
+ *                   targetType:
+ *                     type: string
+ *                     enum: [post]
+ *                     description: 신고 대상 타입 (게시글)
+ *                     example: "post"
+ *                   targetId:
+ *                     type: string
+ *                     description: 신고 대상 게시글 ID
+ *                     example: "post_123"
+ *                   targetUserId:
+ *                     type: string
+ *                     description: 신고 대상 작성자 ID
+ *                     example: "user1"
+ *                   communityId:
+ *                     type: string
+ *                     description: 커뮤니티 ID (게시글 신고 시 필수)
+ *                     example: "community_456"
+ *                   reportReason:
+ *                     type: string
+ *                     description: 신고 사유
+ *                     example: "욕설"
+ *               - type: object
+ *                 required:
+ *                   - targetType
+ *                   - targetId
+ *                   - targetUserId
+ *                   - reportReason
+ *                 properties:
+ *                   targetType:
+ *                     type: string
+ *                     enum: [comment]
+ *                     description: 신고 대상 타입 (댓글)
+ *                     example: "comment"
+ *                   targetId:
+ *                     type: string
+ *                     description: 신고 대상 댓글 ID
+ *                     example: "comment_123"
+ *                   targetUserId:
+ *                     type: string
+ *                     description: 신고 대상 작성자 ID
+ *                     example: "user1"
+ *                   reportReason:
+ *                     type: string
+ *                     description: 신고 사유
+ *                     example: "욕설"
  *     responses:
  *       201:
  *         description: 신고 접수 성공
