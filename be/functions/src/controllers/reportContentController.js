@@ -20,8 +20,6 @@ class ReportContentController {
         communityId, // 커뮤니티ID
         missionId, // 미션ID
         reportReason, // 신고 사유
-        authorId, // 게시글 작성자 ID (targetType이 post일 때 필수)
-        userId, // 댓글 작성자 ID (targetType이 comment일 때 필수)
       } = req.body;
 
       // 기본 필수 필드 검증
@@ -31,17 +29,6 @@ class ReportContentController {
 
       if (!["post", "comment"].includes(targetType)) {
         return res.error(400, "targetType은 'post' 또는 'comment'여야 합니다.");
-      }
-
-      // targetType에 따른 조건부 필수 필드 검증
-      if (targetType === "post") {
-        if (!authorId) {
-          return res.error(400, "게시글 신고 시 authorId는 필수입니다.");
-        }
-      } else if (targetType === "comment") {
-        if (!userId) {
-          return res.error(400, "댓글 신고 시 userId는 필수입니다.");
-        }
       }
 
        // Firestore에서 인증된 사용자 존재 여부 확인
@@ -58,8 +45,6 @@ class ReportContentController {
         missionId: missionId || null,
         reporterId: uid,
         reportReason,
-        ...(targetType === "post" && { authorId }),
-        ...(targetType === "comment" && { userId }),
       };
 
       await reportContentService.createReport(reportData);

@@ -29,8 +29,6 @@ async createReport(reportData) {
       missionId,
       reporterId, 
       reportReason,
-      authorId, // 게시글 작성자 ID (targetType이 post일 때)
-      userId, // 댓글 작성자 ID (targetType이 comment일 때)
     } = reportData;
 
 
@@ -162,8 +160,6 @@ async createReport(reportData) {
       notionUpdatedAt: new Date().toISOString(),
       reportsCount,
       isLocked, // 잠김 상태 추가
-      ...(targetType === "post" && { authorId }), // 게시글인 경우 authorId 추가
-      ...(targetType === "comment" && { userId }), // 댓글인 경우 userId 추가
     };
     const notionPage = await this.syncToNotion(notionReport);
 
@@ -451,7 +447,7 @@ async syncToNotion(reportData) {
 async syncReportToNotion(reportData) {
   try {
     
-    const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false, authorId, userId} = reportData;
+    const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
     
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
@@ -498,15 +494,9 @@ async syncReportToNotion(reportData) {
     } else {
       // communityId가 있을 경우 (커뮤니티인 경우)
       // reporterName: targetType에 따라 authorId 또는 userId의 nickname
-      if(targetType === "post") {
-        reporterName = await getUserDisplayNameById(authorId, "신고자");
-      } else if(targetType === "comment") {
-        reporterName = await getUserDisplayNameById(userId, "신고자");
-      }
-      // authorName: targetUserId 자체가 nickname
-      authorName = targetUserId;
+      reporterName = await getUserDisplayNameById(reporterId, "신고자");
+      authorName = await getUserDisplayNameById(targetUserId, "작성자");
     }
-
 
 
     // URL 생성 로직
@@ -639,15 +629,6 @@ async syncReportToNotion(reportData) {
         date: { 
           start: new Date(new Date().getTime()).toISOString()
         },
-      },
-      '작성자ID': { 
-        rich_text: [{ 
-          text: { 
-            content: targetType === "post" 
-              ? (authorId ? `${authorId}` : "") 
-              : (userId ? `${userId}` : "") 
-          } 
-        }] 
       },
     };
     
@@ -831,6 +812,7 @@ async syncResolvedReports() {
     }
 
     // 2-1. 신고 카운트가 0인 그룹 처리 (삭제 및 Firestore 업데이트)
+    // 관리자가 봤을때 신고 게시글이 아니라고 판단이 되면 신고 카운트 필드를 0으로 해서 동기화 -> 해당 신고 카운트를 초기화 하고 노션 신고 콘텐츠 데이텁에시스에서 삭제!
     const groupsToDelete = [];
     for (const key in reportsByTarget) {
       const group = reportsByTarget[key];
