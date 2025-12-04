@@ -26,6 +26,9 @@ const StorePage = () => {
     select: (data) => {
       return data?.user;
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const {
