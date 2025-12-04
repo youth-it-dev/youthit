@@ -23,6 +23,10 @@ interface MissionDetailActionBarProps {
    * @description 미션 시작하기 버튼 클릭 핸들러
    */
   onStartClick: () => void;
+  /**
+   * @description 미션 모집 중 여부
+   */
+  isRecruiting?: boolean;
 }
 
 const COUNTDOWN_UPDATE_INTERVAL_MS = 1000; // 1초마다 업데이트
@@ -35,6 +39,7 @@ const MissionDetailActionBar = ({
   isLiked,
   onLikeClick,
   onStartClick,
+  isRecruiting = true,
 }: MissionDetailActionBarProps) => {
   const [remainingHours, setRemainingHours] = useState<number>(0);
   const [remainingMinutes, setRemainingMinutes] = useState<number>(0);
@@ -73,12 +78,21 @@ const MissionDetailActionBar = ({
 
   return (
     <div className="sticky bottom-0 z-50 border-t border-gray-200 bg-white px-5 pt-5 pb-10">
-      {/* 인증 마감 카운트다운 */}
-      {deadline && (
+      {/* 인증 마감 카운트다운 - 모집 중일 때만 표시 */}
+      {deadline && isRecruiting && (
         <div className="mb-3 flex items-center justify-center gap-1">
           <Timer size={16} className="text-main-500" />
           <Typography font="noto" variant="label1M" className="text-main-500">
             인증 마감까지 {remainingHours}시간 {remainingMinutes}분 남았어요!
+          </Typography>
+        </div>
+      )}
+
+      {/* 모집 기간이 아닐 때 안내 문구 */}
+      {!isRecruiting && (
+        <div className="mb-3 flex items-center justify-center">
+          <Typography font="noto" variant="label1M" className="text-gray-500">
+            모집 기간이 아니예요.
           </Typography>
         </div>
       )}
@@ -108,6 +122,7 @@ const MissionDetailActionBar = ({
           variant="default"
           size="default"
           onClick={onStartClick}
+          disabled={!isRecruiting}
           className="h-full flex-1 rounded-lg"
         >
           <Typography font="noto" variant="body1M" className="text-white">
