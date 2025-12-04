@@ -234,7 +234,7 @@ const SettingsPage = () => {
       showArrow: true,
     },
     {
-      text: "활동 푸시 알림",
+      text: "활동 푸시 알림 (댓글/좋아요)",
       iconUrl: IMAGE_URL.ICON.settings.bell.url,
       toggle: {
         checked: isNotificationEnabled,
@@ -243,8 +243,8 @@ const SettingsPage = () => {
       },
     },
     {
-      text: "마케팅 목적의 개인정보 수집 및 이용 동의 (선택)",
-      iconUrl: IMAGE_URL.ICON.settings.bell.url,
+      text: "마케팅 푸시 알림 (이벤트/정보)",
+      iconUrl: IMAGE_URL.ICON.settings.megaphone.url,
       toggle: {
         checked: isMarketingConsentEnabled,
         onCheckedChange: handleMarketingConsentToggle,

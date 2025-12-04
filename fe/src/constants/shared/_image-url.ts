@@ -82,6 +82,10 @@ const ICON = {
       url: "/icons/bell.svg",
       alt: "알림 설정",
     },
+    megaphone: {
+      url: "/icons/megaphone.svg",
+      alt: "마케팅 푸시 알림",
+    },
     doorOpen: {
       url: "/icons/door-open.svg",
       alt: "로그아웃",
