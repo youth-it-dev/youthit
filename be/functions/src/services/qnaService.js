@@ -2,6 +2,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 const FirestoreService = require("./firestoreService");
 const fcmHelper = require("../utils/fcmHelper");
 const {sanitizeContent} = require("../utils/sanitizeHelper");
+const {isAdminUser} = require("../utils/helpers");
 
 /**
  * QnA Service (비즈니스 로직 계층)
@@ -111,6 +112,9 @@ class QnAService {
         console.warn("Failed to get nickname for QnA creation:", nicknameError.message);
       }
 
+      // 관리자 여부 확인
+      const isAdmin = await isAdminUser(userId);
+
       const newQnA = {
         pageId,
         pageType: validatedPageType,
@@ -121,6 +125,7 @@ class QnAService {
         likesCount: 0,
         isDeleted: false,
         isLocked: false,
+        isAdmin,
         depth: parentId ? 1 : 0,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -255,6 +260,7 @@ class QnAService {
               const replyResult = {
                 ...replyWithoutDeleted,
                 isDeleted: reply.isDeleted || false,
+                isAdmin: reply.isAdmin || false,
               };
               if (viewerId) {
                 replyResult.isLiked = likedQnAIds.has(reply.id);
@@ -267,6 +273,7 @@ class QnAService {
           const processedQnA = {
             ...qnaWithoutDeleted,
             isDeleted: qna.isDeleted || false,
+            isAdmin: qna.isAdmin || false,
             replies: sortedReplies,
             repliesCount: replies.length, 
           };

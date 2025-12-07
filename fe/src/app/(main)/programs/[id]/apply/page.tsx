@@ -368,7 +368,8 @@ const ProgramApplyPage = () => {
       setFieldErrors(newFieldErrors);
       // 에러 발생 시 약관 동의 상태 초기화하여 다시 시도 가능하도록
       formHook.updateFormData({ agreedToTerms: false });
-      setShowTermsSheet(false);
+      // 에러 발생 시 바텀시트를 다시 열어서 사용자가 재시도할 수 있도록
+      setShowTermsSheet(true);
     },
   });
 
@@ -697,6 +698,9 @@ const ProgramApplyPage = () => {
       return;
     }
 
+    // 신청 시작 시 바텀시트 닫기 (로딩 상태 표시를 위해)
+    setShowTermsSheet(false);
+
     // TPOSTProgramsApplyByIdReq 타입에 맞춰 요청 body 구성
     // BE에서는 실제로 더 많은 필드를 받지만, 타입 정의는 applicantId와 nickname만 있음
     // 실제 BE 코드를 참고하여 모든 필드를 전송
@@ -888,13 +892,15 @@ const ProgramApplyPage = () => {
         );
       case "terms":
         // 바텀시트가 열려있을 때도 버튼 표시 (바텀시트를 닫을 수 있도록)
+        // 신청 중에는 버튼 비활성화
         return (
           <button
             onClick={() => setShowTermsSheet(true)}
+            disabled={applyMutation.isPending}
             className={buttonBaseClass}
           >
             <Typography font="noto" variant="body3R" className="text-white">
-              약관 동의하기
+              {applyMutation.isPending ? "신청 중..." : "약관 동의하기"}
             </Typography>
           </button>
         );
