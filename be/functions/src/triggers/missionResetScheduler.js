@@ -98,13 +98,13 @@ async function runMissionDailyReset() {
       statsErrors.push({ error: error.message });
     }
 
-    // 2. 진행 중인 미션 QUIT로 변경
+    // 2. 진행 중인 미션 및 완료된 미션 QUIT로 변경
     let missionsUpdated = 0;
     let missionsErrors = [];
     try {
       const missionSnapshots = await db
         .collection(USER_MISSIONS_COLLECTION)
-        .where("status", "==", MISSION_STATUS.IN_PROGRESS)
+        .where("status", "in", [MISSION_STATUS.IN_PROGRESS, MISSION_STATUS.COMPLETED])
         .get();
 
       const missionUpdates = missionSnapshots.docs.map(async (doc) => {
