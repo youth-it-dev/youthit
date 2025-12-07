@@ -528,7 +528,9 @@ const MissionPageContent = () => {
               >
                 친구들이 인증한 미션이에요
               </Typography>
-              <MoreButton onClick={() => router.push(LINK_URL.COMMUNITY)} />
+              <MoreButton
+                onClick={() => router.push(LINK_URL.COMMUNITY_MISSION)}
+              />
             </div>
             {/* 후기 슬라이딩 (친구들이 인증한 미션) */}
             <HorizontalScrollContainer
