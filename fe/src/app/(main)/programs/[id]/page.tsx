@@ -8,6 +8,7 @@ import type { User } from "firebase/auth";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
+import { QnAList } from "@/components/shared/qna/QnAList";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +17,10 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
-import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import {
+  useGetUsersMe,
+  useGetUsersMeParticipatingCommunities,
+} from "@/hooks/generated/users-hooks";
 import { onAuthStateChange } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type {
@@ -340,6 +344,15 @@ const ProgramDetailPage = () => {
     }
   };
 
+  // 사용자 정보 조회 (QnA 작성자 이름용)
+  // 주의: 조건부 return 이전에 Hook을 호출해야 React Hooks 규칙을 준수합니다
+  const { data: userData } = useGetUsersMe({
+    select: (data) => data?.user,
+    enabled: !!currentUser,
+  });
+
+  const userName = userData?.nickname || "";
+
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white p-4">
@@ -364,12 +377,6 @@ const ProgramDetailPage = () => {
 
   const program = programDetailData;
   const faqList = program.faqList || [];
-  const inquiries: Array<{
-    id?: string;
-    author?: string;
-    content?: string;
-    createdAt?: string;
-  }> = []; // TODO: QnA API 연동 필요
 
   return (
     <div className="min-h-screen bg-white pt-12 pb-24">
@@ -649,79 +656,36 @@ const ProgramDetailPage = () => {
       </div>
 
       {/* 최하단: 댓글/문의 섹션 */}
-      <div className="border-t border-gray-200 bg-gray-50 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <Typography as="h3" font="noto" variant="heading3B">
-            더 궁금한 점이 있으신가요?
-          </Typography>
-          <Link
-            href={`/programs/${programId}/comments`}
-            className="text-pink-500"
-          >
-            <Typography font="noto" variant="body3R">
-              문의 남기기 →
+      <div className="border-t border-gray-200 bg-white">
+        <div className="p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <Typography as="h3" font="noto" variant="heading3B">
+              더 궁금한 점이 있으신가요?
             </Typography>
-          </Link>
-        </div>
-
-        {/* 문의 목록 (최대 3개) */}
-        <div className="space-y-3">
-          {inquiries.length > 0 ? (
-            inquiries.slice(0, MAX_INQUIRIES_DISPLAY).map((inquiry) => (
-              <div
-                key={inquiry.id}
-                className="rounded-lg border border-gray-200 bg-white p-4"
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-gray-300"></div>
-                  <div className="flex-1">
-                    <Typography font="noto" variant="body3R">
-                      {inquiry.author || "익명"}
-                    </Typography>
-                    {inquiry.createdAt && (
-                      <Typography
-                        font="noto"
-                        variant="caption1R"
-                        className="text-gray-500"
-                      >
-                        {getTimeAgo(inquiry.createdAt)}
-                      </Typography>
-                    )}
-                  </div>
-                </div>
-                <Typography
-                  font="noto"
-                  variant="body2R"
-                  className="text-gray-700"
-                >
-                  {inquiry.content || "-"}
-                </Typography>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-gray-500"
-              >
-                아직 등록된 문의가 없습니다.
-              </Typography>
-            </div>
-          )}
-
-          {/* 더 보기 버튼 */}
-          {inquiries.length > MAX_INQUIRIES_DISPLAY && (
             <Link
               href={`/programs/${programId}/comments`}
-              className="block rounded-lg border border-gray-200 bg-white p-4 text-center"
+              className="text-pink-500"
             >
               <Typography font="noto" variant="body3R">
-                다른 문의 더 보기 →
+                문의 남기기 →
               </Typography>
             </Link>
-          )}
+          </div>
         </div>
+
+        {/* QnA 목록 (최대 3개, 답글 1개, 좋아요 숨김) */}
+        <QnAList
+          pageId={programId}
+          pageType="program"
+          userName={userName}
+          maxDisplay={3}
+          maxReplies={1}
+          showLike={false}
+          showInput={false}
+          onShowMoreClick={() => {
+            router.push(`/programs/${programId}/comments`);
+          }}
+        />
       </div>
 
       {/* 프로그램 추천 배너 */}
