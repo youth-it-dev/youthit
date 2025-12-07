@@ -472,7 +472,7 @@ class MissionController {
     try {
       const {
         sort = "latest",
-        userId,
+        authorId,
         missionId,
         pageSize: pageSizeParam,
         startCursor: startCursorParam,
@@ -504,7 +504,7 @@ class MissionController {
         {
           sort,
           categories,
-          userId,
+          userId: authorId, // API 파라미터는 authorId, 서비스는 userId로 전달 (하위 호환성)
           missionId,
           pageSize,
           startCursor,
