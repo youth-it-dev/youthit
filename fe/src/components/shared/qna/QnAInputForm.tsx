@@ -21,7 +21,7 @@ interface QnAInputFormProps {
   onCancelReply?: () => void;
   userName: string;
   profileImageUrl?: string;
-  inputRef: RefObject<HTMLDivElement>;
+  inputRef: RefObject<HTMLDivElement | null>;
   isSubmitting?: boolean;
 }
 
@@ -220,7 +220,7 @@ export const QnAInputForm = ({
       </div>
       <form onSubmit={handleSubmit} className="relative">
         <div
-          ref={inputRef as RefObject<HTMLDivElement>}
+          ref={inputRef}
           contentEditable
           suppressContentEditableWarning
           onInput={handleInputChange}
