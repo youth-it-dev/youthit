@@ -21,7 +21,7 @@ interface QnAInputFormProps {
   onCancelReply?: () => void;
   userName: string;
   profileImageUrl?: string;
-  inputRef: RefObject<HTMLDivElement | HTMLTextAreaElement>;
+  inputRef: RefObject<HTMLDivElement>;
   isSubmitting?: boolean;
 }
 
