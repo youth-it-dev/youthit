@@ -660,7 +660,7 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *   get:
  *     summary: 미션 인증글 상세 조회
  *     tags: [Missions]
- *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회 시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
+ *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
  *     parameters:
  *       - in: path
  *         name: postId
