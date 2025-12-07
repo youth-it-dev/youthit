@@ -172,8 +172,8 @@ const HorizontalScrollContainer = ({
             leftButtonPositionClassName
           )}
         >
-          {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보 */}
-          <div className="relative h-full w-12">
+          {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보, 컨테이너 밖으로 확장 */}
+          <div className="relative -ml-8 h-full w-32">
             {/* 그라데이션 배경 */}
             <div
               className={cn(
@@ -186,7 +186,7 @@ const HorizontalScrollContainer = ({
             <button
               type="button"
               onClick={handleScrollLeft}
-              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 left-0 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
+              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 left-8 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
               aria-label="왼쪽으로 스크롤"
             >
               <ChevronLeft className="h-5 w-5 text-gray-700" />
@@ -203,8 +203,8 @@ const HorizontalScrollContainer = ({
             rightButtonPositionClassName
           )}
         >
-          {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보 */}
-          <div className="relative h-full w-12">
+          {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보, 컨테이너 밖으로 확장 */}
+          <div className="relative -mr-8 h-full w-32">
             {/* 그라데이션 배경 */}
             <div
               className={cn(
@@ -217,7 +217,7 @@ const HorizontalScrollContainer = ({
             <button
               type="button"
               onClick={handleScrollRight}
-              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 right-0 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
+              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 right-8 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
               aria-label="오른쪽으로 스크롤"
             >
               <ChevronRight className="h-5 w-5 text-gray-700" />
