@@ -472,6 +472,75 @@ async syncReportToNotion(reportData) {
     
     const { targetType, targetId, targetUserId, communityId, missionId, reporterId, reportReason, firebaseUpdatedAt, notionUpdatedAt, status = false, reportsCount = 0, isLocked = false} = reportData;
     
+
+        //노션의 회원관리 페이지와 관계형을 맺기 위해 해당 페이지 ID조회 [작성자]
+    // Notion 사용자 데이터베이스에서 targetUserId에 해당하는 페이지 ID 조회
+    let authorNotionPageId = null;
+    try {
+      const notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+
+      if (notionUserAccountDB && targetUserId) {
+        const response = await fetch(`https://api.notion.com/v1/databases/${notionUserAccountDB}/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filter: {
+              property: '사용자ID',
+              rich_text: { equals: targetUserId }
+            },
+            page_size: 1
+          })
+        });
+
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          authorNotionPageId = data.results[0].id;
+        }
+      }
+    } catch (authorPageError) {
+      console.warn('[REPORT] 작성자 Notion 페이지 조회 실패:', authorPageError.message);
+      // 에러가 발생해도 계속 진행
+    }
+
+
+
+    // Notion 사용자 데이터베이스에서 reporterId에 해당하는 페이지 ID 조회 [신고자]
+    let reporterNotionPageId = null;
+    try {
+      const notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+
+      if (notionUserAccountDB && reporterId) {
+        const response = await fetch(`https://api.notion.com/v1/databases/${notionUserAccountDB}/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filter: {
+              property: '사용자ID',
+              rich_text: { equals: reporterId }
+            },
+            page_size: 1
+          })
+        });
+
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          reporterNotionPageId = data.results[0].id;
+        }
+      }
+    } catch (reporterPageError) {
+      console.warn('[REPORT] 신고자 Notion 페이지 조회 실패:', reporterPageError.message);
+      // 에러가 발생해도 계속 진행
+    }
+
+
     /*
     TODO : 로그인 토큰 관련 이슈가 해결되면
     - 작성자 ID를 저장하고 노션에 보여줄때는 users컬렉션에서 작성자 이름 + 해당 작성자 이름을 클릭하면 작성자 정보 데이터베이스 추가필요
@@ -638,11 +707,19 @@ async syncReportToNotion(reportData) {
       '신고 타입': { title: [{ text: { content: this.mapTargetType(targetType) } }] },
       '신고 콘텐츠': { rich_text: [{ text: { content: `${targetId}` } }] },
       // 작성자: 닉네임(또는 이름)을 표시
-      '작성자': { rich_text: [{ text: { content: authorName } }] },
+      //'작성자': { rich_text: [{ text: { content: authorName } }] },
+      // 작성자: 관계형 필드로 변경
+      '작성자': authorNotionPageId 
+        ? { relation: [{ id: authorNotionPageId }] }
+        : { relation: [] },
       // 작성자 ID: 게시글/댓글 작성자 UID (null/undefined인 경우 빈 문자열)
       '작성자ID': { rich_text: [{ text: { content: targetUserId ? `${targetUserId}` : "" } }] },
       '신고 사유': { rich_text: [{ text: { content: reportReason } }] },
-      '신고자': { rich_text: [{ text: { content: reporterName } }] },
+      //'신고자': { rich_text: [{ text: { content: reporterName } }] },
+      // 신고자: 관계형 필드로 변경
+      '신고자': reporterNotionPageId 
+        ? { relation: [{ id: reporterNotionPageId }] }
+        : { relation: [] },
       '신고자ID': { rich_text: [{ text: { content: `${reporterId}` } }] },
       '신고일시': { date: { start: new Date().toISOString() } },
       '선택': { checkbox: status },
@@ -671,6 +748,20 @@ async syncReportToNotion(reportData) {
     // URL 필드 추가 (contentUrl이 있을 때만)
     if (contentUrl) {
       notionProperties['URL'] = { url: contentUrl };
+    }
+
+    // 작성자 상세보기 관계형 필드 추가
+    if (authorNotionPageId) {
+      notionProperties['작성자 상세보기'] = { relation: [{ id: authorNotionPageId }] };
+    } else {
+      notionProperties['작성자 상세보기'] = { relation: [] }; // 페이지를 찾지 못한 경우 빈 배열
+    }
+
+    // 신고자 상세보기 관계형 필드 추가
+    if (reporterNotionPageId) {
+      notionProperties['신고자 상세보기'] = { relation: [{ id: reporterNotionPageId }] };
+    } else {
+      notionProperties['신고자 상세보기'] = { relation: [] }; // 페이지를 찾지 못한 경우 빈 배열
     }
     
     const notionData = {
