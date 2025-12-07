@@ -261,18 +261,25 @@ const Page = () => {
             미션 소개
           </Typography>
           <Typography font="noto" variant="body3R" className="text-gray-950">
-            {/* TODO: api 연동 필요 */}
-            나와 가장 많은 시간을 보내는 친구에게 나는 어떤 사람인지에 대해
-            이야기 들어보기. 그리고 내가 바라보는 내 자신과, 친구가 바라보는 내
-            자신이 어떤 점이 다른지 비교해서 글로 써보기
+            {missionData.missionIntroduction || "-"}
           </Typography>
-          <Typography font="noto" variant="body1B" className="text-gray-950">
-            인증 방법
-          </Typography>
-          <div className="flex gap-1">
-            <MissionTag tagName="인증 글 작성" />
-            <MissionTag tagName="사진 업로드" />
-          </div>
+          {missionData.certificationMethod &&
+            missionData.certificationMethod.length > 0 && (
+              <>
+                <Typography
+                  font="noto"
+                  variant="body1B"
+                  className="text-gray-950"
+                >
+                  인증 방법
+                </Typography>
+                <div className="flex gap-1">
+                  {missionData.certificationMethod.map((method, index) => (
+                    <MissionTag key={index} tagName={method} />
+                  ))}
+                </div>
+              </>
+            )}
         </div>
 
         {/* 정보 박스 */}
