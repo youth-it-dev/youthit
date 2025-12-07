@@ -101,6 +101,10 @@
   max-height: none !important;
 }
 
+.notion-asset-caption {
+  display: none !important;
+}
+
 /* 커스텀 토스트 위치 조정 - 하단 네비게이션 바로 위 */
 .custom-toaster[data-sonner-toaster],
 .custom-toaster[data-sonner-toaster][data-position="bottom-center"],
