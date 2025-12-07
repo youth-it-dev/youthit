@@ -318,13 +318,7 @@ const HomePage = () => {
       )}
 
       {/* 콘텐츠 레이어 */}
-      <div
-        ref={contentRef}
-        className={cn(
-          "relative min-h-screen",
-          "bg-gradient-to-b from-white to-[#FFD7E8]"
-        )}
-      >
+      <div ref={contentRef} className="relative min-h-screen">
         <div
           ref={sentinelRef}
           className="pointer-events-none absolute top-[80px] left-0 h-px w-full"
