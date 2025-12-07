@@ -77,6 +77,66 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // TEMP: 브라우저 캐시 무효화 (인수인계 완료 후 제거 에정)
+  // eslint-disable-next-line require-await
+  async headers() {
+    return [
+      {
+        // favicon 파일들
+        source: "/icons/favicon/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+        ],
+      },
+      {
+        // splash 이미지들
+        source: "/imgs/splash/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+        ],
+      },
+      {
+        // 앱 아이콘들
+        source: "/icons/app/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+        ],
+      },
+    ];
+  },
   // eslint-disable-next-line require-await
   async redirects() {
     return [
