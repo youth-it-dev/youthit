@@ -674,16 +674,17 @@ class MissionPostService {
         throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
       }
 
-      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
-      if (textWithoutTags.length === 0) {
-        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
-      }
+      // const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      // if (textWithoutTags.length === 0) {
+      //   throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      // }
 
       const sanitizedContent = sanitizeContent(content);
-      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
-      if (sanitizedText.length === 0) {
-        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
-      }
+
+      // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      // if (sanitizedText.length === 0) {
+      //   throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      // }
 
       if (commentData?.communityId !== undefined && commentData.communityId !== null) {
         throw buildError("미션 댓글에는 communityId를 설정할 수 없습니다.", "BAD_REQUEST", 400);
@@ -1240,16 +1241,17 @@ class MissionPostService {
         throw buildError("댓글 내용은 필수입니다.", "BAD_REQUEST", 400);
       }
 
-      const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
-      if (textWithoutTags.length === 0) {
-        throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
-      }
+      // const textWithoutTags = content.replace(/<[^>]*>/g, "").trim();
+      // if (textWithoutTags.length === 0) {
+      //   throw buildError("댓글에 텍스트 내용이 필요합니다.", "BAD_REQUEST", 400);
+      // }
 
       const sanitizedContent = sanitizeContent(content);
-      const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
-      if (sanitizedText.length === 0) {
-        throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
-      }
+
+      // const sanitizedText = sanitizedContent.replace(/<[^>]*>/g, "").trim();
+      // if (sanitizedText.length === 0) {
+      //   throw buildError("sanitize 후 유효한 텍스트 내용이 없습니다.", "BAD_REQUEST", 400);
+      // }
 
       // 댓글 수정
       const updatedData = {
