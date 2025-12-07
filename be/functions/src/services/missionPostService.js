@@ -299,7 +299,7 @@ class MissionPostService {
       const missionPostPayload = {
         missionNotionPageId: missionId,
         missionTitle,
-        userId,
+        authorId: userId, // 커뮤니티 게시글과 통일
         title: normalizedTitle,
         content: sanitizedContent,
         media: media || [],
@@ -403,7 +403,7 @@ class MissionPostService {
       }
 
       if (filterUserId) {
-        query = query.where("userId", "==", filterUserId);
+        query = query.where("authorId", "==", filterUserId);
       }
 
       if (Array.isArray(categories) && categories.length > 0) {
@@ -469,8 +469,9 @@ class MissionPostService {
 
       for (const doc of docsToProcess) {
         const postData = doc.data();
-        if (postData.userId) {
-          userIds.push(postData.userId);
+        const authorId = postData.authorId;
+        if (authorId) {
+          userIds.push(authorId);
         }
         posts.push({
           id: doc.id,
@@ -517,7 +518,8 @@ class MissionPostService {
 
       const processedPosts = posts.map((post) => {
         const createdAtDate = post.createdAt?.toDate?.() || new Date(post.createdAt);
-        const userProfile = profileMap[post.userId] || {};
+        const authorId = post.authorId;
+        const userProfile = profileMap[authorId] || {};
 
         return {
           id: post.id,
@@ -593,14 +595,16 @@ class MissionPostService {
           console.error("[MISSION_POST] 조회수 증가 실패:", error);
         });
 
+      const authorId = post.authorId;
+      
       // 사용자 프로필 정보 조회
-      const profileMap = await this.loadUserProfiles([post.userId]);
-      const userProfile = profileMap[post.userId] || {};
+      const profileMap = await this.loadUserProfiles([authorId]);
+      const userProfile = profileMap[authorId] || {};
 
       const createdAtDate = post.createdAt?.toDate?.() || new Date(post.createdAt);
       const updatedAtDate = post.updatedAt?.toDate?.() || new Date(post.updatedAt);
 
-      const isAuthor = Boolean(viewerId && viewerId === post.userId);
+      const isAuthor = Boolean(viewerId && viewerId === authorId);
 
       // 좋아요 상태 조회 (viewerId가 있는 경우)
       let isLiked = false;
@@ -621,7 +625,7 @@ class MissionPostService {
 
       const response = {
         id: post.id,
-        authorId: post.userId || null,
+        authorId: authorId || null,
         title: post.title || "",
         content: post.content || "",
         media: post.media || [],
@@ -779,11 +783,11 @@ class MissionPostService {
       });
 
       // 알림 전송 (본인 게시글이 아닌 경우)
-      if (post.userId !== userId) {
+      if (post.authorId !== userId) {
         const link = NOTIFICATION_LINKS.MISSION_POST(postId);
         fcmHelper
           .sendNotification(
-            post.userId,
+            post.authorId,
             "새로운 댓글이 달렸습니다",
             `${author}님이 미션 인증글 "${post.title || "인증글"}"에 댓글을 남겼습니다.`,
             "COMMENT",
@@ -798,7 +802,7 @@ class MissionPostService {
       }
 
       // 부모 댓글 작성자에게 알림 전송 (대댓글인 경우)
-      if (parentId && parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
+      if (parentId && parentComment && parentComment.authorId !== userId && parentComment.authorId !== post.authorId) {
         const textOnly = typeof parentComment.content === "string" ? parentComment.content.replace(/<[^>]*>/g, "") : "";
         const previewText = textOnly.length > 10 ? textOnly.substring(0, 10) + "..." : textOnly;
         const link = NOTIFICATION_LINKS.MISSION_POST(postId);
@@ -868,7 +872,7 @@ class MissionPostService {
         throw buildError("인증글을 찾을 수 없습니다.", "NOT_FOUND", 404);
       }
 
-      const postAuthorId = postDoc.data()?.userId || null;
+      const postAuthorId = postDoc.data()?.authorId || null;
       const {
         pageSize: pageSizeInput,
         startCursor,
@@ -1427,7 +1431,7 @@ class MissionPostService {
         const postDoc = await db.collection(MISSION_POSTS_COLLECTION).doc(postId).get();
         const post = postDoc.data();
 
-        if (post && post.userId !== userId) {
+        if (post && post.authorId !== userId) {
           try {
             const userService = new UserService();
             const likerProfile = await userService.getUserById(userId);
@@ -1436,7 +1440,7 @@ class MissionPostService {
             const link = NOTIFICATION_LINKS.MISSION_POST(postId);
             fcmHelper
               .sendNotification(
-                post.userId,
+                post.authorId,
                 "인증글에 좋아요가 달렸습니다",
                 `${likerName}님이 "${post.title || "인증글"}"에 좋아요를 눌렀습니다`,
                 "POST_LIKE",

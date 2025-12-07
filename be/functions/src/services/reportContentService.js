@@ -41,8 +41,8 @@ async createReport(reportData) {
       throw error;
     }
 
-    // 2. 신고 대상 존재 여부 확인
-    await this.validateTargetExists(targetType, targetId, communityId, missionId);
+    // 2. 신고 대상 존재 여부 및 작성자 확인
+    await this.validateTargetExists(targetType, targetId, targetUserId, communityId, missionId);
 
     // 3. 신고 카운트 증가 (먼저 실행)
     let reportsCount = 0;
@@ -259,9 +259,9 @@ async checkDuplicateReport(reporterId, targetType, targetId) {
 
 
 /**
- * 신고 대상 존재 여부 확인
+ * 신고 대상 존재 여부 및 작성자 확인
  */
-async validateTargetExists(targetType, targetId, communityId, missionId) {
+async validateTargetExists(targetType, targetId, targetUserId, communityId, missionId) {
   try {
     if (targetType === 'post') {
       // 미션 인증글인 경우
@@ -277,6 +277,13 @@ async validateTargetExists(targetType, targetId, communityId, missionId) {
         // missionId가 일치하는지 확인
         if (postData.missionNotionPageId !== missionId) {
           const error = new Error("인증글이 해당 미션에 속하지 않습니다.");
+          error.code = "BAD_REQUEST";
+          error.status = 400;
+          throw error;
+        }
+        // 작성자 확인
+        if (postData.authorId !== targetUserId) {
+          const error = new Error("신고 대상 작성자 정보가 일치하지 않습니다.");
           error.code = "BAD_REQUEST";
           error.status = 400;
           throw error;
@@ -297,6 +304,14 @@ async validateTargetExists(targetType, targetId, communityId, missionId) {
           error2.status = 404;
           throw error2;
         }
+        const postData = postDoc.data();
+        // 작성자 확인
+        if (postData.authorId !== targetUserId) {
+          const error = new Error("신고 대상 작성자 정보가 일치하지 않습니다.");
+          error.code = "BAD_REQUEST";
+          error.status = 400;
+          throw error;
+        }
       }
     } else if (targetType === 'comment') {
       const commentDoc = await db.doc(`comments/${targetId}`).get();
@@ -308,6 +323,14 @@ async validateTargetExists(targetType, targetId, communityId, missionId) {
       }
       
       const commentData = commentDoc.data();
+      
+      // 작성자 확인 (authorId 필드 사용)
+      if (commentData.authorId !== targetUserId) {
+        const error = new Error("신고 대상 작성자 정보가 일치하지 않습니다.");
+        error.code = "BAD_REQUEST";
+        error.status = 400;
+        throw error;
+      }
       
       // 미션 댓글인 경우 missionId 검증
       if (missionId) {
