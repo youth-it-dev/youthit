@@ -198,7 +198,7 @@ export const missionsKeys = {
         sort: request.sort,
         missionId: request.missionId,
         categories: request.categories,
-        userId: request.userId,
+        onlyMyMissions: request.onlyMyMissions,
         pageSize: request.pageSize,
         startCursor: request.startCursor,
       },

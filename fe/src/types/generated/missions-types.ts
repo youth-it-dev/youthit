@@ -114,7 +114,7 @@ export interface TGETMissionsPostsReq {
   sort?: "latest" | "popular";
   missionId?: string;
   categories?: string;
-  userId?: string;
+  onlyMyMissions?: boolean;
   pageSize?: number;
   startCursor?: string;
 }
