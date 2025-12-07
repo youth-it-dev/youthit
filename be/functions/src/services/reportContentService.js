@@ -324,8 +324,8 @@ async validateTargetExists(targetType, targetId, targetUserId, communityId, miss
       
       const commentData = commentDoc.data();
       
-      // 작성자 확인 (authorId 필드 사용)
-      if (commentData.authorId !== targetUserId) {
+      // 작성자 확인 (댓글은 userId 필드 사용)
+      if (commentData.userId !== targetUserId) {
         const error = new Error("신고 대상 작성자 정보가 일치하지 않습니다.");
         error.code = "BAD_REQUEST";
         error.status = 400;
