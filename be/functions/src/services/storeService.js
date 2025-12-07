@@ -46,7 +46,6 @@ const NOTION_FIELDS = {
   THUMBNAIL: "썸네일",
   REQUIRED_POINTS: "필요한 나다움",
   ON_SALE: "판매 여부",
-  REQUIRES_DELIVERY: "배송 필요 여부",
 };
 
 // Notion 스토어 구매신청 필드명 상수
@@ -57,13 +56,10 @@ const PURCHASE_FIELDS = {
   PRODUCT_NAME: "주문한 상품명",
   QUANTITY: "개수",
   RECIPIENT_NAME: "수령인 이름",
-  RECIPIENT_ADDRESS: "수령인 주소지",
-  RECIPIENT_DETAIL_ADDRESS: "수령인 상세 주소지",
   RECIPIENT_PHONE: "수령인 전화번호",
   DELIVERY_COMPLETED: "지급 완료 여부",
   ORDER_DATE: "주문 완료 일시",
   REQUIRED_POINTS_ROLLUP: "필요한 나다움", // rollup 타입
-  REQUIRES_DELIVERY_ROLLUP: "배송 필요 여부", // rollup 타입
 };
 
 /**
@@ -263,7 +259,6 @@ class StoreService {
       coverImage: getCoverImageUrl(page),
       requiredPoints: getNumberValue(props[NOTION_FIELDS.REQUIRED_POINTS]) || 0,
       onSale: getCheckboxValue(props[NOTION_FIELDS.ON_SALE]),
-      requiresDelivery: getCheckboxValue(props[NOTION_FIELDS.REQUIRES_DELIVERY]),
       createdAt: page.created_time,
       updatedAt: page.last_edited_time,
     };
@@ -574,8 +569,6 @@ class StoreService {
    * @param {string} purchaseRequest.productId - 상품 ID (Notion 페이지 ID)
    * @param {number} purchaseRequest.quantity - 구매 개수
    * @param {string} [purchaseRequest.recipientName] - 수령인 이름
-   * @param {string} [purchaseRequest.recipientAddress] - 수령인 주소지
-   * @param {string} [purchaseRequest.recipientDetailAddress] - 수령인 상세 주소지
    * @param {string} [purchaseRequest.recipientPhone] - 수령인 전화번호
    * @return {Promise<Object>} 구매신청 결과
    */
@@ -590,10 +583,8 @@ class StoreService {
 
       const {
         productId,
-        quantity = 1,
+        quantity: rawQuantity,
         recipientName = "",
-        recipientAddress = "",
-        recipientDetailAddress = "",
         recipientPhone = "",
       } = purchaseRequest;
 
@@ -605,6 +596,8 @@ class StoreService {
         throw error;
       }
 
+      // quantity 검증 및 정규화
+      const quantity = rawQuantity !== undefined ? Number(rawQuantity) : 1;
       if (!Number.isInteger(quantity) || quantity <= 0) {
         const error = new Error("구매 개수는 1 이상의 정수여야 합니다.");
         error.code = "BAD_REQUEST";
@@ -612,7 +605,7 @@ class StoreService {
         throw error;
       }
 
-      // 1. Notion에서 상품 정보 조회 (requiredPoints, requiresDelivery, onSale 확인)
+      // 1. Notion에서 상품 정보 조회 (requiredPoints, onSale 확인)
       const product = await this.getProductById(productId);
       const requiredPoints = product.requiredPoints || 0;
       const totalPoints = requiredPoints * quantity;
@@ -633,15 +626,7 @@ class StoreService {
         throw error;
       }
 
-      // 3. 배송이 필요한 상품인 경우 주소 검증
-      if (product.requiresDelivery && (!recipientName || !recipientAddress)) {
-        const error = new Error("배송이 필요한 상품은 수령인 정보가 필요합니다.");
-        error.code = "BAD_REQUEST";
-        error.statusCode = 400;
-        throw error;
-      }
-
-      // 4. 트랜잭션으로 사용자 정보 조회 + FIFO 방식 포인트 차감 + 히스토리 기록
+      // 3. 트랜잭션으로 사용자 정보 조회 + FIFO 방식 포인트 차감 + 히스토리 기록
       let userNickname = "";
       let rollbackInfo = null;  // 롤백 정보를 메모리에 저장
 
@@ -691,12 +676,6 @@ class StoreService {
           [PURCHASE_FIELDS.RECIPIENT_NAME]: {
             rich_text: recipientName ? [{text: {content: recipientName}}] : [],
           },
-          [PURCHASE_FIELDS.RECIPIENT_ADDRESS]: {
-            rich_text: recipientAddress ? [{text: {content: recipientAddress}}] : [],
-          },
-          [PURCHASE_FIELDS.RECIPIENT_DETAIL_ADDRESS]: {
-            rich_text: recipientDetailAddress ? [{text: {content: recipientDetailAddress}}] : [],
-          },
           [PURCHASE_FIELDS.RECIPIENT_PHONE]: {
             phone_number: recipientPhone || null,
           },
@@ -720,8 +699,6 @@ class StoreService {
           productId,
           quantity,
           recipientName,
-          recipientAddress,
-          recipientDetailAddress,
           recipientPhone,
           orderDate: response.created_time,
           deliveryCompleted: false,
@@ -888,9 +865,8 @@ class StoreService {
     const orderDateField = props[PURCHASE_FIELDS.ORDER_DATE];
     const orderDate = orderDateField?.date?.start || page.created_time;
 
-    // Rollup 필드 추출 (상품의 "필요한 나다움"과 "배송 필요 여부")
+    // Rollup 필드 추출 (상품의 "필요한 나다움")
     const requiredPointsRollup = getRollupValues(props[PURCHASE_FIELDS.REQUIRED_POINTS_ROLLUP]);
-    const requiresDeliveryRollup = getRollupValues(props[PURCHASE_FIELDS.REQUIRES_DELIVERY_ROLLUP]);
 
     // "필요한 나다움" 값 추출 (숫자 또는 첫 번째 배열 값)
     let requiredPoints = null;
@@ -901,17 +877,6 @@ class StoreService {
       requiredPoints = Number(requiredPointsRollup.value);
     }
 
-    // "배송 필요 여부" 값 추출 (체크박스 또는 첫 번째 배열 값)
-    let requiresDelivery = false;
-    if (requiresDeliveryRollup.type === 'array' && requiresDeliveryRollup.value?.length > 0) {
-      const firstValue = requiresDeliveryRollup.value[0].name;
-      requiresDelivery = firstValue === 'true' || firstValue === '✓' || firstValue === 'Yes';
-    } else if (requiresDeliveryRollup.value !== null && requiresDeliveryRollup.value !== undefined) {
-      requiresDelivery = requiresDeliveryRollup.value === 'true' || 
-                         requiresDeliveryRollup.value === true ||
-                         requiresDeliveryRollup.value === '✓';
-    }
-
     return {
       purchaseId: page.id,
       title: getTitleValue(props[PURCHASE_FIELDS.TITLE]),
@@ -920,10 +885,7 @@ class StoreService {
       productId: productId,
       quantity: getNumberValue(props[PURCHASE_FIELDS.QUANTITY]) || 1,
       requiredPoints: requiredPoints, // 상품의 필요한 나다움 (rollup)
-      requiresDelivery: requiresDelivery, // 상품의 배송 필요 여부 (rollup)
       recipientName: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_NAME]),
-      recipientAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_ADDRESS]),
-      recipientDetailAddress: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_DETAIL_ADDRESS]),
       recipientPhone: getPhoneNumberValue(props[PURCHASE_FIELDS.RECIPIENT_PHONE]),
       deliveryCompleted: getCheckboxValue(props[PURCHASE_FIELDS.DELIVERY_COMPLETED]),
       orderDate: orderDate,

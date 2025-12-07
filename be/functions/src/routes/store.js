@@ -45,10 +45,6 @@ const authGuard = require("../middleware/authGuard");
  *           type: boolean
  *           description: 판매 여부
  *           example: true
- *         requiresDelivery:
- *           type: boolean
- *           description: 배송 필요 여부
- *           example: true
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -94,10 +90,6 @@ const authGuard = require("../middleware/authGuard");
  *         onSale:
  *           type: boolean
  *           description: 판매 여부
- *           example: true
- *         requiresDelivery:
- *           type: boolean
- *           description: 배송 필요 여부
  *           example: true
  *         createdAt:
  *           type: string
@@ -208,22 +200,10 @@ const authGuard = require("../middleware/authGuard");
  *           nullable: true
  *           description: 상품의 필요한 나다움 포인트 (Rollup 필드)
  *           example: 500
- *         requiresDelivery:
- *           type: boolean
- *           description: 상품의 배송 필요 여부 (Rollup 필드)
- *           example: true
  *         recipientName:
  *           type: string
  *           description: 수령인 이름
  *           example: "홍길동"
- *         recipientAddress:
- *           type: string
- *           description: 수령인 주소지
- *           example: "서울시 강남구 테헤란로 123"
- *         recipientDetailAddress:
- *           type: string
- *           description: 수령인 상세 주소지
- *           example: "456호"
  *         recipientPhone:
  *           type: string
  *           description: 수령인 전화번호
@@ -446,14 +426,6 @@ router.get("/products/:productId", storeController.getProductById);
  *                 type: string
  *                 description: 수령인 이름
  *                 example: "홍길동"
- *               recipientAddress:
- *                 type: string
- *                 description: 수령인 주소지
- *                 example: "서울시 강남구 테헤란로 123"
- *               recipientDetailAddress:
- *                 type: string
- *                 description: 수령인 상세 주소지
- *                 example: "456호"
  *               recipientPhone:
  *                 type: string
  *                 description: 수령인 전화번호
@@ -501,22 +473,10 @@ router.get("/products/:productId", storeController.getProductById);
  *                       nullable: true
  *                       description: 상품의 필요한 나다움 포인트 (Rollup 필드)
  *                       example: 500
- *                     requiresDelivery:
- *                       type: boolean
- *                       description: 상품의 배송 필요 여부 (Rollup 필드)
- *                       example: true
  *                     recipientName:
  *                       type: string
  *                       description: 수령인 이름
  *                       example: "홍길동"
- *                     recipientAddress:
- *                       type: string
- *                       description: 수령인 주소지
- *                       example: "서울시 강남구 테헤란로 123"
- *                     recipientDetailAddress:
- *                       type: string
- *                       description: 수령인 상세 주소지
- *                       example: "456호"
  *                     recipientPhone:
  *                       type: string
  *                       description: 수령인 전화번호
@@ -659,22 +619,10 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             nullable: true
  *                             description: 상품의 필요한 나다움 포인트 (Rollup 필드)
  *                             example: 500
- *                           requiresDelivery:
- *                             type: boolean
- *                             description: 상품의 배송 필요 여부 (Rollup 필드)
- *                             example: true
  *                           recipientName:
  *                             type: string
  *                             description: 수령인 이름
  *                             example: "홍길동"
- *                           recipientAddress:
- *                             type: string
- *                             description: 수령인 주소지
- *                             example: "서울시 강남구 테헤란로 123"
- *                           recipientDetailAddress:
- *                             type: string
- *                             description: 수령인 상세 주소지
- *                             example: "456호"
  *                           recipientPhone:
  *                             type: string
  *                             description: 수령인 전화번호
