@@ -15,6 +15,10 @@ const ICON = {
     url: "/icons/ic-my-page.svg",
     alt: "마이페이지",
   },
+  alarm: {
+    url: "/icons/bell.svg",
+    alt: "알림",
+  },
   chevron: {
     left: {
       url: "/icons/ic-chevron-left.svg",

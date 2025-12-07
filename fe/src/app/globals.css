@@ -9,20 +9,21 @@
   --font-gill: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
 
   /* main */
-  --color-main-50: #ffeff2;
-  --color-main-100: #ffe0e9;
-  --color-main-200: #ffc6da;
-  --color-main-300: #ff97ba;
-  --color-main-400: #ff5d97;
-  --color-main-500: #ff2479;
-  /* key color 600 */
-  --color-main-600: #ff006c;
-  --color-main-700: #d7005b;
-  --color-main-800: #b40055;
-  --color-main-900: #99024f;
+  --color-main-50: #ebf0f9;
+  --color-main-100: #c4d4f3;
+  --color-main-200: #98b6f1;
+  --color-main-300: #6896f3;
+  --color-main-400: #3375fa;
+  --color-main-500: #0055ff;
+  --color-main-600: #0646c6;
+  --color-main-700: #0d378c;
+  --color-main-800: #0e2758;
+  --color-main-900: #0a1429;
 
   /* pink */
   --color-primary-pink: #ff006c;
+  /* point color */
+  --color-primary-green: #deff88;
 
   /* gray */
   --color-gray-100: #f3f4f6;

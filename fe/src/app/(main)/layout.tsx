@@ -132,7 +132,7 @@ export default function MainLayout({
           <TopBar
             leftSlot={
               isHomePage ? (
-                <div className="relative h-[40px] w-[40px]">
+                <div className="relative h-[24px] w-[85px]">
                   <Image
                     src={IMAGE_URL.ICON.logo.youthIt.url}
                     alt="Youth Voice 로고"
