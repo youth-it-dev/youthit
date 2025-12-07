@@ -6,6 +6,7 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { getCurrentUser } from "@/lib/auth";
 import { cn } from "@/utils/shared/cn";
+import { Typography } from "../shared/typography";
 
 interface FloatingWriteButtonProps {
   /** 바텀시트 열기 핸들러 */
@@ -41,7 +42,7 @@ const FloatingWriteButton = ({
       <button
         onClick={handleClick}
         className={cn(
-          "pointer-events-auto ml-auto flex items-center gap-[6px] rounded-full bg-[#FF2479] px-5 py-3 shadow-lg transition-all hover:bg-[#E01F6B] active:scale-95"
+          "bg-main-600 hover:bg-main-600/80 pointer-events-auto ml-auto flex items-center gap-[6px] rounded-full px-5 py-3 shadow-lg transition-all active:scale-95"
         )}
         aria-label="글 작성하기"
         tabIndex={0}
@@ -53,7 +54,9 @@ const FloatingWriteButton = ({
           height={16}
           className="h-4 w-4"
         />
-        <span className="text-sm font-medium text-white">작성하기</span>
+        <Typography font="noto" variant="body2B" className="text-white">
+          작성하기
+        </Typography>
       </button>
     </div>
   );
