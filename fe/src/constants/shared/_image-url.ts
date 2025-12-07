@@ -38,10 +38,6 @@ const ICON = {
     },
   },
   logo: {
-    youthVoice: {
-      url: "/icons/logo/lg-youth-voice.svg",
-      alt: "유스보이스 로고",
-    },
     youthIt: {
       url: "/icons/logo/lg-youth-it.svg",
       alt: "유스잇 로고",
@@ -138,6 +134,12 @@ const IMG = {
     share: {
       url: "/imgs/download-share.png",
       alt: "앱 공유",
+    },
+  },
+  login: {
+    mainImage: {
+      url: "/imgs/login-main-image.png",
+      alt: "메인 이미지",
     },
   },
 };

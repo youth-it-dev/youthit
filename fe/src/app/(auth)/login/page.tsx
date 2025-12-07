@@ -322,17 +322,17 @@ const LoginPageContent = () => {
   };
 
   return (
-    <main className="relative flex h-screen flex-col items-center justify-center bg-white px-4 pb-8">
-      <div className="relative top-1/4 aspect-[210/80] w-[60vw] max-w-[280px] min-w-[160px]">
+    <main className="relative mt-12 flex h-screen flex-col items-center justify-center">
+      <div className="relative z-0 h-full max-h-[572px] w-full max-w-[470px]">
         <Image
-          src={IMAGE_URL.ICON.logo.youthVoice.url}
-          alt={IMAGE_URL.ICON.logo.youthVoice.alt}
-          fill
-          sizes="(min-width: 768px) 30vw, 60vw"
-          className="object-contain"
+          src={IMAGE_URL.IMG.login.mainImage.url}
+          alt={IMAGE_URL.IMG.login.mainImage.alt}
+          width={470}
+          height={572}
+          priority
         />
       </div>
-      <div className="mt-auto flex w-full flex-col gap-19">
+      <div className="z-10 mt-auto flex w-full flex-col gap-19 px-4 pb-8">
         <div className="flex w-full flex-col gap-3">
           <ButtonBase
             onClick={handleKakaoLogin}
