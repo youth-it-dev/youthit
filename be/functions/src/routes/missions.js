@@ -627,6 +627,18 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                 value:
  *                   status: 400
  *                   message: "잘못된 요청입니다"
+ *       401:
+ *         description: 인증 필요 (onlyMyMissions=true일 때 로그인하지 않은 경우)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               Unauthorized:
+ *                 summary: 내 게시글 조회 시 로그인 필요
+ *                 value:
+ *                   status: 401
+ *                   message: "내 게시글 조회는 로그인이 필요합니다."
  *       500:
  *         description: 서버 오류
  *         content:
