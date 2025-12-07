@@ -372,7 +372,7 @@ class MissionPostService {
    * @param {Object} options - 조회 옵션
    * @param {string} options.sort - 정렬 기준 ('latest' | 'popular')
    * @param {string[]} options.categories - 카테고리 필터 (다중 선택)
-   * @param {string} options.userId - 특정 사용자가 작성한 인증글만 조회 (authorId로 필터링)
+   * @param {string} options.authorId - 특정 사용자가 작성한 인증글만 조회 (내부 사용, onlyMyMissions=true일 때만 설정)
    * @param {string} options.missionId - 특정 미션의 인증글만 조회 (missionNotionPageId 필터)
    * @param {string} viewerId - 조회자 ID (선택)
    * @returns {Promise<Object>} 미션 인증글 목록
@@ -382,7 +382,7 @@ class MissionPostService {
       const {
         sort = "latest",
         categories = [],
-        userId: filterUserId,
+        authorId: filterAuthorId,
         missionId,
         pageSize: pageSizeInput,
         startCursor,
@@ -402,8 +402,8 @@ class MissionPostService {
         query = query.where("missionNotionPageId", "==", missionId);
       }
 
-      if (filterUserId) {
-        query = query.where("authorId", "==", filterUserId);
+      if (filterAuthorId) {
+        query = query.where("authorId", "==", filterAuthorId);
       }
 
       if (Array.isArray(categories) && categories.length > 0) {

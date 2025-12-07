@@ -460,11 +460,11 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *         description: 카테고리 필터 (콤마로 구분, 최대 10개)
  *         example: "자기만족,취미생활"
  *       - in: query
- *         name: authorId
+ *         name: onlyMyMissions
  *         schema:
- *           type: string
- *         description: 특정 사용자가 작성한 인증글만 조회
- *         example: "user-123"
+ *           type: boolean
+ *         description: 내가 작성한 인증글만 조회 (로그인 필요, true일 때만 적용)
+ *         example: true
  *       - in: query
  *         name: pageSize
  *         schema:
