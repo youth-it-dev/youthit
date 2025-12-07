@@ -750,19 +750,6 @@ async syncReportToNotion(reportData) {
       notionProperties['URL'] = { url: contentUrl };
     }
 
-    // 작성자 상세보기 관계형 필드 추가
-    if (authorNotionPageId) {
-      notionProperties['작성자 상세보기'] = { relation: [{ id: authorNotionPageId }] };
-    } else {
-      notionProperties['작성자 상세보기'] = { relation: [] }; // 페이지를 찾지 못한 경우 빈 배열
-    }
-
-    // 신고자 상세보기 관계형 필드 추가
-    if (reporterNotionPageId) {
-      notionProperties['신고자 상세보기'] = { relation: [{ id: reporterNotionPageId }] };
-    } else {
-      notionProperties['신고자 상세보기'] = { relation: [] }; // 페이지를 찾지 못한 경우 빈 배열
-    }
     
     const notionData = {
       parent: { database_id: this.reportsDatabaseId },
