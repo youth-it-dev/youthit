@@ -80,7 +80,7 @@ const router = express.Router();
  * /reportContent:
  *   post:
  *     summary: 게시글/댓글 신고 생성 (로그인 필요)
- *     description: 로그인한 사용자가 게시글 또는 댓글을 신고합니다. reporterId는 인증 토큰에서 자동으로 추출되어 사용됩니다.
+ *     description: 로그인한 사용자가 게시글 또는 댓글을 신고합니다. reporterId는 인증 토큰에서 자동으로 추출되어 사용됩니다. 커뮤니티 게시글 신고 시 communityId, 미션 인증글 신고 시 missionId가 필수입니다.
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -113,8 +113,37 @@ const router = express.Router();
  *                     example: "user1"
  *                   communityId:
  *                     type: string
- *                     description: 커뮤니티 ID (게시글 신고 시 필수)
+ *                     description: 커뮤니티 ID (커뮤니티 게시글 신고 시 필수)
  *                     example: "community_456"
+ *                   reportReason:
+ *                     type: string
+ *                     description: 신고 사유
+ *                     example: "욕설"
+ *               - type: object
+ *                 required:
+ *                   - targetType
+ *                   - targetId
+ *                   - targetUserId
+ *                   - reportReason
+ *                   - missionId
+ *                 properties:
+ *                   targetType:
+ *                     type: string
+ *                     enum: [post]
+ *                     description: 신고 대상 타입 (미션 인증글)
+ *                     example: "post"
+ *                   targetId:
+ *                     type: string
+ *                     description: 신고 대상 인증글 ID
+ *                     example: "8nB99m2VfVyGAhdmsiFn"
+ *                   targetUserId:
+ *                     type: string
+ *                     description: 신고 대상 작성자 ID
+ *                     example: "user-123"
+ *                   missionId:
+ *                     type: string
+ *                     description: 미션 ID (미션 인증글 신고 시 필수)
+ *                     example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
  *                   reportReason:
  *                     type: string
  *                     description: 신고 사유
@@ -139,6 +168,16 @@ const router = express.Router();
  *                     type: string
  *                     description: 신고 대상 작성자 ID
  *                     example: "user1"
+ *                   communityId:
+ *                     type: string
+ *                     nullable: true
+ *                     description: 커뮤니티 ID (커뮤니티 댓글인 경우)
+ *                     example: "community_456"
+ *                   missionId:
+ *                     type: string
+ *                     nullable: true
+ *                     description: 미션 ID (미션 댓글인 경우)
+ *                     example: "2a645f52-4cd0-80ea-9d7f-fe3ca69df522"
  *                   reportReason:
  *                     type: string
  *                     description: 신고 사유
@@ -173,6 +212,22 @@ const router = express.Router();
  *                 message:
  *                   type: string
  *                   example: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *             examples:
+ *               MissingFields:
+ *                 summary: 필수 필드 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "필수 필드가 누락되었습니다. (targetType, targetId, targetUserId, reportReason)"
+ *               MissingCommunityOrMissionId:
+ *                 summary: 게시글 신고 시 ID 누락
+ *                 value:
+ *                   status: 400
+ *                   message: "게시글 신고 시 communityId 또는 missionId 중 하나는 필수입니다."
+ *               InvalidTargetType:
+ *                 summary: 잘못된 targetType
+ *                 value:
+ *                   status: 400
+ *                   message: "targetType은 'post' 또는 'comment'여야 합니다."
  *       401:
  *         description: 인증 필요
  *         content:

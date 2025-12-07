@@ -472,7 +472,7 @@ class MissionController {
     try {
       const {
         sort = "latest",
-        userId,
+        onlyMyMissions,
         missionId,
         pageSize: pageSizeParam,
         startCursor: startCursorParam,
@@ -493,6 +493,18 @@ class MissionController {
 
       const viewerId = req.user?.uid || null;
 
+      // onlyMyMissions가 true일 때는 로그인한 사용자의 게시글만 조회
+      let filterAuthorId = null;
+      if (onlyMyMissions === "true" || onlyMyMissions === true) {
+        if (!viewerId) {
+          const error = new Error("내 게시글 조회는 로그인이 필요합니다.");
+          error.code = "UNAUTHORIZED";
+          error.statusCode = 401;
+          return next(error);
+        }
+        filterAuthorId = viewerId;
+      }
+
       const pageSize = parsePageSize(
         pageSizeParam,
         DEFAULT_POST_PAGE_SIZE,
@@ -504,7 +516,7 @@ class MissionController {
         {
           sort,
           categories,
-          userId,
+          authorId: filterAuthorId, // onlyMyMissions가 true일 때만 viewerId로 필터링
           missionId,
           pageSize,
           startCursor,
@@ -751,6 +763,18 @@ class MissionController {
 
   /**
    * 미션 인증글 신고
+   * @deprecated 이 메서드는 더 이상 사용되지 않습니다. 
+   * 대신 POST /reportContent API를 사용해주세요.
+   * 
+   * 마이그레이션 예시:
+   * POST /reportContent
+   * {
+   *   "targetType": "post",
+   *   "targetId": "인증글ID",
+   *   "targetUserId": "작성자ID",
+   *   "missionId": "미션ID",
+   *   "reportReason": "신고사유"
+   * }
    */
   async reportMissionPost(req, res, next) {
     try {
@@ -789,6 +813,18 @@ class MissionController {
 
   /**
    * 미션 인증글 댓글 신고
+   * @deprecated 이 메서드는 더 이상 사용되지 않습니다. 
+   * 대신 POST /reportContent API를 사용해주세요.
+   * 
+   * 마이그레이션 예시:
+   * POST /reportContent
+   * {
+   *   "targetType": "comment",
+   *   "targetId": "댓글ID",
+   *   "targetUserId": "작성자ID",
+   *   "missionId": "미션ID",
+   *   "reportReason": "신고사유"
+   * }
    */
   async reportMissionComment(req, res, next) {
     try {

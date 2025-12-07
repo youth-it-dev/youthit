@@ -31,6 +31,11 @@ class ReportContentController {
         return res.error(400, "targetType은 'post' 또는 'comment'여야 합니다.");
       }
 
+      // 게시글 신고 시 communityId 또는 missionId 중 하나는 필수
+      if (targetType === "post" && !communityId && !missionId) {
+        return res.error(400, "게시글 신고 시 communityId 또는 missionId 중 하나는 필수입니다.");
+      }
+
        // Firestore에서 인증된 사용자 존재 여부 확인
        const userDoc = await db.collection("users").doc(uid).get();
        if (!userDoc.exists) {

@@ -460,11 +460,11 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *         description: 카테고리 필터 (콤마로 구분, 최대 10개)
  *         example: "자기만족,취미생활"
  *       - in: query
- *         name: userId
+ *         name: onlyMyMissions
  *         schema:
- *           type: string
- *         description: 내가 인증한 미션만 보기 (userId 필터)
- *         example: "user-123"
+ *           type: boolean
+ *         description: 내가 작성한 인증글만 조회 (로그인 필요, true일 때만 적용)
+ *         example: true
  *       - in: query
  *         name: pageSize
  *         schema:
@@ -627,6 +627,18 @@ router.get("/stats", authGuard, missionController.getMissionStats);
  *                 value:
  *                   status: 400
  *                   message: "잘못된 요청입니다"
+ *       401:
+ *         description: 인증 필요 (onlyMyMissions=true일 때 로그인하지 않은 경우)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               Unauthorized:
+ *                 summary: 내 게시글 조회 시 로그인 필요
+ *                 value:
+ *                   status: 401
+ *                   message: "내 게시글 조회는 로그인이 필요합니다."
  *       500:
  *         description: 서버 오류
  *         content:
@@ -648,7 +660,7 @@ router.get("/posts", optionalAuth, missionController.getAllMissionPosts);
  *   get:
  *     summary: 미션 인증글 상세 조회
  *     tags: [Missions]
- *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회 시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
+ *     description: 특정 미션 인증글의 상세 정보를 조회합니다. 조회시 조회수가 증가합니다. 인증은 선택사항이며, 인증 시 isAuthor 필드가 정확하게 표시됩니다.
  *     parameters:
  *       - in: path
  *         name: postId
@@ -2213,14 +2225,28 @@ router.post("/:missionId/quit", authGuard, missionController.quitMission);
  */
 router.post("/:missionId/posts", authGuard, missionController.createMissionPost);
 
-// 미션 인증글 신고
+// 미션 인증글 신고 (DEPRECATED: /reportContent API 사용 권장)
 /**
  * @swagger
  * /missions/posts/{postId}/report:
  *   post:
  *     tags: [Missions]
- *     summary: 미션 인증글 신고
- *     description: 미션 인증글을 신고합니다.
+ *     deprecated: true
+ *     summary: "[DEPRECATED] 미션 인증글 신고"
+ *     description: |
+ *       ⚠️ 이 API는 더 이상 사용되지 않습니다. 
+ *       대신 `POST /reportContent` API를 사용해주세요.
+ *       
+ *       예시:
+ *       ```json
+ *       {
+ *         "targetType": "post",
+ *         "targetId": "인증글ID",
+ *         "targetUserId": "작성자ID",
+ *         "missionId": "미션ID",
+ *         "reportReason": "신고사유"
+ *       }
+ *       ```
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2342,14 +2368,28 @@ router.post("/:missionId/posts", authGuard, missionController.createMissionPost)
  */
 router.post("/posts/:postId/report", authGuard, missionController.reportMissionPost);
 
-// 미션 인증글 댓글 신고
+// 미션 인증글 댓글 신고 (DEPRECATED: /reportContent API 사용 권장)
 /**
  * @swagger
  * /missions/posts/{postId}/comments/{commentId}/report:
  *   post:
  *     tags: [Missions]
- *     summary: 미션 인증글 댓글 신고
- *     description: 미션 인증글 댓글을 신고합니다.
+ *     deprecated: true
+ *     summary: "[DEPRECATED] 미션 인증글 댓글 신고"
+ *     description: |
+ *       ⚠️ 이 API는 더 이상 사용되지 않습니다. 
+ *       대신 `POST /reportContent` API를 사용해주세요.
+ *       
+ *       예시:
+ *       ```json
+ *       {
+ *         "targetType": "comment",
+ *         "targetId": "댓글ID",
+ *         "targetUserId": "작성자ID",
+ *         "missionId": "미션ID",
+ *         "reportReason": "신고사유"
+ *       }
+ *       ```
  *     security:
  *       - bearerAuth: []
  *     parameters:
