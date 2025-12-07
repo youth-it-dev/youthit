@@ -8,6 +8,7 @@ import { ActiveMissionCard } from "@/components/mission/active-mission-card";
 import { MissionCertificationCard } from "@/components/mission/mission-certification-card";
 import { MissionCertificationSuccessModal } from "@/components/mission/mission-certification-success-modal";
 import { MissionRecommendationCard } from "@/components/mission/mission-recommendation-card";
+import MissionReviewCard from "@/components/mission/mission-review-card";
 import { RecommendedMissionCard } from "@/components/mission/recommended-mission-card";
 import { Typography } from "@/components/shared/typography";
 import { Button } from "@/components/shared/ui/button";
@@ -31,8 +32,10 @@ import {
   useGetMissionsStats,
   usePostMissionsQuitById,
 } from "@/hooks/generated/missions-hooks";
+import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useInfiniteMissionPosts } from "@/hooks/mission/useInfiniteMissionPosts";
 import useToggle from "@/hooks/shared/useToggle";
+import type { ProgramListResponse } from "@/types/generated/api-schema";
 import { getNextDay5AM } from "@/utils/shared/date";
 import { showToast } from "@/utils/shared/toast";
 
@@ -164,6 +167,24 @@ const MissionPageContent = () => {
     if (!missionPostsPages?.pages) return [];
     return missionPostsPages.pages.flatMap((page) => page.posts ?? []);
   }, [missionPostsPages]);
+
+  // 프로그램 목록 조회 API
+  const { data: programsResponse } = useGetPrograms({
+    request: { pageSize: 20 },
+  });
+
+  const programs = useMemo(() => {
+    if (!programsResponse || typeof programsResponse !== "object") return [];
+    const responseData = programsResponse as ProgramListResponse["data"];
+    if (
+      responseData &&
+      "programs" in responseData &&
+      Array.isArray(responseData.programs)
+    ) {
+      return responseData.programs || [];
+    }
+    return [];
+  }, [programsResponse]);
 
   // 친구들이 인증한 미션 - 무한 스크롤 Intersection Observer
   useEffect(() => {
@@ -412,7 +433,7 @@ const MissionPageContent = () => {
       </div>
 
       {/* 흰화면 */}
-      <div className="pb-safe rounded-t-2xl rounded-tl-xl rounded-tr-xl bg-white px-5 py-6">
+      <div className="rounded-t-2xl rounded-tl-xl rounded-tr-xl bg-white px-5 py-6 pb-26">
         {/* 미션 진척 현황 */}
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-gray-400" />
@@ -611,6 +632,53 @@ const MissionPageContent = () => {
             </HorizontalScrollContainer>
           </>
         )}
+
+        <div className="flex flex-col gap-5 pt-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <Typography
+                font="noto"
+                variant="heading3B"
+                className="text-gray-950"
+              >
+                이런 프로그램도 있어요!
+              </Typography>
+            </div>
+            {/* y scroll layout */}
+            <HorizontalScrollContainer
+              className="-mx-5"
+              containerClassName="flex gap-2 px-5"
+              gradientColor="white"
+            >
+              {programs.length > 0 ? (
+                programs.map((program) => (
+                  <MissionReviewCard
+                    key={program.id}
+                    imageUrl={
+                      program.thumbnail?.[0]?.url || "/imgs/mockup2.jpg"
+                    }
+                    imageAlt={program.title || "프로그램"}
+                    title={program.title || "-"}
+                    content={program.description || "-"}
+                    onClick={() => {
+                      if (program.id) {
+                        router.push(`${LINK_URL.PROGRAMS}/${program.id}`);
+                      }
+                    }}
+                  />
+                ))
+              ) : (
+                <Typography
+                  font="noto"
+                  variant="body3R"
+                  className="px-5 text-gray-400"
+                >
+                  아직 프로그램이 없어요.
+                </Typography>
+              )}
+            </HorizontalScrollContainer>
+          </div>
+        </div>
       </div>
       {/* 미션 그만두기 컨펌 모달 */}
       <Modal
