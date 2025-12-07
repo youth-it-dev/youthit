@@ -2213,14 +2213,28 @@ router.post("/:missionId/quit", authGuard, missionController.quitMission);
  */
 router.post("/:missionId/posts", authGuard, missionController.createMissionPost);
 
-// 미션 인증글 신고
+// 미션 인증글 신고 (DEPRECATED: /reportContent API 사용 권장)
 /**
  * @swagger
  * /missions/posts/{postId}/report:
  *   post:
  *     tags: [Missions]
- *     summary: 미션 인증글 신고
- *     description: 미션 인증글을 신고합니다.
+ *     deprecated: true
+ *     summary: "[DEPRECATED] 미션 인증글 신고"
+ *     description: |
+ *       ⚠️ 이 API는 더 이상 사용되지 않습니다. 
+ *       대신 `POST /reportContent` API를 사용해주세요.
+ *       
+ *       예시:
+ *       ```json
+ *       {
+ *         "targetType": "post",
+ *         "targetId": "인증글ID",
+ *         "targetUserId": "작성자ID",
+ *         "missionId": "미션ID",
+ *         "reportReason": "신고사유"
+ *       }
+ *       ```
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2342,14 +2356,28 @@ router.post("/:missionId/posts", authGuard, missionController.createMissionPost)
  */
 router.post("/posts/:postId/report", authGuard, missionController.reportMissionPost);
 
-// 미션 인증글 댓글 신고
+// 미션 인증글 댓글 신고 (DEPRECATED: /reportContent API 사용 권장)
 /**
  * @swagger
  * /missions/posts/{postId}/comments/{commentId}/report:
  *   post:
  *     tags: [Missions]
- *     summary: 미션 인증글 댓글 신고
- *     description: 미션 인증글 댓글을 신고합니다.
+ *     deprecated: true
+ *     summary: "[DEPRECATED] 미션 인증글 댓글 신고"
+ *     description: |
+ *       ⚠️ 이 API는 더 이상 사용되지 않습니다. 
+ *       대신 `POST /reportContent` API를 사용해주세요.
+ *       
+ *       예시:
+ *       ```json
+ *       {
+ *         "targetType": "comment",
+ *         "targetId": "댓글ID",
+ *         "targetUserId": "작성자ID",
+ *         "missionId": "미션ID",
+ *         "reportReason": "신고사유"
+ *       }
+ *       ```
  *     security:
  *       - bearerAuth: []
  *     parameters:

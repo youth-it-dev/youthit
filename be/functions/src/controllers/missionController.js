@@ -751,6 +751,18 @@ class MissionController {
 
   /**
    * 미션 인증글 신고
+   * @deprecated 이 메서드는 더 이상 사용되지 않습니다. 
+   * 대신 POST /reportContent API를 사용해주세요.
+   * 
+   * 마이그레이션 예시:
+   * POST /reportContent
+   * {
+   *   "targetType": "post",
+   *   "targetId": "인증글ID",
+   *   "targetUserId": "작성자ID",
+   *   "missionId": "미션ID",
+   *   "reportReason": "신고사유"
+   * }
    */
   async reportMissionPost(req, res, next) {
     try {
@@ -789,6 +801,18 @@ class MissionController {
 
   /**
    * 미션 인증글 댓글 신고
+   * @deprecated 이 메서드는 더 이상 사용되지 않습니다. 
+   * 대신 POST /reportContent API를 사용해주세요.
+   * 
+   * 마이그레이션 예시:
+   * POST /reportContent
+   * {
+   *   "targetType": "comment",
+   *   "targetId": "댓글ID",
+   *   "targetUserId": "작성자ID",
+   *   "missionId": "미션ID",
+   *   "reportReason": "신고사유"
+   * }
    */
   async reportMissionComment(req, res, next) {
     try {
