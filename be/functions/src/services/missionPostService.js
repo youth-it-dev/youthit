@@ -6,6 +6,7 @@ const FirestoreService = require("./firestoreService");
 const UserService = require("./userService");
 const fcmHelper = require("../utils/fcmHelper");
 const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
+const RewardService = require("./rewardService");
 const {
   parsePageSize,
   sanitizeCursor,
@@ -331,7 +332,11 @@ class MissionPostService {
         updatedAt: now,
       });
 
-      // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트
+      // totalPostsCount 계산 (기존 값 + 1)
+      const currentTotalPostsCount = statsData.totalPostsCount || 0;
+      const newTotalPostsCount = currentTotalPostsCount + 1;
+
+      // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트, 총 미션 수 증가
       transaction.set(
         statsDocRef,
         {
@@ -341,6 +346,7 @@ class MissionPostService {
           dailyCompletedCount: (statsData.dailyCompletedCount || 0) + 1,
           lastCompletedAt: now, // 마지막 인증 시간 업데이트 (연속일자 계산에 사용)
           consecutiveDays: newConsecutiveDays, // 연속일자 업데이트 (어제 인증 여부에 따라 +1 또는 1로 리셋)
+          totalPostsCount: newTotalPostsCount, // 총 미션 완료 수 증가
           updatedAt: now,
         },
         { merge: true },
@@ -359,6 +365,32 @@ class MissionPostService {
         { merge: true },
       );
     });
+
+    // 트랜잭션 완료 후 리워드 부여 (최초 3회까지만)
+    // totalPostsCount로 리워드 지급 여부 검증 및 중복 지급 방지
+    try {
+      const statsDoc = await statsDocRef.get();
+      const finalStatsData = statsDoc.exists ? statsDoc.data() : {};
+      const finalTotalPostsCount = finalStatsData.totalPostsCount || 0;
+
+      // 최초 3회까지만 리워드 지급 (totalPostsCount <= 3)
+      if (finalTotalPostsCount <= 3) {
+        const rewardService = new RewardService();
+        
+        // 중복 지급 방지: historyId 기반 체크 (grantActionReward 내부에서 처리)
+        await rewardService.grantActionReward(userId, 'mission_cert', {
+          postId: postRef.id,
+          missionId,
+        });
+      }
+    } catch (rewardError) {
+      // 리워드 부여 실패해도 미션 완료는 정상 처리 (에러 로깅만)
+      console.error('[MISSION_POST] 리워드 부여 실패:', rewardError.message, {
+        userId,
+        postId: postRef.id,
+        missionId,
+      });
+    }
 
     return {
       missionId,
