@@ -930,7 +930,7 @@ class NotificationService {
       if (pendingNotifications.length === 0) {
         return {
           success: true,
-          message: "전송할 대기 상태 알림이 없습니다.",
+          message: "알림을 선택하지 않으셨거나, 전송 대기인 알림이 없습니다.",
           total: 0,
           successCount: 0,
           errorCount: 0,
