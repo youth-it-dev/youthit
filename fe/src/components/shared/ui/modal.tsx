@@ -107,7 +107,7 @@ const Modal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
       {/* 오버레이: #000 60% 투명도 */}
       <div
         className="absolute inset-0 bg-black/60"
