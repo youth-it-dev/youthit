@@ -27,10 +27,12 @@ import ProgramFilterBottomSheet, {
 } from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
 import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import type { ProgramListResponse } from "@/types/generated/api-schema";
@@ -107,6 +109,13 @@ const CommunityPageContent = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const isSearchingRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // 게시물 정보 없음 모달 상태
+  const {
+    isOpen: isPostNotFoundModalOpen,
+    open: openPostNotFoundModal,
+    close: closePostNotFoundModal,
+  } = useToggle();
 
   // Firebase Auth 상태 추적
   useEffect(() => {
@@ -313,7 +322,7 @@ const CommunityPageContent = () => {
 
       router.push(`${LINK_URL.COMMUNITY_POST}/${postId}?${params.toString()}`);
     } else {
-      alert("게시물 정보를 찾을 수 없습니다.");
+      openPostNotFoundModal();
     }
   };
 
@@ -798,6 +807,17 @@ const CommunityPageContent = () => {
           selectedProgramState={selectedProgramState}
           selectedCategories={selectedCategories}
           onApply={handleFilterApply}
+        />
+
+        {/* 게시물 정보 없음 모달 */}
+        <Modal
+          isOpen={isPostNotFoundModalOpen}
+          title="게시물을 찾을 수 없어요"
+          description="게시물 정보를 찾을 수 없습니다."
+          confirmText="확인"
+          onConfirm={closePostNotFoundModal}
+          onClose={closePostNotFoundModal}
+          variant="primary"
         />
       </div>
     </div>
