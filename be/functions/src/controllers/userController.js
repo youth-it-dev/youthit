@@ -361,11 +361,12 @@ class UserController {
   async getRewardsEarned(req, res, next) {
     try {
       const {uid} = req.user;
-      const { page = 0, size = 20 } = req.query;
+      const { page = 0, size = 20, filter = 'all' } = req.query;
       
       const result = await rewardService.getRewardsEarned(uid, {
         page: parseInt(page),
         size: parseInt(size),
+        filter,
       });
       
       return res.success(result);
