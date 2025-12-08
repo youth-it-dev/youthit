@@ -234,7 +234,7 @@ const SettingsPage = () => {
       showArrow: true,
     },
     {
-      text: "활동 푸시 알림 (댓글/좋아요)",
+      text: "활동 푸시 알림 (게시글/댓글/활동 신청)",
       iconUrl: IMAGE_URL.ICON.settings.bell.url,
       toggle: {
         checked: isNotificationEnabled,
@@ -243,7 +243,7 @@ const SettingsPage = () => {
       },
     },
     {
-      text: "마케팅 푸시 알림 (이벤트/정보)",
+      text: "마케팅 푸시 알림 (이벤트/기타 정보)",
       iconUrl: IMAGE_URL.ICON.settings.megaphone.url,
       toggle: {
         checked: isMarketingConsentEnabled,
