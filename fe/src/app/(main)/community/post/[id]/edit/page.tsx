@@ -26,6 +26,7 @@ import {
   useGetCommunitiesPostsByTwoIds,
   usePutCommunitiesPostsByTwoIds,
 } from "@/hooks/generated/communities-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
@@ -142,6 +143,72 @@ const EditPageContent = () => {
     fileQueueRef.current = fileQueue;
   }, [fileQueue]);
 
+  // 이미지 개수 초과 모달
+  const {
+    isOpen: isImageLimitModalOpen,
+    open: openImageLimitModal,
+    close: closeImageLimitModal,
+  } = useToggle();
+
+  // 파일 개수 초과 모달
+  const {
+    isOpen: isFileLimitModalOpen,
+    open: openFileLimitModal,
+    close: closeFileLimitModal,
+  } = useToggle();
+
+  // 이미지 업로드 부분 실패 모달
+  const {
+    isOpen: isImageUploadPartialModalOpen,
+    open: openImageUploadPartialModal,
+    close: closeImageUploadPartialModal,
+  } = useToggle();
+  const [imageUploadPartialMessage, setImageUploadPartialMessage] =
+    useState<string>("");
+
+  // 이미지 업로드 실패 모달
+  const {
+    isOpen: isImageUploadFailedModalOpen,
+    open: openImageUploadFailedModal,
+    close: closeImageUploadFailedModal,
+  } = useToggle();
+
+  // 이미지 URL 교체 실패 모달
+  const {
+    isOpen: isImageUrlReplaceFailedModalOpen,
+    open: openImageUrlReplaceFailedModal,
+    close: closeImageUrlReplaceFailedModal,
+  } = useToggle();
+
+  // 파일 업로드 실패 모달
+  const {
+    isOpen: isFileUploadFailedModalOpen,
+    open: openFileUploadFailedModal,
+    close: closeFileUploadFailedModal,
+  } = useToggle();
+
+  // 업데이트 성공 모달
+  const {
+    isOpen: isUpdateSuccessModalOpen,
+    open: openUpdateSuccessModal,
+    close: closeUpdateSuccessModal,
+  } = useToggle();
+
+  // 업데이트 실패 모달
+  const {
+    isOpen: isUpdateFailedModalOpen,
+    open: openUpdateFailedModal,
+    close: closeUpdateFailedModal,
+  } = useToggle();
+  const [updateFailedMessage, setUpdateFailedMessage] = useState<string>("");
+
+  // 게시물 없음 모달
+  const {
+    isOpen: isPostNotFoundModalOpen,
+    open: openPostNotFoundModal,
+    close: closePostNotFoundModal,
+  } = useToggle();
+
   /**
    * 이미지 선택 시 clientId를 발급/등록하고 반환
    */
@@ -154,7 +221,7 @@ const EditPageContent = () => {
     });
     setImageQueue((prev) => {
       if (prev.length >= MAX_FILES) {
-        alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        openImageLimitModal();
         return prev;
       }
       const newQueue = [...prev, { clientId, file }];
@@ -172,7 +239,7 @@ const EditPageContent = () => {
     setFileQueue((prev) => {
       const merged = dedupeFiles([...prev.map((item) => item.file), file]);
       if (merged.length > MAX_FILES) {
-        alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        openFileLimitModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -195,12 +262,15 @@ const EditPageContent = () => {
     } = await uploadFileQueue(queueToUse, "이미지");
 
     if (queueToUse.length > 0 && imageFailedCount > 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
+      setImageUploadPartialMessage(
+        WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount)
+      );
+      openImageUploadPartialModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     if (queueToUse.length > 0 && imgIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      openImageUploadFailedModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
@@ -261,7 +331,7 @@ const EditPageContent = () => {
       if (failedImages.length > 0) {
         debug.error("교체 실패한 이미지 clientId:", failedImages);
         debug.error("imageUrlMap:", Array.from(imageUrlMap.entries()));
-        alert(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        openImageUrlReplaceFailedModal();
         throw new Error(ERROR_MESSAGES.IMAGE_URL_REPLACE_FAILED);
       }
 
@@ -306,12 +376,12 @@ const EditPageContent = () => {
     } = await uploadFileQueue(queueToUse, "파일");
 
     if (queueToUse.length > 0 && fileFailedCount > 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openFileUploadFailedModal();
       return null;
     }
 
     if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openFileUploadFailedModal();
       return null;
     }
 
@@ -370,7 +440,7 @@ const EditPageContent = () => {
    * 게시글 수정 성공 후 처리
    */
   const handleUpdateSuccess = () => {
-    alert(POST_EDIT_CONSTANTS.UPDATE_SUCCESS);
+    openUpdateSuccessModal();
     setImageQueue([]);
     setFileQueue([]);
 
@@ -441,7 +511,10 @@ const EditPageContent = () => {
       (error instanceof Error
         ? error.message
         : POST_EDIT_CONSTANTS.UNKNOWN_ERROR);
-    alert(`${POST_EDIT_CONSTANTS.UPDATE_FAILED} ${errorMessage}`);
+    setUpdateFailedMessage(
+      `${POST_EDIT_CONSTANTS.UPDATE_FAILED} ${errorMessage}`
+    );
+    openUpdateFailedModal();
   };
 
   /**
@@ -449,7 +522,7 @@ const EditPageContent = () => {
    */
   const onSubmit = async (values: WriteFormValues) => {
     if (!postId || !communityId) {
-      alert(POST_EDIT_CONSTANTS.POST_NOT_FOUND);
+      openPostNotFoundModal();
       return;
     }
 
@@ -703,6 +776,105 @@ const EditPageContent = () => {
           // popstate 인터셉트를 통하지 않고 즉시 이전 화면(커뮤니티 목록)으로 이동
           router.replace(LINK_URL.COMMUNITY);
         }}
+        variant="primary"
+      />
+
+      {/* 이미지 개수 초과 모달 */}
+      <Modal
+        isOpen={isImageLimitModalOpen}
+        title="이미지 개수 초과"
+        description={`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`}
+        confirmText="확인"
+        onConfirm={closeImageLimitModal}
+        onClose={closeImageLimitModal}
+        variant="primary"
+      />
+
+      {/* 파일 개수 초과 모달 */}
+      <Modal
+        isOpen={isFileLimitModalOpen}
+        title="파일 개수 초과"
+        description={`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`}
+        confirmText="확인"
+        onConfirm={closeFileLimitModal}
+        onClose={closeFileLimitModal}
+        variant="primary"
+      />
+
+      {/* 이미지 업로드 부분 실패 모달 */}
+      <Modal
+        isOpen={isImageUploadPartialModalOpen}
+        title="이미지 업로드 실패"
+        description={imageUploadPartialMessage}
+        confirmText="확인"
+        onConfirm={closeImageUploadPartialModal}
+        onClose={closeImageUploadPartialModal}
+        variant="primary"
+      />
+
+      {/* 이미지 업로드 실패 모달 */}
+      <Modal
+        isOpen={isImageUploadFailedModalOpen}
+        title="이미지 업로드 실패"
+        description={WRITE_MESSAGES.IMAGE_UPLOAD_FAILED}
+        confirmText="확인"
+        onConfirm={closeImageUploadFailedModal}
+        onClose={closeImageUploadFailedModal}
+        variant="primary"
+      />
+
+      {/* 이미지 URL 교체 실패 모달 */}
+      <Modal
+        isOpen={isImageUrlReplaceFailedModalOpen}
+        title="이미지 처리 실패"
+        description={WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED}
+        confirmText="확인"
+        onConfirm={closeImageUrlReplaceFailedModal}
+        onClose={closeImageUrlReplaceFailedModal}
+        variant="primary"
+      />
+
+      {/* 파일 업로드 실패 모달 */}
+      <Modal
+        isOpen={isFileUploadFailedModalOpen}
+        title="파일 업로드 실패"
+        description={WRITE_MESSAGES.FILE_UPLOAD_FAILED}
+        confirmText="확인"
+        onConfirm={closeFileUploadFailedModal}
+        onClose={closeFileUploadFailedModal}
+        variant="primary"
+      />
+
+      {/* 업데이트 성공 모달 */}
+      <Modal
+        isOpen={isUpdateSuccessModalOpen}
+        title="수정 완료"
+        description={POST_EDIT_CONSTANTS.UPDATE_SUCCESS}
+        confirmText="확인"
+        onConfirm={closeUpdateSuccessModal}
+        onClose={closeUpdateSuccessModal}
+        variant="primary"
+      />
+
+      {/* 업데이트 실패 모달 */}
+      <Modal
+        isOpen={isUpdateFailedModalOpen}
+        title="수정 실패"
+        description={updateFailedMessage}
+        confirmText="확인"
+        onConfirm={closeUpdateFailedModal}
+        onClose={closeUpdateFailedModal}
+        variant="primary"
+      />
+
+      {/* 게시물 없음 모달 */}
+      <Modal
+        isOpen={isPostNotFoundModalOpen}
+        title="게시물을 찾을 수 없어요"
+        description={POST_EDIT_CONSTANTS.POST_NOT_FOUND}
+        confirmText="확인"
+        onConfirm={closePostNotFoundModal}
+        onClose={closePostNotFoundModal}
         variant="primary"
       />
     </form>
