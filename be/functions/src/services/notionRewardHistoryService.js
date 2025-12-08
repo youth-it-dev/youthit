@@ -58,41 +58,8 @@ class NotionRewardHistoryService {
     this.notionRewardHistoryDB = NOTION_REWARD_HISTORY_DB_ID;
     this.notionUserAccountDB = NOTION_USER_ACCOUNT_DB_ID;
     this.notionRewardPolicyDB = NOTION_REWARD_POLICY_DB_ID;
-    this.dbSchema = null; // 데이터베이스 스키마 캐시
   }
 
-  /**
-   * Notion 데이터베이스 스키마 조회 (필드명 및 타입 확인)
-   * @param {string} databaseId - Notion 데이터베이스 ID
-   * @return {Promise<Object>} 필드명과 타입 정보, 없으면 null 반환
-   */
-  async getDatabaseSchema(databaseId) {
-    try {
-      const response = await this.notion.databases.retrieve({
-        database_id: databaseId,
-      });
-      
-      // 응답 검증 - properties가 없으면 null 반환 (데이터 소스 기반 DB일 수 있음)
-      if (!response || !response.properties) {
-        console.warn(`[스키마 조회] 응답에 properties가 없습니다. 데이터 소스 기반 데이터베이스일 수 있습니다.`);
-        return null;
-      }
-      
-      const schema = {};
-      for (const [fieldName, fieldData] of Object.entries(response.properties)) {
-        schema[fieldName] = {
-          type: fieldData.type,
-          id: fieldData.id,
-        };
-      }
-      
-      return schema;
-    } catch (error) {
-      console.error(`[스키마 조회 실패] 데이터베이스 ${databaseId}:`, error.message);
-      console.error('에러 상세:', error);
-      return null; // 에러 발생 시 null 반환하여 계속 진행
-    }
-  }
 
   /**
    * Notion 리워드 정책 DB에서 actionKey → 사용자 행동 매핑 조회
@@ -174,20 +141,6 @@ class NotionRewardHistoryService {
       // 0. Notion 리워드 정책 DB에서 actionKey → 사용자 행동 매핑 조회
       const rewardPolicyMap = await this.getRewardPolicyMapping();
 
-      // 0-1. Notion 데이터베이스 스키마 조회 (필드명 확인)
-      const dbSchema = await this.getDatabaseSchema(this.notionRewardHistoryDB);
-      
-      // "회원 관리" 필드가 relation 타입인지 확인
-      const userRelationFieldName = '회원 관리';
-      let hasUserRelationField = false;
-      
-      if (dbSchema) {
-        hasUserRelationField = dbSchema[userRelationFieldName] && dbSchema[userRelationFieldName].type === 'relation';
-      } else {
-        // 스키마를 조회할 수 없어도 기본 필드명으로 시도
-        hasUserRelationField = true;
-      }
-
       // 1. Firestore에서 전체 rewardsHistory 조회 (collectionGroup 쿼리)
       const rewardsHistorySnapshot = await db
         .collectionGroup('rewardsHistory')
@@ -203,88 +156,44 @@ class NotionRewardHistoryService {
         return { syncedCount: 0, failedCount: 0, total: 0 };
       }
 
-      // 2. Notion에 있는 기존 리워드 히스토리 목록 가져오기 (중복 체크용 및 필드명 확인)
+      // 2. Notion에 있는 기존 리워드 히스토리 목록 가져오기 (중복 체크용)
       const notionRewardHistories = await this.getNotionRewardHistories(this.notionRewardHistoryDB);
-
-      // 2-1. 기존 페이지가 있으면 properties에서 실제 필드명 확인
-      let actualUserRelationFieldName = null;
-      if (Object.keys(notionRewardHistories).length > 0) {
-        try {
-          const firstHistoryKey = Object.keys(notionRewardHistories)[0];
-          const firstPageId = notionRewardHistories[firstHistoryKey].pageId;
-          const samplePage = await this.notion.pages.retrieve({ page_id: firstPageId });
-          
-          if (samplePage && samplePage.properties) {
-            // "회원 관리" 필드 찾기 (공백 포함 가능)
-            const fieldNames = Object.keys(samplePage.properties);
-            const userRelationField = fieldNames.find(name => {
-              const trimmedName = name.trim();
-              return trimmedName === '회원 관리' && samplePage.properties[name].type === 'relation';
-            });
-            
-            if (userRelationField) {
-              actualUserRelationFieldName = userRelationField;
-              hasUserRelationField = true;
-            } else {
-              hasUserRelationField = false;
-            }
-          }
-        } catch (error) {
-          // 에러 발생 시 기본 필드명 사용
-        }
-      }
-      
-      // 기존 페이지가 없거나 필드를 찾지 못한 경우 기본 필드명 시도
-      if (!actualUserRelationFieldName && hasUserRelationField) {
-        if (dbSchema) {
-          const schemaFieldNames = Object.keys(dbSchema);
-          const userRelationField = schemaFieldNames.find(name => {
-            const trimmedName = name.trim();
-            return trimmedName === '회원 관리' && dbSchema[name].type === 'relation';
-          });
-          actualUserRelationFieldName = userRelationField || '회원 관리';
-        } else {
-          actualUserRelationFieldName = '회원 관리';
-        }
-      }
 
       // 3. Notion 회원 관리 DB에서 전체 사용자 정보 미리 조회 (성능 개선)
       let notionUsersMap = {};
-      if (actualUserRelationFieldName) {
-        try {
-          const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2 || this.notionUserAccountDB;
-          let userResults = [];
-          let hasMoreUsers = true;
-          let userStartCursor;
+      try {
+        const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2 || this.notionUserAccountDB;
+        let userResults = [];
+        let hasMoreUsers = true;
+        let userStartCursor;
 
-          while (hasMoreUsers) {
-            const response = await this.notion.dataSources.query({
-              data_source_id: userDbId,
-              page_size: 100,
-              start_cursor: userStartCursor,
-            });
+        while (hasMoreUsers) {
+          const response = await this.notion.dataSources.query({
+            data_source_id: userDbId,
+            page_size: 100,
+            start_cursor: userStartCursor,
+          });
 
-            if (response.results) {
-              userResults = userResults.concat(response.results);
-              hasMoreUsers = response.has_more;
-              userStartCursor = response.next_cursor;
-            } else {
-              hasMoreUsers = false;
-            }
+          if (response.results) {
+            userResults = userResults.concat(response.results);
+            hasMoreUsers = response.has_more;
+            userStartCursor = response.next_cursor;
+          } else {
+            hasMoreUsers = false;
           }
-
-          // userId → pageId 매핑 생성
-          for (const page of userResults) {
-            const props = page.properties;
-            const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || null;
-            if (userId) {
-              notionUsersMap[userId] = { pageId: page.id };
-            }
-          }
-          console.log(`[성능 개선] ${Object.keys(notionUsersMap).length}명의 사용자 정보를 미리 조회했습니다.`);
-        } catch (error) {
-          console.warn(`[WARN] 사용자 정보 미리 조회 실패:`, error.message);
         }
+
+        // userId → pageId 매핑 생성
+        for (const page of userResults) {
+          const props = page.properties;
+          const userId = props["사용자ID"]?.rich_text?.[0]?.plain_text || null;
+          if (userId) {
+            notionUsersMap[userId] = { pageId: page.id };
+          }
+        }
+        console.log(`[성능 개선] ${Object.keys(notionUsersMap).length}명의 사용자 정보를 미리 조회했습니다.`);
+      } catch (error) {
+        console.warn(`[WARN] 사용자 정보 미리 조회 실패:`, error.message);
       }
 
       let syncedCount = 0;
@@ -303,9 +212,9 @@ class NotionRewardHistoryService {
             const historyData = doc.data();
             const historyId = doc.id;
             
-            // userId 추출 (컬렉션 경로에서: users/{userId}/rewardsHistory/{historyId})
+            // userId 추출
             const pathParts = doc.ref.path.split('/');
-            const userId = pathParts[1]; // users/{userId}/rewardsHistory/{historyId}
+            const userId = pathParts[1];
 
             if (!userId) {
               console.warn(`[WARN] userId를 추출할 수 없습니다: ${doc.ref.path}`);
@@ -314,29 +223,18 @@ class NotionRewardHistoryService {
               return { success: false, historyId, error: 'userId_not_found' };
             }
 
-            // Notion 회원 관리 DB에서 사용자 pageId 조회 (캐시에서 조회 - 성능 개선)
-            let notionUser = null;
-            if (actualUserRelationFieldName && notionUsersMap[userId]) {
-              notionUser = notionUsersMap[userId];
-            }
+            // Notion 회원 관리 DB에서 사용자 pageId 조회
+            const notionUser = notionUsersMap[userId] || null;
 
-            // 리워드 타입 결정 (Notion 정책 DB에서 조회 - 관계형 필드)
+            // 리워드 타입 결정
             let rewardTypeRelation = [];
             if (rewardPolicyMap[historyData.actionKey]) {
-              // 정책 DB에서 페이지 ID 가져와서 relation으로 연결
               const policyInfo = rewardPolicyMap[historyData.actionKey];
               rewardTypeRelation = [{ id: policyInfo.pageId }];
-            } else {
-              rewardTypeRelation = [];
             }
             
-            // 지급 타입 결정
             const paymentType = CHANGE_TYPE_TO_PAYMENT_TYPE_MAP[historyData.changeType] || '지급';
-
-            // 내용 (reason)
             const content = historyData.reason || '';
-
-            // 나다움 포인트 (amount)
             const amount = historyData.amount || 0;
 
             // 적립/차감 날짜
@@ -351,7 +249,7 @@ class NotionRewardHistoryService {
               }
             }
 
-            // 만료 날짜 (expiresAt)
+            // 만료 날짜
             let expiryDate = null;
             if (historyData.expiresAt) {
               try {
@@ -368,7 +266,6 @@ class NotionRewardHistoryService {
             }
 
             // Notion 페이지 데이터 구성
-            // title 필드에 historyId 저장 (중복 체크용)
             const notionPage = {
               '나다움 ID': { 
                 title: [{ 
@@ -379,15 +276,10 @@ class NotionRewardHistoryService {
               },
             };
 
-            // 회원 관리 relation 필드 추가 (programService와 동일한 방식)
-            // actualUserRelationFieldName이 확인된 경우에만 추가
-            if (actualUserRelationFieldName && notionUser && notionUser.pageId) {
-              notionPage[actualUserRelationFieldName] = {
-                relation: [
-                  {
-                    id: notionUser.pageId
-                  }
-                ]
+            // 회원 relation 필드 추가
+            if (notionUser && notionUser.pageId) {
+              notionPage['회원'] = {
+                relation: [{ id: notionUser.pageId }]
               };
             }
 
@@ -417,39 +309,12 @@ class NotionRewardHistoryService {
               };
             }
 
-            // 중복 체크용 고유 키 생성 (historyId 사용)
+            // 중복 체크 및 재생성
             const uniqueKey = historyId;
-
-            // 삭제 후 재생성: 기존 페이지가 있으면 삭제 후 새로 생성, 없으면 생성
-            try {
-              if (notionRewardHistories[uniqueKey]) {
-                // 기존 페이지 아카이브 (삭제)
-                await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
-              }
-              // 새 페이지 생성 (기존 페이지가 있었든 없었든 항상 생성)
-              await this.createNotionPageWithRetry(notionPage);
-            } catch (error) {
-              // "회원 관리" 필드 관련 에러인 경우 필드를 제외하고 재시도
-              if (error.message && (error.message.includes('회원 관리') || error.message.includes('not a property'))) {
-                // 회원 관리 필드 제거 (실제 필드명 사용)
-                const notionPageWithoutUser = { ...notionPage };
-                if (actualUserRelationFieldName) {
-                  delete notionPageWithoutUser[actualUserRelationFieldName];
-                } else {
-                  delete notionPageWithoutUser['회원 관리'];
-                  delete notionPageWithoutUser['회원 관리 '];
-                }
-                
-                // 삭제 후 재생성 재시도
-                if (notionRewardHistories[uniqueKey]) {
-                  await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
-                }
-                await this.createNotionPageWithRetry(notionPageWithoutUser);
-              } else {
-                // 다른 에러는 그대로 throw
-                throw error;
-              }
+            if (notionRewardHistories[uniqueKey]) {
+              await this.archiveNotionPageWithRetry(notionRewardHistories[uniqueKey].pageId);
             }
+            await this.createNotionPageWithRetry(notionPage);
 
             syncedCount++;
             syncedHistoryIds.push(historyId);
@@ -485,7 +350,7 @@ class NotionRewardHistoryService {
         const logRef = db.collection("adminLogs").doc();
         await logRef.set({
           adminId: "Notion 관리자",
-          action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED, // 적절한 액션으로 변경 필요할 수 있음
+          action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
           targetId: "",
           timestamp: new Date(),
           metadata: {
@@ -561,10 +426,8 @@ class NotionRewardHistoryService {
     const historyMap = {};
     for (const page of results) {
       const props = page.properties;
-      // title 필드에 historyId가 저장되어 있음
       const title = props["나다움 ID"]?.title?.[0]?.plain_text || null;
       if (title) {
-        // title이 historyId이므로 그대로 사용
         historyMap[title] = { pageId: page.id };
       }
     }
