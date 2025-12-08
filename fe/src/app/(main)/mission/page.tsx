@@ -85,13 +85,17 @@ const MissionPageContent = () => {
 
   const activeMissions = myMissionsResponse?.missions || [];
   const isOnMission = activeMissions.length > 0;
-  const remainingMission = activeMissions.length;
 
   // 미션 통계 데이터
   const missionStats = missionStatsResponse || {};
   const todayTotalCount = missionStats.todayTotalCount ?? 0;
   const todayCompletedCount = missionStats.todayCompletedCount ?? 0;
   const consecutiveDays = missionStats.consecutiveDays ?? 0;
+  const totalPostsCount = missionStats.totalPostsCount ?? 0;
+  // 진행 미션 수: 현재까지 진행한 미션 개수 누적
+  const activeMissionCount = totalPostsCount;
+  // 남은 미션 수: 오늘의 총 미션 수 - 오늘 완료한 미션 수
+  const remainingMission = todayTotalCount - todayCompletedCount;
 
   /**
    * 미션 관련 쿼리 무효화
@@ -496,7 +500,7 @@ const MissionPageContent = () => {
               >
                 진행 미션 수
               </Typography>
-              <InfoIconWithTooltip message="현재 진행 중인 미션의 개수입니다." />
+              <InfoIconWithTooltip message="지금까지 완료한 미션의 총 개수입니다." />
             </div>
             <div className="flex items-center gap-1">
               <Typography
@@ -504,7 +508,7 @@ const MissionPageContent = () => {
                 variant="heading1B"
                 className="text-gray-600"
               >
-                {remainingMission}
+                {activeMissionCount}
               </Typography>
               <Typography
                 font="noto"
