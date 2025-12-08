@@ -1243,6 +1243,27 @@ class ProgramService {
         }
       }
 
+      if (member.userId) {
+        try {
+          const community = await this.communityService.getCommunityMapping(normalizedProgramId);
+          const programName = community?.name || "프로그램";
+          
+          await fcmHelper.sendNotification(
+            member.userId,
+            "프로그램 신청 거절",
+            `"${programName}" 프로그램 신청이 거절되었습니다.`,
+            "ANNOUNCEMENT",
+            "",
+            "",
+            NOTIFICATION_LINKS.PROGRAM(programId)
+          );
+          
+          console.log(`[ProgramService] 거절 알림 발송 완료 - userId: ${member.userId}, programName: ${programName}`);
+        } catch (notificationError) {
+          console.warn('[ProgramService] 거절 알림 발송 실패:', notificationError.message);
+        }
+      }
+
       return {
         applicationId,
         status: 'rejected',
