@@ -26,6 +26,7 @@ import {
   useGetUsersMe,
   useGetUsersMeParticipatingCommunities,
 } from "@/hooks/generated/users-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { ProgramDetailResponse } from "@/types/generated/api-schema";
@@ -360,9 +361,10 @@ const ProgramApplyPage = () => {
       }
       // 일반 에러
       else {
-        alert(
+        setErrorMessage(
           errorMessage || "신청 중 오류가 발생했습니다. 다시 시도해주세요."
         );
+        openErrorModal();
       }
 
       setFieldErrors(newFieldErrors);
@@ -393,6 +395,21 @@ const ProgramApplyPage = () => {
 
   // 신청 성공 모달 상태
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // 에러 모달 상태
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // 로그인 필요 모달 상태
+  const {
+    isOpen: isLoginRequiredModalOpen,
+    open: openLoginRequiredModal,
+    close: closeLoginRequiredModal,
+  } = useToggle();
 
   // 통합 바텀시트 타입 결정
   const activePickerType = useMemo<PickerType | null>(() => {
@@ -694,7 +711,7 @@ const ProgramApplyPage = () => {
     const applicantId = currentUser?.uid || userData?.id || "";
 
     if (!applicantId) {
-      alert("로그인이 필요합니다.");
+      openLoginRequiredModal();
       return;
     }
 
@@ -1411,6 +1428,28 @@ const ProgramApplyPage = () => {
         isTermsAgreeLoading={applyMutation.isPending}
         selectedRegionCode={selectedRegionCode}
         onRegionCodeSelect={setSelectedRegionCode}
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        title="오류가 발생했어요"
+        description={errorMessage}
+        confirmText="확인"
+        onConfirm={closeErrorModal}
+        onClose={closeErrorModal}
+        variant="primary"
+      />
+
+      {/* 로그인 필요 모달 */}
+      <Modal
+        isOpen={isLoginRequiredModalOpen}
+        title="로그인이 필요해요"
+        description="로그인이 필요합니다."
+        confirmText="확인"
+        onConfirm={closeLoginRequiredModal}
+        onClose={closeLoginRequiredModal}
+        variant="primary"
       />
     </div>
   );
