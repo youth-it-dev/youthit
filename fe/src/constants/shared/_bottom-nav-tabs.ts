@@ -9,16 +9,16 @@ export const BOTTOM_NAV_TABS = [
     icon: IMAGE_URL.ICON.home.url,
   },
   {
-    key: "mission" as const,
-    label: "미션",
-    href: LINK_URL.MISSION,
-    icon: IMAGE_URL.ICON.mission.url,
-  },
-  {
     key: "community" as const,
     label: "피드",
     href: LINK_URL.COMMUNITY,
     icon: IMAGE_URL.ICON.community.url,
+  },
+  {
+    key: "mission" as const,
+    label: "미션",
+    href: LINK_URL.MISSION,
+    icon: IMAGE_URL.ICON.mission.url,
   },
   {
     key: "myPage" as const,
