@@ -231,6 +231,7 @@ class MissionPostService {
       .doc(postRef.id);
 
     const now = Timestamp.now();
+    let newTotalPostsCount = null; // 트랜잭션 내에서 계산한 값 저장 (race condition 방지)
 
     await db.runTransaction(async (transaction) => {
       const missionDocSnap = await transaction.get(missionDocRef);
@@ -334,7 +335,7 @@ class MissionPostService {
 
       // totalPostsCount 계산 (기존 값 + 1)
       const currentTotalPostsCount = statsData.totalPostsCount || 0;
-      const newTotalPostsCount = currentTotalPostsCount + 1;
+      newTotalPostsCount = currentTotalPostsCount + 1; // 트랜잭션 외부 변수에 할당
 
       // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트, 총 미션 수 증가
       transaction.set(
@@ -369,9 +370,19 @@ class MissionPostService {
     // 트랜잭션 완료 후 리워드 부여 (최초 3회까지만)
     // totalPostsCount로 리워드 지급 여부 검증 및 중복 지급 방지
     try {
-      const statsDoc = await statsDocRef.get();
-      const finalStatsData = statsDoc.exists ? statsDoc.data() : {};
-      const finalTotalPostsCount = finalStatsData.totalPostsCount || 0;
+      if (newTotalPostsCount === null) {
+        console.warn('[MISSION_POST] newTotalPostsCount가 null입니다. 리워드 부여를 건너뜁니다.', {
+          userId,
+          postId: postRef.id,
+        });
+        return {
+          missionId,
+          postId: postRef.id,
+          status: MISSION_STATUS.COMPLETED,
+        };
+      }
+
+      const finalTotalPostsCount = newTotalPostsCount;
 
       // 최초 3회까지만 리워드 지급 (totalPostsCount <= 3)
       if (finalTotalPostsCount <= 3) {
