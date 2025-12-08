@@ -307,19 +307,15 @@ class MissionService {
       consecutiveDays = 0;
     }
 
-    // 4. 누적 게시글 수 (전체 인증글 개수)
-    const allPostsSnapshot = await db
-      .collection(MISSION_POSTS_COLLECTION)
-      .where("userId", "==", userId)
-      .get();
-    const totalPostsCount = allPostsSnapshot.size;
+    // 4. 누적 게시글 수 (userMissionStats의 totalPostsCount 사용)
+    const totalPostsCount = statsData.totalPostsCount || 0;
 
     return {
       todayTotalCount, // 오늘 신청한 미션 수 (QUIT 제외, IN_PROGRESS + COMPLETED)
       todayCompletedCount, // 오늘 완료한 미션 수 (COMPLETED만)
       todayActiveCount, // 진행 중인 미션 수 (오늘 신청한 미션 중 IN_PROGRESS만)
       consecutiveDays, // 연속 미션일
-      totalPostsCount, // 누적 게시글 수
+      totalPostsCount, // 누적 게시글 수 (totalMissionCount 또는 쿼리 결과)
     };
   }
 }

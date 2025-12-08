@@ -13,6 +13,7 @@ const ACTION_TYPE_MAP = {
   'gathering_review_text': 'GATHERING-TEXT',
   'gathering_review_media': 'GATHERING-MEDIA',
   'tmi_review': 'TMI',
+  'mission_cert': 'MISSION-CERT',
 };
 
 // 액션 키 → 리워드 사유 매핑 (rewardsHistory의 reason 필드용)
@@ -23,6 +24,7 @@ const ACTION_REASON_MAP = {
   'gathering_review_text': '소모임 후기',
   'gathering_review_media': '소모임 포토 후기',
   'tmi_review': 'TMI 후기',
+  'mission_cert': '미션 인증',
   'additional_point': '나다움 추가 지급/차감',
 };
 
@@ -419,6 +421,26 @@ class RewardService {
         const createdAt = commentDoc.createdAt;
         if (!createdAt) {
           const error = new Error('댓글 문서에 createdAt이 없습니다');
+          error.code = 'INTERNAL_ERROR';
+          throw error;
+        }
+        
+        actionTimestamp = toDate(createdAt);
+      }
+      // 미션 인증: missionPosts/{postId}에서 createdAt 조회
+      else if (actionKey === 'mission_cert' && metadata.postId) {
+        const { MISSION_POSTS_COLLECTION } = require('../constants/missionConstants');
+        const postDoc = await this.firestoreService.getDocument(MISSION_POSTS_COLLECTION, metadata.postId);
+        
+        if (!postDoc) {
+          const error = new Error('미션 인증글 문서를 찾을 수 없습니다');
+          error.code = 'NOT_FOUND';
+          throw error;
+        }
+        
+        const createdAt = postDoc.createdAt;
+        if (!createdAt) {
+          const error = new Error('미션 인증글 문서에 createdAt이 없습니다');
           error.code = 'INTERNAL_ERROR';
           throw error;
         }
