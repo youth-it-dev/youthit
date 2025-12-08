@@ -188,7 +188,8 @@ class FCMService {
    * @param {Object} notification - 알림 데이터
    * @return {Promise<Object>} 전송 결과 { sentCount, failedCount, successfulUserIds }
    */
-  async sendToUsers(userIds, notification) {
+  async sendToUsers(userIds, notification, options = {}) {
+    const { skipPushTermsFilter = false } = options;
     try {
       // 사용자 ID 중복 제거
       const uniqueUserIds = Array.from(new Set(userIds));
@@ -208,12 +209,20 @@ class FCMService {
           )
         );
 
-        const users = userResults.flat();
-        users.forEach((user) => {
-          if (user?.pushTermsAgreed === true) {
-            approvedUserIds.push(user.id);
-          }
-        });
+        if (skipPushTermsFilter) {
+          userResults.flat().forEach((user) => {
+            if (user?.id) {
+              approvedUserIds.push(user.id);
+            }
+          });
+        } else {
+          const users = userResults.flat();
+          users.forEach((user) => {
+            if (user?.pushTermsAgreed === true) {
+              approvedUserIds.push(user.id);
+            }
+          });
+        }
       }
 
       if (approvedUserIds.length === 0) {

@@ -33,7 +33,7 @@ const NOTION_FIELDS = {
   SELECTED: '선택',
   FAILED_MEMBERS: '전송 실패 회원',
   PAYMENT_FAILED_MEMBERS: '지급 실패 회원',
-  MARKETING_NOTIFICATION: '이벤트∙홍보',
+  MARKETING_NOTIFICATION: '마케팅 여부',
 };
 
 // 상황별 알림 내용 템플릿 필드명 상수
@@ -724,7 +724,13 @@ class NotificationService {
               content,
               "announcement",
               "",
-              ""
+              "",
+              "",
+              "",
+              {
+                // 마케팅 알림이면 pushTermsAgreed 필터를 건너뛰고, 마케팅 동의만으로 전송
+                skipPushTermsFilter: isMarketingNotification,
+              }
             );
 
             const batchSuccessCount = batchResult?.successCount || batchResult?.sentCount || 0;
