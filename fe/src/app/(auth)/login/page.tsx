@@ -4,16 +4,24 @@ import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { onAuthStateChanged } from "firebase/auth";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
+import Modal from "@/components/shared/ui/modal";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useLogout } from "@/hooks/auth/useLogout";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao, handleKakaoRedirectResult } from "@/lib/auth";
 import { auth } from "@/lib/firebase";
-import { setKakaoAccessToken } from "@/utils/auth/kakao-access-token";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
+import {
+  removeKakaoAccessToken,
+  setKakaoAccessToken,
+} from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
 /**
@@ -22,6 +30,8 @@ import { debug } from "@/utils/shared/debugger";
 const LoginPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   // URL 파라미터와 해시 확인하여 redirect 후 돌아왔는지 즉시 감지
   const [isLoading, setIsLoading] = useState(() => {
@@ -43,7 +53,9 @@ const LoginPageContent = () => {
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSuspensionModalOpen, setIsSuspensionModalOpen] = useState(false);
   const { registerFCMToken } = useFCM();
+  const { mutate: logoutMutate } = useLogout();
 
   // 로그인 후 돌아갈 경로 (next 쿼리 파라미터)
   const rawNext = searchParams.get("next") || null;
@@ -53,12 +65,32 @@ const LoginPageContent = () => {
     ? LINK_URL.COMMUNITY
     : rawNext;
 
-  const { refetch: refetchUserData } = useGetUsersMe({
+  const { refetch: refetchUserDataRaw } = useGetUsersMe({
     enabled: false, // 자동 실행 비활성화
     select: (data) => {
       return data?.user;
     },
   });
+
+  /**
+   * @description 사용자 정보 조회 (423 에러 자동 처리)
+   * refetchUserData를 래핑하여 423 에러 발생 시 자동으로 모달을 띄웁니다.
+   */
+  const refetchUserData = async () => {
+    try {
+      return await refetchUserDataRaw();
+    } catch (error) {
+      // 423 에러(자격정지) 처리
+      if (error instanceof AxiosError && error.response?.status === 423) {
+        setIsLoading(false);
+        // React의 상태 업데이트는 동일한 값으로 설정해도 안전하므로
+        // 중복 호출을 걱정할 필요 없음
+        setIsSuspensionModalOpen(true);
+        throw error; // 에러를 다시 throw하여 호출부에서 처리할 수 있도록
+      }
+      throw error; // 다른 에러는 그대로 전파
+    }
+  };
 
   /**
    * @description 카카오 redirect 결과 처리 (페이지 로드 시 즉시 호출)
@@ -137,17 +169,28 @@ const LoginPageContent = () => {
           }
 
           // 기존 사용자 처리
-          const { data: userData } = await refetchUserData();
-          const hasNickname = !!userData?.nickname;
-          await registerFCMTokenSafely();
-          setIsLoading(false);
+          try {
+            const { data: userData } = await refetchUserData();
+            const hasNickname = !!userData?.nickname;
+            await registerFCMTokenSafely();
+            setIsLoading(false);
 
-          debug.log("기존 사용자 처리 완료", { hasNickname });
-          handlePostLoginRouting(hasNickname);
+            debug.log("기존 사용자 처리 완료", { hasNickname });
+            handlePostLoginRouting(hasNickname);
+          } catch (error) {
+            // 423 에러는 refetchUserData에서 이미 처리됨
+            // 여기서는 다른 에러만 처리
+            if (error instanceof AxiosError && error.response?.status === 423) {
+              return; // 이미 모달이 띄워졌으므로 종료
+            }
+            throw error;
+          }
         } else {
           debug.log("redirectResult가 null - 일반 로그인 화면");
         }
       } catch (error) {
+        // handleKakaoRedirectResult는 user/me를 호출하지 않으므로 423 에러가 발생할 수 없음
+        // 여기서는 카카오 로그인 자체의 에러만 처리
         debug.error("카카오 redirect 결과 처리 실패:", error);
         setIsLoading(false);
         setErrorMessage("카카오 로그인 처리에 실패했습니다.");
@@ -190,18 +233,19 @@ const LoginPageContent = () => {
       // redirect 파라미터가 없고 이미 로그인된 사용자인 경우
       if (!hasAuthParams) {
         debug.log("이미 로그인된 사용자:", user.uid);
-        try {
-          refetchUserData()
-            .then(({ data: userData }) => {
-              const hasNickname = !!userData?.nickname;
-              handlePostLoginRouting(hasNickname);
-            })
-            .catch((error) => {
-              debug.error("사용자 정보 조회 실패:", error);
-            });
-        } catch (error) {
-          debug.error("사용자 정보 조회 실패:", error);
-        }
+        // 로딩 상태는 설정하지 않음 (이미 로그인된 상태이므로)
+        refetchUserData()
+          .then(({ data: userData }) => {
+            const hasNickname = !!userData?.nickname;
+            handlePostLoginRouting(hasNickname);
+          })
+          .catch((error) => {
+            // 423 에러는 refetchUserData에서 이미 처리됨 (모달 표시)
+            if (error instanceof AxiosError && error.response?.status === 423) {
+              return; // 이미 모달이 띄워졌으므로 종료
+            }
+            debug.error("사용자 정보 조회 실패:", error);
+          });
       }
     });
 
@@ -237,6 +281,38 @@ const LoginPageContent = () => {
       // 온보딩이 필요한 경우 next 파라미터 무시하고 온보딩 페이지로
       router.replace(LINK_URL.MY_PAGE_EDIT);
     }
+  };
+
+  /**
+   * @description 프론트엔드 상태 정리 (로그아웃 에러 시에도 실행)
+   */
+  const cleanupFrontendState = () => {
+    // 1. React Query 캐시 모두 제거
+    queryClient.clear();
+
+    // 2. Zustand store 초기화
+    resetTopBar();
+
+    // 3. 카카오 액세스 토큰 제거 (sessionStorage)
+    removeKakaoAccessToken();
+  };
+
+  /**
+   * @description 자격정지 모달 확인 버튼 클릭 시 로그아웃 처리
+   */
+  const handleSuspensionConfirm = () => {
+    setIsSuspensionModalOpen(false);
+    logoutMutate(undefined, {
+      onSuccess: () => {
+        cleanupFrontendState();
+        router.replace(LINK_URL.LOGIN);
+      },
+      onError: () => {
+        // 에러가 나도 프론트엔드 상태 정리 후 로그인 페이지로 이동
+        cleanupFrontendState();
+        router.replace(LINK_URL.LOGIN);
+      },
+    });
   };
 
   /**
@@ -309,6 +385,10 @@ const LoginPageContent = () => {
           setIsLoading(false);
           handlePostLoginRouting(hasNickname);
         } catch (error) {
+          // 423 에러는 refetchUserData에서 이미 처리됨
+          if (error instanceof AxiosError && error.response?.status === 423) {
+            return; // 이미 모달이 띄워졌으므로 종료
+          }
           debug.error("사용자 정보 조회 실패:", error);
           setIsLoading(false);
           setErrorMessage("사용자 정보 조회에 실패했습니다.");
@@ -370,6 +450,17 @@ const LoginPageContent = () => {
           </Link>
         </div>
       </div>
+      <Modal
+        isOpen={isSuspensionModalOpen}
+        title="자격정지된 회원입니다"
+        description="관리자에게 문의해주세요"
+        confirmText="확인"
+        onConfirm={handleSuspensionConfirm}
+        onClose={handleSuspensionConfirm}
+        variant="primary"
+        closeOnOverlayClick={false}
+        closeOnEscape={false}
+      />
     </main>
   );
 };
