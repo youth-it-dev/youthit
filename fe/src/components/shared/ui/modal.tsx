@@ -26,9 +26,9 @@ interface ModalProps {
   confirmDisabled?: boolean;
   /** 버튼 스타일 변형 (기본값: 'primary') */
   variant?: "primary" | "danger";
-  /** 오버레이 클릭으로 닫기 허용 여부 (기본값: true) */
+  /** 오버레이 클릭으로 닫기 허용 여부 (기본값: cancelText가 있으면 true, 없으면 false) */
   closeOnOverlayClick?: boolean;
-  /** Escape 키로 닫기 허용 여부 (기본값: true) */
+  /** Escape 키로 닫기 허용 여부 (기본값: cancelText가 있으면 true, 없으면 false) */
   closeOnEscape?: boolean;
 }
 
@@ -49,9 +49,15 @@ const Modal = ({
   onClose,
   confirmDisabled = false,
   variant = "primary",
-  closeOnOverlayClick = true,
-  closeOnEscape = true,
+  closeOnOverlayClick,
+  closeOnEscape,
 }: ModalProps) => {
+  // cancelText가 없으면 (확인 버튼만 있을 때) ESC/오버레이 클릭으로 닫기 방지
+  const shouldPreventClose = !cancelText;
+  const finalCloseOnOverlayClick =
+    closeOnOverlayClick ?? (shouldPreventClose ? false : true);
+  const finalCloseOnEscape =
+    closeOnEscape ?? (shouldPreventClose ? false : true);
   const previousOverflow = useRef<string>("");
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -92,7 +98,7 @@ const Modal = ({
 
   // Escape 키로 모달 닫기
   useEffect(() => {
-    if (!isOpen || !closeOnEscape) return;
+    if (!isOpen || !finalCloseOnEscape) return;
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -102,7 +108,7 @@ const Modal = ({
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, closeOnEscape, handleClose]);
+  }, [isOpen, finalCloseOnEscape, handleClose]);
 
   if (!isOpen) return null;
 
@@ -111,7 +117,7 @@ const Modal = ({
       {/* 오버레이: #000 60% 투명도 */}
       <div
         className="absolute inset-0 bg-black/60"
-        onClick={closeOnOverlayClick ? handleClose : undefined}
+        onClick={finalCloseOnOverlayClick ? handleClose : undefined}
         aria-hidden="true"
       />
 

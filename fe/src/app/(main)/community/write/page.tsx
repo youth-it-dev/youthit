@@ -72,6 +72,50 @@ const WritePageContent = () => {
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
+  // 이미지 개수 초과 모달
+  const {
+    isOpen: isImageLimitModalOpen,
+    open: openImageLimitModal,
+    close: closeImageLimitModal,
+  } = useToggle();
+
+  // 파일 개수 초과 모달
+  const {
+    isOpen: isFileLimitModalOpen,
+    open: openFileLimitModal,
+    close: closeFileLimitModal,
+  } = useToggle();
+
+  // 이미지 업로드 부분 실패 모달
+  const {
+    isOpen: isImageUploadPartialModalOpen,
+    open: openImageUploadPartialModal,
+    close: closeImageUploadPartialModal,
+  } = useToggle();
+  const [imageUploadPartialMessage, setImageUploadPartialMessage] =
+    useState<string>("");
+
+  // 이미지 업로드 실패 모달
+  const {
+    isOpen: isImageUploadFailedModalOpen,
+    open: openImageUploadFailedModal,
+    close: closeImageUploadFailedModal,
+  } = useToggle();
+
+  // 이미지 URL 교체 실패 모달
+  const {
+    isOpen: isImageUrlReplaceFailedModalOpen,
+    open: openImageUrlReplaceFailedModal,
+    close: closeImageUrlReplaceFailedModal,
+  } = useToggle();
+
+  // 파일 업로드 실패 모달
+  const {
+    isOpen: isFileUploadFailedModalOpen,
+    open: openFileUploadFailedModal,
+    close: closeFileUploadFailedModal,
+  } = useToggle();
+
   // 인증 체크: 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
   // returnTo를 명시하지 않으면 현재 경로 + 쿼리 파라미터가 자동으로 사용됨
   const { isReady, user } = useRequireAuth({
@@ -124,7 +168,7 @@ const WritePageContent = () => {
     const clientId = crypto.randomUUID();
     setImageQueue((prev) => {
       if (prev.length >= MAX_FILES) {
-        alert(`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`);
+        openImageLimitModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -141,7 +185,7 @@ const WritePageContent = () => {
       // 중복 체크
       const merged = dedupeFiles([...prev.map((item) => item.file), file]);
       if (merged.length > MAX_FILES) {
-        alert(`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`);
+        openFileLimitModal();
         return prev;
       }
       return [...prev, { clientId, file }];
@@ -170,13 +214,16 @@ const WritePageContent = () => {
 
     // 이미지 업로드 실패 확인
     if (imageQueue.length > 0 && imageFailedCount > 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount));
+      setImageUploadPartialMessage(
+        WRITE_MESSAGES.IMAGE_UPLOAD_PARTIAL_FAILED(imageFailedCount)
+      );
+      openImageUploadPartialModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
     // 이미지가 있는데 URL 매핑이 제대로 안 된 경우
     if (imageQueue.length > 0 && imgIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.IMAGE_UPLOAD_FAILED);
+      openImageUploadFailedModal();
       throw new Error(ERROR_MESSAGES.IMAGE_UPLOAD_FAILED);
     }
 
@@ -209,7 +256,7 @@ const WritePageContent = () => {
         "img[data-client-id]"
       );
       if (imagesWithClientId.length > 0) {
-        alert(WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED);
+        openImageUrlReplaceFailedModal();
         throw new Error("IMAGE_URL_REPLACE_FAILED");
       }
     }
@@ -234,12 +281,12 @@ const WritePageContent = () => {
     } = await uploadFileQueue(queueToUse, "파일");
 
     if (queueToUse.length > 0 && fileFailedCount > 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openFileUploadFailedModal();
       return null;
     }
 
     if (queueToUse.length > 0 && fileIdToUrl.size === 0) {
-      alert(WRITE_MESSAGES.FILE_UPLOAD_FAILED);
+      openFileUploadFailedModal();
       return null;
     }
 
@@ -698,6 +745,72 @@ const WritePageContent = () => {
         confirmText="확인"
         onClose={closeErrorModal}
         onConfirm={closeErrorModal}
+        variant="primary"
+      />
+
+      {/* 이미지 개수 초과 모달 */}
+      <Modal
+        isOpen={isImageLimitModalOpen}
+        title="이미지 개수 초과"
+        description={`이미지는 최대 ${MAX_FILES}장까지 첨부할 수 있어요.`}
+        confirmText="확인"
+        onConfirm={closeImageLimitModal}
+        onClose={closeImageLimitModal}
+        variant="primary"
+      />
+
+      {/* 파일 개수 초과 모달 */}
+      <Modal
+        isOpen={isFileLimitModalOpen}
+        title="파일 개수 초과"
+        description={`파일은 최대 ${MAX_FILES}개까지 첨부할 수 있어요.`}
+        confirmText="확인"
+        onConfirm={closeFileLimitModal}
+        onClose={closeFileLimitModal}
+        variant="primary"
+      />
+
+      {/* 이미지 업로드 부분 실패 모달 */}
+      <Modal
+        isOpen={isImageUploadPartialModalOpen}
+        title="이미지 업로드 실패"
+        description={imageUploadPartialMessage}
+        confirmText="확인"
+        onConfirm={closeImageUploadPartialModal}
+        onClose={closeImageUploadPartialModal}
+        variant="primary"
+      />
+
+      {/* 이미지 업로드 실패 모달 */}
+      <Modal
+        isOpen={isImageUploadFailedModalOpen}
+        title="이미지 업로드 실패"
+        description={WRITE_MESSAGES.IMAGE_UPLOAD_FAILED}
+        confirmText="확인"
+        onConfirm={closeImageUploadFailedModal}
+        onClose={closeImageUploadFailedModal}
+        variant="primary"
+      />
+
+      {/* 이미지 URL 교체 실패 모달 */}
+      <Modal
+        isOpen={isImageUrlReplaceFailedModalOpen}
+        title="이미지 처리 실패"
+        description={WRITE_MESSAGES.IMAGE_URL_REPLACE_FAILED}
+        confirmText="확인"
+        onConfirm={closeImageUrlReplaceFailedModal}
+        onClose={closeImageUrlReplaceFailedModal}
+        variant="primary"
+      />
+
+      {/* 파일 업로드 실패 모달 */}
+      <Modal
+        isOpen={isFileUploadFailedModalOpen}
+        title="파일 업로드 실패"
+        description={WRITE_MESSAGES.FILE_UPLOAD_FAILED}
+        confirmText="확인"
+        onConfirm={closeFileUploadFailedModal}
+        onClose={closeFileUploadFailedModal}
         variant="primary"
       />
     </form>

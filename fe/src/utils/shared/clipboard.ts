@@ -1,3 +1,5 @@
+import { showToast } from "./toast";
+
 /**
  * @description 클립보드 유틸리티 함수
  */
@@ -34,13 +36,13 @@ export const copyUrlToClipboard = async (
     if (options?.onSuccess) {
       options.onSuccess();
     } else {
-      alert("링크가 클립보드에 복사되었습니다.");
+      showToast("링크가 클립보드에 복사되었습니다.");
     }
   } else {
     if (options?.onError) {
       options.onError();
     } else {
-      alert("링크 복사에 실패했습니다.");
+      showToast("링크 복사에 실패했습니다.");
     }
   }
 };

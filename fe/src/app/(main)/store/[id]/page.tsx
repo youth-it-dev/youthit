@@ -9,12 +9,14 @@ import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
+import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import {
   useGetStoreProductsById,
   usePostStorePurchases,
 } from "@/hooks/generated/store-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
 import { getNotionCoverImage } from "@/utils/shared/getNotionCoverImage";
@@ -165,6 +167,20 @@ const StoreProductDetailPage = () => {
   const detailSectionRef = useRef<HTMLDivElement>(null);
   const inquirySectionRef = useRef<HTMLDivElement>(null);
 
+  // 성공 모달 상태
+  const {
+    isOpen: isSuccessModalOpen,
+    open: openSuccessModal,
+    close: closeSuccessModal,
+  } = useToggle();
+
+  // 에러 모달 상태
+  const {
+    isOpen: isErrorModalOpen,
+    open: openErrorModal,
+    close: closeErrorModal,
+  } = useToggle();
+
   // TopBar 제어
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
@@ -188,12 +204,10 @@ const StoreProductDetailPage = () => {
   const purchaseMutation = usePostStorePurchases({
     onSuccess: () => {
       setIsQuantityPopupOpen(false);
-      // TODO: 성공 토스트 메시지 표시
-      alert("신청이 완료되었습니다.");
+      openSuccessModal();
     },
-    onError: (error) => {
-      // TODO: 에러 토스트 메시지 표시
-      alert(`신청 중 오류가 발생했습니다: ${error.message}`);
+    onError: () => {
+      openErrorModal();
     },
   });
 
@@ -500,6 +514,28 @@ const StoreProductDetailPage = () => {
         isOpen={isQuantityPopupOpen}
         onClose={() => setIsQuantityPopupOpen(false)}
         onConfirm={handlePurchaseConfirm}
+      />
+
+      {/* 성공 모달 */}
+      <Modal
+        isOpen={isSuccessModalOpen}
+        title="신청이 완료되었어요"
+        description="신청이 완료되었습니다."
+        confirmText="확인"
+        onConfirm={closeSuccessModal}
+        onClose={closeSuccessModal}
+        variant="primary"
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        title="오류가 발생했어요"
+        description="신청 중 오류가 발생했습니다."
+        confirmText="확인"
+        onConfirm={closeErrorModal}
+        onClose={closeErrorModal}
+        variant="primary"
       />
     </div>
   );
