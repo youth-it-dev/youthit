@@ -695,6 +695,11 @@ class RewardService {
       const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
       const now = new Date();
       
+      // 0. 사용자 문서에서 사용 가능한 나다움 포인트 조회
+      const userRef = db.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      const availableRewards = userDoc.exists ? (userDoc.data().rewards || 0) : 0;
+      
       // 1. 지급 내역 조회 (changeType: "add")
       const addQuery = rewardsHistoryRef
         .where('changeType', '==', 'add')
@@ -709,6 +714,40 @@ class RewardService {
         .orderBy('createdAt', 'desc');
       
       const deductSnapshot = await deductQuery.get();
+      
+      // 3. 해당 월 소멸 예정 포인트 계산
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      let expiringThisMonth = 0;
+      addSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        
+        // changeType === 'add'이고 isProcessed === false인 항목만
+        if (data.changeType !== 'add' || data.isProcessed === true) {
+          return;
+        }
+        
+        // expiresAt 계산
+        let expiresAt = null;
+        if (data.expiresAt?.toDate) {
+          expiresAt = data.expiresAt.toDate();
+        } else if (data.expiresAt) {
+          const parsed = new Date(data.expiresAt);
+          if (!Number.isNaN(parsed.getTime())) {
+            expiresAt = parsed;
+          }
+        } else {
+          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+          expiresAt = new Date(createdAt);
+          expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
+        }
+        
+        // 현재 월 내에 만료되는지 확인
+        if (expiresAt && expiresAt >= currentMonthStart && expiresAt <= currentMonthEnd) {
+          expiringThisMonth += data.amount || 0;
+        }
+      });
       
       // 3. 두 결과 합치기 및 정렬 (메모리에서)
       const allDocs = [
@@ -765,6 +804,8 @@ class RewardService {
       });
 
       return {
+        availableRewards,
+        expiringThisMonth,
         history,
         pagination: {
           pageNumber: page,

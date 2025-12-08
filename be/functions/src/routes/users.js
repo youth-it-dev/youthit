@@ -1138,6 +1138,14 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *                 data:
  *                   type: object
  *                   properties:
+ *                     availableRewards:
+ *                       type: number
+ *                       description: 사용 가능한 나다움 포인트
+ *                       example: 1500
+ *                     expiringThisMonth:
+ *                       type: number
+ *                       description: 해당 월에 소멸 예정인 나다움 포인트
+ *                       example: 120
  *                     history:
  *                       type: array
  *                       items:
