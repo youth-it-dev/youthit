@@ -500,7 +500,7 @@ const MissionPageContent = () => {
               >
                 진행 미션 수
               </Typography>
-              <InfoIconWithTooltip message="현재 진행 중인 미션의 개수입니다." />
+              <InfoIconWithTooltip message="지금까지 완료한 미션의 총 개수입니다." />
             </div>
             <div className="flex items-center gap-1">
               <Typography
