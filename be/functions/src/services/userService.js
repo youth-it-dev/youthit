@@ -1066,9 +1066,22 @@ class UserService {
       .map(postId => postsMap[postId])
       .filter(post => post !== undefined);
 
+    // 사용자 프로필 배치 조회
+    const userIds = [];
+    allPosts.forEach(post => {
+      if (post.authorId) {
+        userIds.push(post.authorId);
+      }
+    });
+
+    const missionPostService = require("./missionPostService");
+    const profileMap = userIds.length > 0 ? await missionPostService.loadUserProfiles(userIds) : {};
+
     const processPost = (post) => {
       const { authorId: _, ...postWithoutAuthorId } = post;
       const createdAtDate = post.createdAt?.toDate?.() || post.createdAt;
+      const userProfile = profileMap[post.authorId] || {};
+      
       const processedPost = {
         ...postWithoutAuthorId,
         createdAt: createdAtDate?.toISOString?.() || post.createdAt,
@@ -1079,6 +1092,7 @@ class UserService {
         rewardGiven: post.rewardGiven || false,
         reportsCount: post.reportsCount || 0,
         viewCount: post.viewCount || 0,
+        profileImageUrl: userProfile.profileImageUrl || null,
       };
 
       processedPost.preview = post.preview || communityService.createPreview(post);
@@ -1093,6 +1107,93 @@ class UserService {
   }
 
   /**
+   * 미션 게시글을 ID 배열로 조회하여 커뮤니티 스키마와 유사하게 매핑
+   * @param {Array<string>} postIds - 미션 게시글 ID 배열
+   * @return {Promise<Array<Object>>} 게시글 목록
+   */
+  async getMissionPostsByIds(postIds = []) {
+    if (!Array.isArray(postIds) || postIds.length === 0) {
+      return [];
+    }
+
+    try {
+      const missionPostService = require("./missionPostService");
+      const missionPosts = [];
+      const userIds = [];
+
+      const chunks = [];
+      for (let i = 0; i < postIds.length; i += 10) {
+        chunks.push(postIds.slice(i, i + 10));
+      }
+
+      for (const chunk of chunks) {
+        const snapshot = await db
+          .collection("missionPosts")
+          .where("__name__", "in", chunk)
+          .get();
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (!data) return;
+
+          const authorId = data.authorId;
+          if (authorId) {
+            userIds.push(authorId);
+          }
+
+          missionPosts.push({
+            id: doc.id,
+            ...data,
+          });
+        });
+      }
+
+      // 사용자 프로필 배치 조회
+      const profileMap = userIds.length > 0 ? await missionPostService.loadUserProfiles(userIds) : {};
+
+      // 프로필 정보 매핑하여 응답 생성
+      const processedPosts = missionPosts.map((post) => {
+        const data = post;
+        const createdAtDate = data.createdAt?.toDate?.() || (data.createdAt ? new Date(data.createdAt) : null);
+        const updatedAtDate = data.updatedAt?.toDate?.() || (data.updatedAt ? new Date(data.updatedAt) : null);
+        const authorId = data.authorId;
+        const userProfile = profileMap[authorId] || {};
+
+        return {
+          id: post.id,
+          title: data.title || "",
+          preview: missionPostService.createPreview(data),
+          author: userProfile.nickname || "",
+          profileImageUrl: userProfile.profileImageUrl || null,
+          likesCount: data.likesCount || 0,
+          commentsCount: data.commentsCount || 0,
+          reportsCount: data.reportsCount || 0,
+          viewCount: data.viewCount || 0,
+          createdAt: createdAtDate?.toISOString?.() || data.createdAt,
+          updatedAt: updatedAtDate?.toISOString?.() || data.updatedAt,
+          timeAgo: createdAtDate ? missionPostService.getTimeAgo(createdAtDate) : "",
+          communityPath: null,
+          community: null,
+          programType: null,
+          type: null,
+          isReview: false,
+          channel: data.missionTitle || "",
+          category: null,
+          scheduledDate: null,
+          isLocked: data.isLocked || false,
+          isPublic: true,
+          rewardGiven: data.rewardGiven || false,
+        };
+      });
+
+      return processedPosts;
+    } catch (error) {
+      console.error("미션 게시글 조회 실패:", error.message);
+      return [];
+    }
+  }
+
+  /**
    * 사용자 서브컬렉션에서 게시글 조회 (공통 헬퍼)
    * @param {string} userId - 사용자 ID
    * @param {string} subCollectionName - 서브컬렉션 이름 (authoredPosts, likedPosts, commentedPosts)
@@ -1103,7 +1204,7 @@ class UserService {
    */
   async getMyPostsFromSubCollection(userId, subCollectionName, orderBy, options = {}, errorMessage) {
     try {
-      const { page = 0, size = 10 } = options;
+      const { page = 0, size = 10, type = "all" } = options; // type: all | program | mission
 
       const postsService = new FirestoreService(`users/${userId}/${subCollectionName}`);
       const result = await postsService.getWithPagination({
@@ -1113,16 +1214,38 @@ class UserService {
         orderDirection: "desc",
       });
 
-      const postIds = [];
+      // 추가: 내가 작성한 게시글(authoredPosts)일 때 미션 작성 목록도 포함
+      let missionAuthoredRefs = [];
+      if (subCollectionName === "authoredPosts" && (type === "all" || type === "mission")) {
+        try {
+          const missionPostsService = new FirestoreService(`users/${userId}/missionPosts`);
+          missionAuthoredRefs = await missionPostsService.getAll();
+        } catch (e) {
+          console.warn("[USER] missionPosts fetch failed:", e.message);
+        }
+      }
+
+      // 분류: 커뮤니티(postId+communityId) vs 미션(postId+missionId)
+      const communityPostIds = [];
       const communityIdMap = {};
-      result.content.forEach(({postId, communityId}) => {
-        if (postId && communityId) {
-          postIds.push(postId);
+      const missionPostIds = [];
+
+      const mergedRefs = [...result.content];
+      if (missionAuthoredRefs.length > 0) {
+        missionAuthoredRefs.forEach((ref) => mergedRefs.push(ref));
+      }
+
+      mergedRefs.forEach(({ postId, communityId, missionId, missionNotionPageId }) => {
+        if (!postId) return;
+        if (communityId && (type === "all" || type === "program")) {
+          communityPostIds.push(postId);
           communityIdMap[postId] = communityId;
+        } else if ((missionId || missionNotionPageId) && (type === "all" || type === "mission")) {
+          missionPostIds.push(postId);
         }
       });
 
-      if (postIds.length === 0) {
+      if (communityPostIds.length === 0 && missionPostIds.length === 0) {
         return {
           content: [],
           pagination: result.pageable || {
@@ -1138,10 +1261,57 @@ class UserService {
         };
       }
 
-      const posts = await this.getPostsByIds(postIds, communityIdMap);
+      // 커뮤니티 게시글 조회
+      const communityPostsPromise =
+        communityPostIds.length > 0
+          ? this.getPostsByIds(communityPostIds, communityIdMap)
+          : Promise.resolve([]);
+
+      // 미션 게시글 조회 (루트 컬렉션 missionPosts에서 id로 조회)
+      const missionPostsPromise =
+        missionPostIds.length > 0
+          ? this.getMissionPostsByIds(missionPostIds)
+          : Promise.resolve([]);
+
+      const [communityPosts, missionPosts] = await Promise.all([
+        communityPostsPromise,
+        missionPostsPromise,
+      ]);
+
+      // 원본 정렬 유지: subcollection 결과 순서대로 매핑
+      const communityMapById = {};
+      communityPosts.forEach((p) => {
+        if (p?.id) communityMapById[p.id] = p;
+      });
+      const missionMapById = {};
+      missionPosts.forEach((p) => {
+        if (p?.id) missionMapById[p.id] = p;
+      });
+
+      const merged = [];
+      for (const item of mergedRefs) {
+        const { postId, communityId, missionId, missionNotionPageId } = item;
+        if (!postId) continue;
+        if (communityId && (type === "all" || type === "program")) {
+          const post = communityMapById[postId];
+          if (post) merged.push(post);
+        } else if ((missionId || missionNotionPageId) && (type === "all" || type === "mission")) {
+          const post = missionMapById[postId];
+          if (post) merged.push(post);
+        }
+      }
+
+      // 내가 작성한 게시글(authoredPosts)에서는 커뮤니티/미션을 함께 최신순 정렬
+      if (subCollectionName === "authoredPosts") {
+        merged.sort((a, b) => {
+          const da = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const db = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return db - da;
+        });
+      }
 
       return {
-        content: posts,
+        content: merged,
         pagination: result.pageable || {},
       };
     } catch (error) {

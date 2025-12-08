@@ -781,6 +781,20 @@ class MissionPostService {
           commentsCount: FieldValue.increment(1),
           updatedAt: FieldValue.serverTimestamp(),
         });
+
+        // 사용자 집계: commentedPosts (communityId 없이 저장)
+        const commentedPostRef = db
+          .collection(`users/${userId}/commentedPosts`)
+          .doc(postId);
+        transaction.set(
+          commentedPostRef,
+          {
+            postId,
+            missionId: post?.missionNotionPageId || null,
+            lastCommentedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
       });
 
       // 알림 전송 (본인 게시글이 아닌 경우)
@@ -1333,6 +1347,18 @@ class MissionPostService {
 
       const hasReplies = repliesSnapshot && repliesSnapshot.docs.length > 0;
 
+      const otherActiveCommentsSnapshot = await db
+        .collection("comments")
+        .where("postId", "==", comment.postId)
+        .where("userId", "==", userId)
+        .where("isDeleted", "==", false)
+        .limit(2)
+        .get();
+
+      const otherActiveCommentIds = otherActiveCommentsSnapshot.docs
+        .map((doc) => doc.id)
+        .filter((id) => id !== commentId);
+
       if (hasReplies) {
         // 대댓글이 있으면 소프트 딜리트
         await db.runTransaction(async (transaction) => {
@@ -1350,6 +1376,18 @@ class MissionPostService {
         await db.runTransaction(async (transaction) => {
           const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(comment.postId);
 
+          // 트랜잭션 내부에서 다른 활성 댓글 재확인 (TOCTOU 방지)
+          let otherActiveExists = false;
+          if (otherActiveCommentIds.length > 0) {
+            const otherCommentRefs = otherActiveCommentIds.map((id) =>
+              db.collection("comments").doc(id)
+            );
+            const otherCommentDocs = await transaction.getAll(...otherCommentRefs);
+            otherActiveExists = otherCommentDocs.some(
+              (doc) => doc.exists && !doc.data().isDeleted
+            );
+          }
+
           // 댓글 실제 삭제
           transaction.delete(commentRef);
 
@@ -1358,6 +1396,14 @@ class MissionPostService {
             commentsCount: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
           });
+
+          // 사용자 집계 제거: 다른 활성 댓글이 없을 때만 삭제
+          if (!otherActiveExists) {
+            const commentedPostRef = db
+              .collection(`users/${userId}/commentedPosts`)
+              .doc(comment.postId);
+            transaction.delete(commentedPostRef);
+          }
         });
       }
     } catch (error) {
@@ -1405,6 +1451,12 @@ class MissionPostService {
             likesCount: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
           });
+
+          // 사용자 집계 제거: likedPosts (미션)
+          const likedPostRef = db
+            .collection(`users/${userId}/likedPosts`)
+            .doc(postId);
+          transaction.delete(likedPostRef);
         } else {
           const newLikeRef = likesCollection.doc();
           transaction.set(newLikeRef, {
@@ -1419,6 +1471,20 @@ class MissionPostService {
             likesCount: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),
           });
+
+          // 사용자 집계: likedPosts (communityId 없이 저장)
+          const likedPostRef = db
+            .collection(`users/${userId}/likedPosts`)
+            .doc(postId);
+          transaction.set(
+            likedPostRef,
+            {
+              postId,
+              missionId: post.missionNotionPageId || null,
+              lastLikedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
         }
 
         const currentLikesCount = post.likesCount || 0;
