@@ -107,7 +107,50 @@ const ProfileEditPage = () => {
     open: openErrorModal,
     close: closeErrorModal,
   } = useToggle();
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+
+  // 이미지 파일 타입 오류 모달
+  const {
+    isOpen: isInvalidImageFileModalOpen,
+    open: openInvalidImageFileModal,
+    close: closeInvalidImageFileModal,
+  } = useToggle();
+
+  // 이미지 크기 초과 모달
+  const {
+    isOpen: isImageSizeExceededModalOpen,
+    open: openImageSizeExceededModal,
+    close: closeImageSizeExceededModal,
+  } = useToggle();
+
+  // 카카오 프로필 동기화 실패 모달
+  const {
+    isOpen: isKakaoSyncFailedModalOpen,
+    open: openKakaoSyncFailedModal,
+    close: closeKakaoSyncFailedModal,
+  } = useToggle();
+
+  // 닉네임 중복 확인 오류 모달
+  const {
+    isOpen: isNicknameCheckErrorModalOpen,
+    open: openNicknameCheckErrorModal,
+    close: closeNicknameCheckErrorModal,
+  } = useToggle();
+
+  // 프로필 이미지 업로드 실패 모달
+  const {
+    isOpen: isImageUploadFailedModalOpen,
+    open: openImageUploadFailedModal,
+    close: closeImageUploadFailedModal,
+  } = useToggle();
+
+  // 프로필 업데이트 실패 모달
+  const {
+    isOpen: isProfileUpdateFailedModalOpen,
+    open: openProfileUpdateFailedModal,
+    close: closeProfileUpdateFailedModal,
+  } = useToggle();
 
   const isNicknameValid = nickname.trim().length > 0;
   const isCompleteEnabled = isDirty && isNicknameValid && !nicknameError;
@@ -118,12 +161,12 @@ const ProfileEditPage = () => {
    */
   const validateImageFile = (file: File): boolean => {
     if (!file.type.startsWith("image/")) {
-      alert(PROFILE_EDIT_MESSAGES.INVALID_IMAGE_FILE);
+      openInvalidImageFileModal();
       return false;
     }
 
     if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
-      alert(PROFILE_EDIT_MESSAGES.IMAGE_SIZE_EXCEEDED);
+      openImageSizeExceededModal();
       return false;
     }
 
@@ -366,7 +409,7 @@ const ProfileEditPage = () => {
           debug.error("카카오 프로필 동기화 실패:", error);
           // 에러 발생 시 토큰 정리
           removeKakaoAccessToken();
-          alert("❌ 카카오 프로필 동기화에 실패했습니다.\n다시 시도해주세요.");
+          openKakaoSyncFailedModal();
           return;
         }
       }
@@ -383,9 +426,7 @@ const ProfileEditPage = () => {
         }
       } catch (error) {
         debug.error("닉네임 중복 체크 실패:", error);
-        alert(
-          "❌ 닉네임 중복 확인 중 오류가 발생했습니다.\n다시 시도해주세요."
-        );
+        openNicknameCheckErrorModal();
         return;
       }
 
@@ -420,9 +461,9 @@ const ProfileEditPage = () => {
           error instanceof Error ? error.message : String(error);
 
         if (errorMessage.includes(PROFILE_EDIT_MESSAGES.IMAGE_UPLOAD_FAILED)) {
-          alert("❌ 프로필 이미지 업로드에 실패했습니다.\n다시 시도해주세요.");
+          openImageUploadFailedModal();
         } else {
-          alert("❌ 프로필 업데이트에 실패했습니다.\n다시 시도해주세요.");
+          openProfileUpdateFailedModal();
         }
 
         // 에러 발생 시 토큰 정리 (아직 사용하지 않은 경우)
@@ -434,7 +475,10 @@ const ProfileEditPage = () => {
     } catch (error) {
       debug.error("프로필 업데이트 전체 프로세스 실패:", error);
       // 예상치 못한 에러 발생 시
-      alert("❌ 프로필 업데이트 중 오류가 발생했습니다.\n다시 시도해주세요.");
+      setErrorMessage(
+        "프로필 업데이트 중 오류가 발생했습니다. 다시 시도해주세요."
+      );
+      openErrorModal();
       // 에러 발생 시 토큰 정리 (아직 사용하지 않은 경우)
       if (kakaoAccessToken) {
         removeKakaoAccessToken();
@@ -735,9 +779,77 @@ const ProfileEditPage = () => {
         onClose={closeErrorModal}
         onConfirm={closeErrorModal}
         title="오류가 발생했습니다"
-        description="회원탈퇴 중 오류가 발생했습니다. 다시 시도해주세요."
+        description={
+          errorMessage || "회원탈퇴 중 오류가 발생했습니다. 다시 시도해주세요."
+        }
         confirmText="확인"
         variant="danger"
+      />
+
+      {/* 이미지 파일 타입 오류 모달 */}
+      <Modal
+        isOpen={isInvalidImageFileModalOpen}
+        title="이미지 파일이 아니에요"
+        description={PROFILE_EDIT_MESSAGES.INVALID_IMAGE_FILE}
+        confirmText="확인"
+        onConfirm={closeInvalidImageFileModal}
+        onClose={closeInvalidImageFileModal}
+        variant="primary"
+      />
+
+      {/* 이미지 크기 초과 모달 */}
+      <Modal
+        isOpen={isImageSizeExceededModalOpen}
+        title="이미지 크기 초과"
+        description={PROFILE_EDIT_MESSAGES.IMAGE_SIZE_EXCEEDED}
+        confirmText="확인"
+        onConfirm={closeImageSizeExceededModal}
+        onClose={closeImageSizeExceededModal}
+        variant="primary"
+      />
+
+      {/* 카카오 프로필 동기화 실패 모달 */}
+      <Modal
+        isOpen={isKakaoSyncFailedModalOpen}
+        title="동기화 실패"
+        description="카카오 프로필 동기화에 실패했습니다. 다시 시도해주세요."
+        confirmText="확인"
+        onConfirm={closeKakaoSyncFailedModal}
+        onClose={closeKakaoSyncFailedModal}
+        variant="primary"
+      />
+
+      {/* 닉네임 중복 확인 오류 모달 */}
+      <Modal
+        isOpen={isNicknameCheckErrorModalOpen}
+        title="오류가 발생했어요"
+        description="닉네임 중복 확인 중 오류가 발생했습니다. 다시 시도해주세요."
+        confirmText="확인"
+        onConfirm={closeNicknameCheckErrorModal}
+        onClose={closeNicknameCheckErrorModal}
+        variant="primary"
+      />
+
+      {/* 프로필 이미지 업로드 실패 모달 */}
+      <Modal
+        isOpen={isImageUploadFailedModalOpen}
+        title="업로드 실패"
+        description="프로필 이미지 업로드에 실패했습니다. 다시 시도해주세요."
+        confirmText="확인"
+        onConfirm={closeImageUploadFailedModal}
+        onClose={closeImageUploadFailedModal}
+        variant="primary"
+      />
+
+      {/* 프로필 업데이트 실패 모달 */}
+      <Modal
+        isOpen={isProfileUpdateFailedModalOpen}
+        title="업데이트 실패"
+        description="프로필 업데이트에 실패했습니다. 다시 시도해주세요."
+        confirmText="확인"
+        onConfirm={closeProfileUpdateFailedModal}
+        onClose={closeProfileUpdateFailedModal}
+        variant="primary"
       />
 
       <input
