@@ -683,7 +683,7 @@ class RewardService {
    * @return {Promise<Object>} 조회 결과 { history, pagination }
    */
   async getRewardsEarned(userId, options = {}) {
-    const { page = 0, size = 20 } = options;
+    const { page = 0, size = 20, filter = 'all' } = options;
     
     // 입력 검증
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
@@ -758,13 +758,45 @@ class RewardService {
       // createdAt 기준 내림차순 정렬
       allDocs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       
-      const totalElements = allDocs.length;
+      let filteredDocs = allDocs;
+      if (filter === 'earned') {
+        filteredDocs = allDocs.filter(({ doc }) => doc.data().changeType === 'add');
+      } else if (filter === 'used') {
+        filteredDocs = allDocs.filter(({ doc }) => {
+          const data = doc.data();
+          return data.changeType === 'deduct' && data.actionKey === 'store';
+        });
+      } else if (filter === 'expired') {
+        filteredDocs = allDocs.filter(({ doc }) => {
+          const data = doc.data();
+          if (data.isProcessed !== true) {
+            return false;
+          }
+          
+          let expiresAt = null;
+          if (data.expiresAt?.toDate) {
+            expiresAt = data.expiresAt.toDate();
+          } else if (data.expiresAt) {
+            const parsed = new Date(data.expiresAt);
+            if (!Number.isNaN(parsed.getTime())) {
+              expiresAt = parsed;
+            }
+          } else {
+            const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+            expiresAt = new Date(createdAt);
+            expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
+          }
+          
+          return expiresAt && expiresAt <= now;
+        });
+      }
+      
+      const totalElements = filteredDocs.length;
       const totalPages = Math.ceil(totalElements / size);
       
-      // 4. 페이지네이션 적용
       const startIndex = page * size;
       const endIndex = startIndex + size;
-      const paginatedDocs = allDocs.slice(startIndex, endIndex);
+      const paginatedDocs = filteredDocs.slice(startIndex, endIndex);
       
       const history = paginatedDocs.map(({ doc }) => {
         const data = doc.data();

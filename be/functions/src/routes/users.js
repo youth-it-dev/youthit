@@ -1124,6 +1124,13 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *           minimum: 1
  *           maximum: 100
  *         description: 페이지 크기
+ *       - in: query
+ *         name: filter
+ *         schema:
+ *           type: string
+ *           enum: [all, earned, used, expired]
+ *           default: all
+ *         description: 필터 타입 (all=전체, earned=적립, used=사용, expired=소멸)
  *     responses:
  *       200:
  *         description: 조회 성공
