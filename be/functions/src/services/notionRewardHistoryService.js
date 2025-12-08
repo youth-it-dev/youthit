@@ -162,7 +162,7 @@ class NotionRewardHistoryService {
       // 3. Notion 회원 관리 DB에서 전체 사용자 정보 미리 조회 (성능 개선)
       let notionUsersMap = {};
       try {
-        const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2 || this.notionUserAccountDB;
+        const userDbId = this.notionUserAccountDB;
         let userResults = [];
         let hasMoreUsers = true;
         let userStartCursor;
@@ -350,7 +350,7 @@ class NotionRewardHistoryService {
         const logRef = db.collection("adminLogs").doc();
         await logRef.set({
           adminId: "Notion 관리자",
-          action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
+          action: ADMIN_LOG_ACTIONS.REWARD_SYNCED,
           targetId: "",
           timestamp: new Date(),
           metadata: {
