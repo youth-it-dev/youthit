@@ -114,20 +114,6 @@ instance.interceptors.response.use(
         }
       });
     }
-    // 423 에러 발생 시 logout API 호출 후 로그인 화면으로 리다이렉트
-    if (error.response?.status === 423) {
-      // 순환 참조 방지를 위해 동적 import 사용
-      import("./auth").then(({ signOut }) => {
-        signOut().then(() => {
-          if (typeof window !== "undefined") {
-            const currentPath = window.location.pathname;
-            if (currentPath !== LINK_URL.LOGIN) {
-              window.location.replace(LINK_URL.LOGIN);
-            }
-          }
-        });
-      });
-    }
     return Promise.reject(error);
   }
 );
