@@ -308,6 +308,13 @@ router.get("/me/my-page", authGuard, userController.getMyPage);
  *           type: integer
  *           default: 10
  *         description: 페이지 크기
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [all, program, mission]
+ *           default: all
+ *         description: 게시글 타입 필터 (all=전체, program=커뮤니티, mission=미션)
  *     responses:
  *       200:
  *         description: 게시글 조회 성공
@@ -333,12 +340,24 @@ router.get("/me/my-page", authGuard, userController.getMyPage);
  *                           author:
  *                             type: string
  *                             example: "익명"
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "https://example.com/profile.jpg"
  *                           title:
  *                             type: string
  *                             example: "수정된 루틴 인증!"
  *                           type:
  *                             type: string
  *                             example: "GATHERING_REVIEW"
+ *                           programType:
+ *                             type: string
+ *                             nullable: true
+ *                             enum: [ROUTINE, GATHERING, TMI]
+ *                             example: "ROUTINE"
+ *                           isReview:
+ *                             type: boolean
+ *                             example: false
  *                           channel:
  *                             type: string
  *                             example: "독서 모임 후기"
@@ -349,9 +368,9 @@ router.get("/me/my-page", authGuard, userController.getMyPage);
  *                             type: string
  *                             format: date-time
  *                             example: "2025-10-03T00:00:00.000Z"
- *                           visibility:
- *                             type: string
- *                             example: "PUBLIC"
+ *                           isPublic:
+ *                             type: boolean
+ *                             example: true
  *                           isLocked:
  *                             type: boolean
  *                             example: false
@@ -471,6 +490,13 @@ router.get("/me/posts", authGuard, userController.getMyAuthoredPosts);
  *           type: integer
  *           default: 10
  *         description: 페이지 크기
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [all, program, mission]
+ *           default: all
+ *         description: 필터 타입 (all=전체, program=프로그램/커뮤니티, mission=미션)
  *     responses:
  *       200:
  *         description: 게시글 조회 성공
@@ -496,12 +522,24 @@ router.get("/me/posts", authGuard, userController.getMyAuthoredPosts);
  *                           author:
  *                             type: string
  *                             example: "익명"
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "https://example.com/profile.jpg"
  *                           title:
  *                             type: string
  *                             example: "수정된 루틴 인증!"
  *                           type:
  *                             type: string
  *                             example: "GATHERING_REVIEW"
+ *                           programType:
+ *                             type: string
+ *                             nullable: true
+ *                             enum: [ROUTINE, GATHERING, TMI]
+ *                             example: "ROUTINE"
+ *                           isReview:
+ *                             type: boolean
+ *                             example: false
  *                           channel:
  *                             type: string
  *                             example: "독서 모임 후기"
@@ -512,9 +550,9 @@ router.get("/me/posts", authGuard, userController.getMyAuthoredPosts);
  *                             type: string
  *                             format: date-time
  *                             example: "2025-10-03T00:00:00.000Z"
- *                           visibility:
- *                             type: string
- *                             example: "PUBLIC"
+ *                           isPublic:
+ *                             type: boolean
+ *                             example: true
  *                           isLocked:
  *                             type: boolean
  *                             example: false
@@ -634,6 +672,13 @@ router.get("/me/liked-posts", authGuard, userController.getMyLikedPosts);
  *           type: integer
  *           default: 10
  *         description: 페이지 크기
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [all, program, mission]
+ *           default: all
+ *         description: 필터 타입 (all=전체, program=프로그램/커뮤니티, mission=미션)
  *     responses:
  *       200:
  *         description: 게시글 조회 성공
@@ -659,12 +704,24 @@ router.get("/me/liked-posts", authGuard, userController.getMyLikedPosts);
  *                           author:
  *                             type: string
  *                             example: "익명"
+ *                           profileImageUrl:
+ *                             type: string
+ *                             nullable: true
+ *                             example: "https://example.com/profile.jpg"
  *                           title:
  *                             type: string
  *                             example: "수정된 루틴 인증!"
  *                           type:
  *                             type: string
  *                             example: "GATHERING_REVIEW"
+ *                           programType:
+ *                             type: string
+ *                             nullable: true
+ *                             enum: [ROUTINE, GATHERING, TMI]
+ *                             example: "ROUTINE"
+ *                           isReview:
+ *                             type: boolean
+ *                             example: false
  *                           channel:
  *                             type: string
  *                             example: "독서 모임 후기"
@@ -675,9 +732,9 @@ router.get("/me/liked-posts", authGuard, userController.getMyLikedPosts);
  *                             type: string
  *                             format: date-time
  *                             example: "2025-10-03T00:00:00.000Z"
- *                           visibility:
- *                             type: string
- *                             example: "PUBLIC"
+ *                           isPublic:
+ *                             type: boolean
+ *                             example: true
  *                           isLocked:
  *                             type: boolean
  *                             example: false

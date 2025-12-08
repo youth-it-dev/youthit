@@ -266,11 +266,12 @@ class UserController {
   async getMyAuthoredPosts(req, res, next) {
     try {
       const {uid} = req.user;
-      const { page = 0, size = 10 } = req.query;
+      const { page = 0, size = 10, type = "all" } = req.query;
       
       const result = await userService.getMyAuthoredPosts(uid, {
         page: parseInt(page),
         size: parseInt(size),
+        type,
       });
       
       return res.success({
@@ -288,11 +289,12 @@ class UserController {
   async getMyLikedPosts(req, res, next) {
     try {
       const {uid} = req.user;
-      const { page = 0, size = 10 } = req.query;
+      const { page = 0, size = 10, type = "all" } = req.query;
       
       const result = await userService.getMyLikedPosts(uid, {
         page: parseInt(page),
         size: parseInt(size),
+        type,
       });
       
       return res.success({
@@ -310,11 +312,12 @@ class UserController {
   async getMyCommentedPosts(req, res, next) {
     try {
       const {uid} = req.user;
-      const { page = 0, size = 10 } = req.query;
+      const { page = 0, size = 10, type = "all" } = req.query;
       
       const result = await userService.getMyCommentedPosts(uid, {
         page: parseInt(page),
         size: parseInt(size),
+        type,
       });
       
       return res.success({
