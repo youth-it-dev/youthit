@@ -1352,12 +1352,12 @@ class MissionPostService {
         .where("postId", "==", comment.postId)
         .where("userId", "==", userId)
         .where("isDeleted", "==", false)
-        .limit(2) 
+        .limit(2)
         .get();
 
-      const otherActiveExists = otherActiveCommentsSnapshot.docs.some(
-        (doc) => doc.id !== commentId,
-      );
+      const otherActiveCommentIds = otherActiveCommentsSnapshot.docs
+        .map((doc) => doc.id)
+        .filter((id) => id !== commentId);
 
       if (hasReplies) {
         // 대댓글이 있으면 소프트 딜리트
@@ -1375,6 +1375,18 @@ class MissionPostService {
         // 대댓글이 없으면 하드 딜리트
         await db.runTransaction(async (transaction) => {
           const postRef = db.collection(MISSION_POSTS_COLLECTION).doc(comment.postId);
+
+          // 트랜잭션 내부에서 다른 활성 댓글 재확인 (TOCTOU 방지)
+          let otherActiveExists = false;
+          if (otherActiveCommentIds.length > 0) {
+            const otherCommentRefs = otherActiveCommentIds.map((id) =>
+              db.collection("comments").doc(id)
+            );
+            const otherCommentDocs = await transaction.getAll(...otherCommentRefs);
+            otherActiveExists = otherCommentDocs.some(
+              (doc) => doc.exists && !doc.data().isDeleted
+            );
+          }
 
           // 댓글 실제 삭제
           transaction.delete(commentRef);
