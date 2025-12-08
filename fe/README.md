@@ -16,6 +16,11 @@
 # 의존성 설치
 pnpm install
 
+# Husky 최초 설정 (Git hooks 활성화)
+# ⚠️ 레포지토리를 클론받은 후 최초 1회만 실행하면 됩니다
+cd fe
+pnpm prepare
+
 # 백엔드 서버 실행 (별도 터미널)
 cd be/functions
 firebase emulators:start --only functions,auth
@@ -85,14 +90,34 @@ pnpm format
 
 ## 🚀 테크 스택
 
-- **프레임워크**: Next.js 15 (App Router) + React 19
-- **언어**: TypeScript
-- **스타일링**: Tailwind CSS 4
-- **UI 컴포넌트**: shadcn/ui, lucide-react
-- **상태관리**: Zustand (stores 폴더)
-- **PWA**: next-pwa, Firebase Cloud Messaging
-- **개발도구**: ESLint 9, Prettier, Husky
-- **유틸리티**: clsx, class-variance-authority, tailwind-merge
+### 핵심 프레임워크 & 라이브러리
+
+- **프레임워크**: Next.js 15.4.8 (App Router)
+- **UI 라이브러리**: React 19.1.2, React DOM 19.1.2
+- **언어**: TypeScript ^5
+- **스타일링**: Tailwind CSS ^4
+- **UI 컴포넌트**:
+  - shadcn/ui (Radix UI 기반)
+  - lucide-react ^0.539.0 (아이콘)
+- **상태관리**:
+  - Zustand ^5.0.8 (클라이언트 상태)
+  - @tanstack/react-query ^5.90.2 (서버 상태)
+- **폼 관리**:
+  - react-hook-form ^7.65.0
+  - zod ^3.23.8 (스키마 검증)
+  - @hookform/resolvers ^5.2.2
+- **PWA**:
+  - @ducanh2912/next-pwa ^10.2.9
+  - Firebase 12.6.0 (Cloud Messaging)
+- **개발도구**:
+  - ESLint ^9
+  - Prettier ^3.6.2
+  - Husky ^9.1.7 (Git hooks)
+  - lint-staged ^16.1.5
+- **유틸리티**:
+  - clsx ^2.1.1
+  - class-variance-authority ^0.7.1
+  - tailwind-merge ^3.3.1
 
 ### 🏗️ 아키텍처 특징
 
@@ -152,8 +177,6 @@ pnpm format
     ├── 📂 stores/                                # Zustand 스토어
     │   ├── 📂 [module]/                          # 모듈별
     │   └── 📂 shared/                            # 공통
-    │
-    ├── 📂 styles/
     │
     ├── 📂 types/                                 # 전역/도메인 타입
     │   ├── 📂 [module]/                          # 모듈별
