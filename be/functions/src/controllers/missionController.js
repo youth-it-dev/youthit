@@ -363,9 +363,10 @@ class MissionController {
           return updatedB - updatedA;
         });
         
-        // 필요한 만큼만 반환
-        const sortedMissions = enrichedCandidates.slice(0, pageSize);
-        const remainingMissions = enrichedCandidates.slice(pageSize);
+        // 필요한 만큼만 반환 (bufferQueue에서 이미 채운 공간 고려)
+        const remainingSlot = pageSize - responseMissions.length;
+        const sortedMissions = enrichedCandidates.slice(0, remainingSlot);
+        const remainingMissions = enrichedCandidates.slice(remainingSlot);
         
         responseMissions.push(...sortedMissions);
         bufferedOverflow.push(...remainingMissions);
