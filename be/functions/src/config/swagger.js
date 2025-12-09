@@ -258,6 +258,12 @@ const options = {
               description: "미션 소개",
               example: "내가 좋아하는 책을 한권 선정해서 읽고 그 책을 쓴 작가를 위한 책 추천사 써보기",
             },
+            coverImage: {
+              type: "string",
+              nullable: true,
+              description: "노션 페이지 커버 이미지 URL (unsplash 등)",
+              example: "https://images.unsplash.com/photo-1234567890",
+            },
             isRecruiting: {
               type: "boolean",
               description: "현재 모집 여부",
@@ -309,11 +315,7 @@ const options = {
               items: {
                 type: "string",
               },
-            },
-            reactionCount: {
-              type: "number",
-              description: "찜/반응 수",
-              example: 219,
+              example: ["사진과 함께 인증글 작성", "3줄 이상 글 작성"],
             },
             likesCount: {
               type: "integer",

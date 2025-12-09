@@ -77,10 +77,6 @@ const authGuard = require("../middleware/authGuard");
  *           items:
  *             type: string
  *           example: ["사진과 함께 인증글 작성", "3줄 이상 글 작성"]
- *         reactionCount:
- *           type: integer
- *           description: 찜 수
- *           example: 10
  *         faqRelation:
  *           type: object
  *           nullable: true
