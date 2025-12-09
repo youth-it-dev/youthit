@@ -1,7 +1,7 @@
 import { LINK_URL } from "./_link-url";
 
 export const TOPBAR_TITLE_MAP: Array<{ prefix: string; label: string }> = [
-  { prefix: LINK_URL.EMAIL_LOGIN, label: "로그인" },
+  { prefix: LINK_URL.LOGIN, label: "로그인" },
   { prefix: LINK_URL.HOME, label: "" },
   { prefix: LINK_URL.MISSION, label: "미션" },
   { prefix: LINK_URL.COMMUNITY_POST, label: "" }, // 게시글 상세 페이지는 레이블 없음
@@ -14,4 +14,6 @@ export const TOPBAR_TITLE_MAP: Array<{ prefix: string; label: string }> = [
   { prefix: LINK_URL.PERSONAL_INFO, label: "개인 정보 관리" },
   { prefix: LINK_URL.MY_PAGE_EDIT, label: "프로필 설정" },
   { prefix: LINK_URL.NOTIFICATIONS, label: "알림" },
+  { prefix: LINK_URL.MISSION_LIST, label: "전체 미션 보기" },
+  { prefix: LINK_URL.MISSION_CERTIFY, label: "인증하기" },
 ];
