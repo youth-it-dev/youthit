@@ -119,7 +119,7 @@ const MissionPostsFilterBottomSheet = ({
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} enableDrag>
       <div className="space-y-8">
         <section className="space-y-3">
           <p className="text-sm font-semibold text-gray-900">정렬</p>

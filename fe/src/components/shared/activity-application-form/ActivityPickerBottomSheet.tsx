@@ -133,7 +133,7 @@ export const ActivityPickerBottomSheet = ({
                 className={cn(
                   "w-full rounded-lg px-4 py-3 text-left transition-colors",
                   selectedRegionCode === sido.code
-                    ? "bg-pink-100 text-pink-700"
+                    ? "bg-main-100 text-main-700"
                     : "bg-white text-gray-900 hover:bg-gray-50"
                 )}
               >
@@ -211,7 +211,7 @@ export const ActivityPickerBottomSheet = ({
             </Typography>
             {formData.currentSituation === option && (
               <svg
-                className="h-5 w-5 text-pink-500"
+                className="text-main-500 h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -253,7 +253,7 @@ export const ActivityPickerBottomSheet = ({
             </Typography>
             {formData.applicationSource === option && (
               <svg
-                className="h-5 w-5 text-pink-500"
+                className="text-main-500 h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -296,7 +296,7 @@ export const ActivityPickerBottomSheet = ({
             </Typography>
             {formData.applicationMotivation === option && (
               <svg
-                className="h-5 w-5 text-pink-500"
+                className="text-main-500 h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -326,7 +326,7 @@ export const ActivityPickerBottomSheet = ({
               onCheckedChange={(checked) =>
                 onTermsCheckChange?.(checked === true)
               }
-              className="data-[state=checked]:border-pink-500 data-[state=checked]:bg-pink-500 data-[state=checked]:text-white"
+              className="data-[state=checked]:border-main-500 data-[state=checked]:bg-main-500 data-[state=checked]:text-white"
             />
             <Typography font="noto" variant="body2R">
               개인정보 제3자 제공 동의
@@ -336,9 +336,9 @@ export const ActivityPickerBottomSheet = ({
             href="https://www.notion.so/youthvoice/2a845f524cd080d6ab97dd121d47e24b?source=copy_link#2a845f524cd080d0b276ca0f1769bdd5"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-pink-500 underline"
+            className="text-main-500 underline"
           >
-            <Typography font="noto" variant="body2R" className="text-pink-500">
+            <Typography font="noto" variant="body2R" className="text-main-500">
               보기
             </Typography>
           </a>
@@ -347,7 +347,7 @@ export const ActivityPickerBottomSheet = ({
       <button
         onClick={onTermsAgree}
         disabled={!formData.agreedToTerms || isTermsAgreeLoading}
-        className="bg-primary-pink w-full rounded-lg px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300"
+        className="bg-main-500 hover:bg-main-600 w-full rounded-lg px-4 py-3 text-white transition-colors disabled:bg-gray-300 disabled:hover:bg-gray-300"
       >
         <Typography font="noto" variant="body2M" className="text-white">
           {isTermsAgreeLoading ? "신청 중..." : "동의하기"}

@@ -168,7 +168,7 @@ const ProgramSelectBottomSheet = ({
   const hasOngoingPrograms = ongoingProgramGroups.length > 0;
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} enableDrag>
       <div className="mt-5 flex flex-col">
         {/* 완료한 프로그램 후기 작성 섹션 */}
         {hasCompletedPrograms && (
