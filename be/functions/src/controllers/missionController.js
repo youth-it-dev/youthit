@@ -306,55 +306,128 @@ class MissionController {
       let notionCursor = initialNotionCursor || null;
       let notionHasMore = Boolean(notionCursor);
       const bufferedOverflow = [];
+      
+      // 인기순 정렬의 경우 더 많은 데이터를 가져와서 메모리에서 정렬
+      const isPopularSort = sortBy === 'popular';
       const fetchSize = needsExclude
         ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
-        : pageSize;
+        : isPopularSort
+          ? Math.min(pageSize * 5, NOTION_MAX_PAGE_SIZE) // 인기순은 더 많이 가져와서 정렬
+          : pageSize;
 
-      while (responseMissions.length < pageSize) {
-        const notionRequest = {
-          sortBy,
-          pageSize: fetchSize,
-        };
+      // 인기순의 경우 모든 후보를 수집
+      const allCandidates = isPopularSort ? [] : null;
 
-        if (category) {
-          notionRequest.category = category;
-        }
-        if (notionCursor) {
-          notionRequest.startCursor = notionCursor;
-        }
+      if (isPopularSort) {
+        // 인기순: 충분한 데이터를 수집한 후 메모리에서 정렬
+        while (allCandidates.length < pageSize * 3) {
+          const notionRequest = {
+            sortBy: 'latest', // Notion에서는 항상 최신순으로 가져옴
+            pageSize: fetchSize,
+          };
 
-        const result = await notionMissionService.getMissions(notionRequest);
-        notionCursor = result.nextCursor || null;
-        notionHasMore = Boolean(result.hasMore && notionCursor);
+          if (category) {
+            notionRequest.category = category;
+          }
+          if (notionCursor) {
+            notionRequest.startCursor = notionCursor;
+          }
 
-        let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
-        fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
+          const result = await notionMissionService.getMissions(notionRequest);
+          notionCursor = result.nextCursor || null;
+          notionHasMore = Boolean(result.hasMore && notionCursor);
 
-        if (fetchedMissions.length === 0) {
+          let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
+          fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
+          allCandidates.push(...fetchedMissions);
+
+          if (fetchedMissions.length === 0 && !notionHasMore) {
+            break;
+          }
           if (!notionHasMore) {
             break;
           }
-          continue;
         }
 
-        fetchedMissions.forEach((mission) => {
-          if (responseMissions.length < pageSize) {
-            responseMissions.push(mission);
-          } else {
-            bufferedOverflow.push(mission);
+        // likesCount를 가져온 후 정렬
+        const enrichedCandidates = await this.enrichMissionsWithLikes(allCandidates, userId);
+        enrichedCandidates.sort((a, b) => {
+          const likesA = a.likesCount || 0;
+          const likesB = b.likesCount || 0;
+          if (likesB !== likesA) {
+            return likesB - likesA; // 내림차순
           }
+          // likesCount가 같으면 updatedAt 기준 내림차순
+          const updatedA = new Date(a.updatedAt || 0).getTime();
+          const updatedB = new Date(b.updatedAt || 0).getTime();
+          return updatedB - updatedA;
         });
+        
+        // 필요한 만큼만 반환
+        const sortedMissions = enrichedCandidates.slice(0, pageSize);
+        const remainingMissions = enrichedCandidates.slice(pageSize);
+        
+        responseMissions.push(...sortedMissions);
+        bufferedOverflow.push(...remainingMissions);
+      } else {
+        // 최신순: 기존 로직 유지
+        while (responseMissions.length < pageSize) {
+          const notionRequest = {
+            sortBy: 'latest',
+            pageSize: fetchSize,
+          };
 
-        if (!notionHasMore) {
-          break;
+          if (category) {
+            notionRequest.category = category;
+          }
+          if (notionCursor) {
+            notionRequest.startCursor = notionCursor;
+          }
+
+          const result = await notionMissionService.getMissions(notionRequest);
+          notionCursor = result.nextCursor || null;
+          notionHasMore = Boolean(result.hasMore && notionCursor);
+
+          let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
+          fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
+
+          if (fetchedMissions.length === 0) {
+            if (!notionHasMore) {
+              break;
+            }
+            continue;
+          }
+
+          fetchedMissions.forEach((mission) => {
+            if (responseMissions.length < pageSize) {
+              responseMissions.push(mission);
+            } else {
+              bufferedOverflow.push(mission);
+            }
+          });
+
+          if (!notionHasMore) {
+            break;
+          }
         }
       }
 
       const finalBuffer = bufferQueue.concat(bufferedOverflow);
-      const totalMissionsForLikes = responseMissions.concat(finalBuffer);
-      const enrichedMissions = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+      let enrichedMissions;
+      
+      if (isPopularSort) {
+        // 인기순: 이미 enrich되고 정렬됨
+        enrichedMissions = responseMissions;
+      } else {
+        // 최신순: enrich 필요
+        const totalMissionsForLikes = responseMissions.concat(finalBuffer);
+        enrichedMissions = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+      }
+      
       const enrichedResponses = enrichedMissions.slice(0, responseMissions.length);
-      const enrichedBuffer = enrichedMissions.slice(responseMissions.length);
+      const enrichedBuffer = isPopularSort 
+        ? bufferedOverflow // 인기순은 이미 정렬된 버퍼 사용
+        : enrichedMissions.slice(responseMissions.length);
 
       const hasBufferedItems = enrichedBuffer.length > 0;
       const hasNext = hasBufferedItems || notionHasMore;
