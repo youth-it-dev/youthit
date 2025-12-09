@@ -311,57 +311,21 @@ class MissionController {
       const isPopularSort = sortBy === 'popular';
       const fetchSize = needsExclude
         ? Math.min(pageSize * 3, NOTION_MAX_PAGE_SIZE)
-        : isPopularSort
-          ? Math.min(pageSize * 5, NOTION_MAX_PAGE_SIZE) // 인기순은 더 많이 가져와서 정렬
-          : pageSize;
-
-      // 인기순의 경우 모든 후보를 수집
-      const allCandidates = isPopularSort ? [] : null;
+        : pageSize;
 
       if (isPopularSort) {
-        // 인기순: 충분한 데이터를 수집한 후 메모리에서 정렬
-        while (allCandidates.length < pageSize * 3) {
-          const notionRequest = {
-            sortBy: 'latest', // Notion에서는 항상 최신순으로 가져옴
-            pageSize: fetchSize,
-          };
-
-          if (category) {
-            notionRequest.category = category;
-          }
-          if (notionCursor) {
-            notionRequest.startCursor = notionCursor;
-          }
-
-          const result = await notionMissionService.getMissions(notionRequest);
-          notionCursor = result.nextCursor || null;
-          notionHasMore = Boolean(result.hasMore && notionCursor);
-
-          let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
-          fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
-          allCandidates.push(...fetchedMissions);
-
-          if (fetchedMissions.length === 0 && !notionHasMore) {
-            break;
-          }
-          if (!notionHasMore) {
-            break;
-          }
-        }
-
-        // likesCount를 가져온 후 정렬
-        const enrichedCandidates = await this.enrichMissionsWithLikes(allCandidates, userId);
-        enrichedCandidates.sort((a, b) => {
-          const likesA = a.likesCount || 0;
-          const likesB = b.likesCount || 0;
-          if (likesB !== likesA) {
-            return likesB - likesA; // 내림차순
-          }
-          // likesCount가 같으면 updatedAt 기준 내림차순
-          const updatedA = new Date(a.updatedAt || 0).getTime();
-          const updatedB = new Date(b.updatedAt || 0).getTime();
-          return updatedB - updatedA;
+        // 인기순: 서비스에서 정렬된 데이터 가져오기
+        const popularResult = await missionService.getPopularSortedMissions({
+          pageSize,
+          category,
+          notionCursor,
+          shouldIncludeMission,
+          userId,
         });
+
+        const enrichedCandidates = popularResult.missions;
+        notionCursor = popularResult.nextCursor || null;
+        notionHasMore = Boolean(popularResult.hasMore && notionCursor);
         
         // 필요한 만큼만 반환 (bufferQueue에서 이미 채운 공간 고려)
         const remainingSlot = pageSize - responseMissions.length;
@@ -422,7 +386,7 @@ class MissionController {
       } else {
         // 최신순: enrich 필요
         const totalMissionsForLikes = responseMissions.concat(finalBuffer);
-        enrichedMissions = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+        enrichedMissions = await missionService.enrichMissionsWithLikes(totalMissionsForLikes, userId);
       }
       
       const enrichedResponses = enrichedMissions.slice(0, responseMissions.length);
@@ -495,7 +459,7 @@ class MissionController {
       }
 
       const mission = await notionMissionService.getMissionById(missionId);
-      const [missionWithLikes] = await this.enrichMissionsWithLikes(
+      const [missionWithLikes] = await missionService.enrichMissionsWithLikes(
         [mission],
         req.user?.uid || null,
       );
@@ -1006,7 +970,7 @@ class MissionController {
 
       const finalBuffer = bufferQueue.concat(bufferedOverflow);
       const totalMissionsForLikes = responseMissions.concat(finalBuffer);
-      const enriched = await this.enrichMissionsWithLikes(totalMissionsForLikes, userId, {
+      const enriched = await missionService.enrichMissionsWithLikes(totalMissionsForLikes, userId, {
         forceLiked: true,
       });
       const enrichedResponses = enriched.slice(0, responseMissions.length);
@@ -1068,33 +1032,6 @@ class MissionController {
     return missionIds.map((missionId) => missionsMap.get(missionId) || null);
   }
 
-  async enrichMissionsWithLikes(missions = [], userId = null, options = {}) {
-    if (!Array.isArray(missions) || missions.length === 0) {
-      return [];
-    }
-
-    const missionIds = missions.map((mission) => mission?.id).filter(Boolean);
-    if (missionIds.length === 0) {
-      return missions;
-    }
-
-    const { forceLiked = false } = options;
-    const metadata = await missionLikeService.getLikesMetadata(missionIds, forceLiked ? null : userId);
-    const likesCountMap = metadata.likesCountMap || {};
-    const likedSet = forceLiked ? new Set(missionIds) : metadata.likedSet || new Set();
-
-    return missions.map((mission) => {
-      if (!mission || !mission.id) {
-        return mission;
-      }
-
-      return {
-        ...mission,
-        likesCount: likesCountMap[mission.id] || 0,
-        isLiked: likedSet.has(mission.id),
-      };
-    });
-  }
 }
 
 module.exports = new MissionController();

@@ -1,5 +1,6 @@
 const { db, Timestamp } = require("../config/database");
 const notionMissionService = require("./notionMissionService");
+const missionLikeService = require("./missionLikeService");
 const { getDateKeyByUTC, getTodayByUTC } = require("../utils/helpers");
 const {
   USER_MISSIONS_COLLECTION,
@@ -10,6 +11,7 @@ const {
   MAX_ACTIVE_MISSIONS,
   FIRST_MISSION_REWARD_LIMIT,
 } = require("../constants/missionConstants");
+const { NOTION_MAX_PAGE_SIZE } = require("../constants/paginationConstants");
 
 function buildError(message, code, statusCode) {
   const error = new Error(message);
@@ -323,6 +325,109 @@ class MissionService {
       todayActiveCount, // 진행 중인 미션 수 (오늘 신청한 미션 중 IN_PROGRESS만)
       consecutiveDays, // 연속 미션일
       totalPostsCount, // 누적 게시글 수 (totalMissionCount 또는 쿼리 결과)
+    };
+  }
+
+  /**
+   * 미션 목록에 좋아요 정보 추가
+   * @param {Array} missions - 미션 목록
+   * @param {string|null} userId - 사용자 ID (null이면 좋아요 상태 제외)
+   * @param {Object} options - 옵션
+   * @param {boolean} options.forceLiked - 모든 미션을 좋아요한 것으로 표시 (likedOnly일 때 사용)
+   * @returns {Promise<Array>} 좋아요 정보가 추가된 미션 목록
+   */
+  async enrichMissionsWithLikes(missions = [], userId = null, options = {}) {
+    if (!Array.isArray(missions) || missions.length === 0) {
+      return [];
+    }
+
+    const missionIds = missions.map((mission) => mission?.id).filter(Boolean);
+    if (missionIds.length === 0) {
+      return missions;
+    }
+
+    const { forceLiked = false } = options;
+    const metadata = await missionLikeService.getLikesMetadata(missionIds, forceLiked ? null : userId);
+    const likesCountMap = metadata.likesCountMap || {};
+    const likedSet = forceLiked ? new Set(missionIds) : metadata.likedSet || new Set();
+
+    return missions.map((mission) => {
+      if (!mission || !mission.id) {
+        return mission;
+      }
+
+      return {
+        ...mission,
+        likesCount: likesCountMap[mission.id] || 0,
+        isLiked: likedSet.has(mission.id),
+      };
+    });
+  }
+
+  /**
+   * 인기순 정렬된 미션 목록 조회
+   * @param {Object} params
+   * @param {number} params.pageSize - 페이지 크기
+   * @param {string} [params.category] - 카테고리 필터
+   * @param {string|null} params.notionCursor - Notion 페이지네이션 커서
+   * @param {Function} params.shouldIncludeMission - 미션 필터링 함수
+   * @param {string|null} params.userId - 사용자 ID (좋아요 정보용)
+   * @returns {Promise<Object>} 정렬된 미션 목록과 커서 정보
+   */
+  async getPopularSortedMissions({ pageSize, category, notionCursor, shouldIncludeMission, userId }) {
+    const allCandidates = [];
+    let cursor = notionCursor || null;
+    let hasMore = Boolean(cursor);
+    const fetchSize = Math.min(pageSize * 5, NOTION_MAX_PAGE_SIZE);
+
+    // 충분한 데이터 수집 (pageSize * 3 이상)
+    while (allCandidates.length < pageSize * 3) {
+      const notionRequest = {
+        sortBy: 'latest', // Notion에서는 항상 최신순으로 가져옴
+        pageSize: fetchSize,
+      };
+
+      if (category) {
+        notionRequest.category = category;
+      }
+      if (cursor) {
+        notionRequest.startCursor = cursor;
+      }
+
+      const result = await notionMissionService.getMissions(notionRequest);
+      cursor = result.nextCursor || null;
+      hasMore = Boolean(result.hasMore && cursor);
+
+      let fetchedMissions = Array.isArray(result.missions) ? result.missions : [];
+      fetchedMissions = fetchedMissions.filter(shouldIncludeMission);
+      allCandidates.push(...fetchedMissions);
+
+      if (fetchedMissions.length === 0 && !hasMore) {
+        break;
+      }
+      if (!hasMore) {
+        break;
+      }
+    }
+
+    // likesCount를 가져온 후 정렬
+    const enrichedCandidates = await this.enrichMissionsWithLikes(allCandidates, userId);
+    enrichedCandidates.sort((a, b) => {
+      const likesA = a.likesCount || 0;
+      const likesB = b.likesCount || 0;
+      if (likesB !== likesA) {
+        return likesB - likesA; // 내림차순
+      }
+      // likesCount가 같으면 updatedAt 기준 내림차순
+      const updatedA = new Date(a.updatedAt || 0).getTime();
+      const updatedB = new Date(b.updatedAt || 0).getTime();
+      return updatedB - updatedA;
+    });
+
+    return {
+      missions: enrichedCandidates,
+      nextCursor: cursor,
+      hasMore,
     };
   }
 }
