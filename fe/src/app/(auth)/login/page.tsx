@@ -438,12 +438,12 @@ const LoginPageContent = () => {
           </div>
         )}
         <div className="flex items-center justify-center gap-4">
-          <Link href={LINK_URL.TERMS_OF_SERVICE}>
+          <Link href={LINK_URL.TERMS_OF_SERVICE} target="_blank">
             <Typography font="noto" variant="label1M" className="text-gray-400">
               이용약관
             </Typography>
           </Link>
-          <Link href={LINK_URL.PRIVACY_POLICY}>
+          <Link href={LINK_URL.PRIVACY_POLICY} target="_blank">
             <Typography font="noto" variant="label1M" className="text-gray-400">
               개인정보 처리방침
             </Typography>
