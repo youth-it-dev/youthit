@@ -505,6 +505,20 @@ class NotificationService {
           if (marketingFilteredFailedUserIds.length > 0) {
             failedUserIds = failedUserIds.concat(marketingFilteredFailedUserIds);
             console.log(`[알림 필터링] 마케팅 동의하지 않은 사용자 ${marketingFilteredFailedUserIds.length}명을 실패 회원으로 추가`);
+
+            const savePromises = marketingFilteredFailedUserIds.map((userId) =>
+              this.saveNotification(userId, {
+                title,
+                message: content,
+                type: "announcement",
+                postId: "",
+                communityId: "",
+                commentId: ""
+              }).catch((err) => {
+                console.error(`[알림 저장 실패] userId=${userId}:`, err);
+              })
+            );
+            await Promise.all(savePromises);
           }
         } catch (filterError) {
           console.error("[알림 필터링] marketingTermsAgreed 필터링 실패:", filterError.message);
