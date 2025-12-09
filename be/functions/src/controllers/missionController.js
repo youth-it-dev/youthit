@@ -391,7 +391,7 @@ class MissionController {
       
       const enrichedResponses = enrichedMissions.slice(0, responseMissions.length);
       const enrichedBuffer = isPopularSort 
-        ? bufferedOverflow // 인기순은 이미 정렬된 버퍼 사용
+        ? finalBuffer // 인기순: bufferQueue와 bufferedOverflow 모두 포함 (이미 enrich되고 정렬됨)
         : enrichedMissions.slice(responseMissions.length);
 
       const hasBufferedItems = enrichedBuffer.length > 0;
