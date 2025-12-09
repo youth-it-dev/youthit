@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ActivityApplicationForm,
   useActivityApplicationForm,
@@ -83,7 +83,6 @@ interface ApplicationFormData {
 const ProgramApplyPage = () => {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const programId = params.id as string;
 
   // 유효한 스텝 목록
@@ -101,16 +100,6 @@ const ProgramApplyPage = () => {
       "complete",
     ],
     []
-  );
-
-  // 쿼리스트링에서 현재 스텝 가져오기
-  const stepFromQuery = searchParams.get("step");
-  const initialStep: ApplicationStep = useMemo(
-    () =>
-      stepFromQuery && validSteps.includes(stepFromQuery as ApplicationStep)
-        ? (stepFromQuery as ApplicationStep)
-        : "schedule-confirm",
-    [stepFromQuery, validSteps]
   );
 
   // TopBar 제어
@@ -185,19 +174,9 @@ const ProgramApplyPage = () => {
     };
   }, [STORAGE_KEY, userData]);
 
-  // 현재 단계
-  const [currentStep, setCurrentStep] = useState<ApplicationStep>(initialStep);
-
-  // 쿼리스트링 변경 시 currentStep 업데이트
-  useEffect(() => {
-    const stepFromQuery = searchParams.get("step");
-    if (
-      stepFromQuery &&
-      validSteps.includes(stepFromQuery as ApplicationStep)
-    ) {
-      setCurrentStep(stepFromQuery as ApplicationStep);
-    }
-  }, [searchParams, validSteps]);
+  // 현재 단계 (내부 상태로 관리)
+  const [currentStep, setCurrentStep] =
+    useState<ApplicationStep>("schedule-confirm");
 
   // 폼 데이터 관리 (공통 hook 사용)
   const formHook = useActivityApplicationForm(getInitialFormData());
@@ -225,16 +204,10 @@ const ProgramApplyPage = () => {
     }
   }, [formData, STORAGE_KEY]);
 
-  // 스텝 변경 시 URL 업데이트
-  const updateStep = useCallback(
-    (step: ApplicationStep) => {
-      setCurrentStep(step);
-      router.push(`/programs/${programId}/apply?step=${step}`, {
-        scroll: false,
-      });
-    },
-    [router, programId]
-  );
+  // 스텝 변경 시 상태 업데이트
+  const updateStep = useCallback((step: ApplicationStep) => {
+    setCurrentStep(step);
+  }, []);
 
   // 필드별 에러 상태 관리
   const [fieldErrors, setFieldErrors] = useState<{
@@ -260,9 +233,8 @@ const ProgramApplyPage = () => {
       }
       // 참여 중인 커뮤니티 목록 refetch (신청 상태 업데이트 반영)
       refetchParticipatingCommunities();
-      setShowTermsSheet(false);
-      // 성공 모달 표시
-      setShowSuccessModal(true);
+
+      updateStep("complete");
     },
     onError: (error: unknown) => {
       // eslint-disable-next-line no-console
@@ -370,8 +342,6 @@ const ProgramApplyPage = () => {
       setFieldErrors(newFieldErrors);
       // 에러 발생 시 약관 동의 상태 초기화하여 다시 시도 가능하도록
       formHook.updateFormData({ agreedToTerms: false });
-      // 에러 발생 시 바텀시트를 다시 열어서 사용자가 재시도할 수 있도록
-      setShowTermsSheet(true);
     },
   });
 
@@ -392,9 +362,6 @@ const ProgramApplyPage = () => {
     selectedRegionCode,
     setSelectedRegionCode,
   } = formHook;
-
-  // 신청 성공 모달 상태
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // 에러 모달 상태
   const {
@@ -457,8 +424,11 @@ const ProgramApplyPage = () => {
 
   // 이전 스텝으로 이동
   const goToPreviousStep = useCallback(() => {
-    // 신청 완료 페이지나 신청 정보 확인 페이지에서는 상세페이지로 이동
-    if (currentStep === "complete" || currentStep === "review") {
+    if (
+      !currentStep ||
+      currentStep === "schedule-confirm" ||
+      currentStep === "complete"
+    ) {
       router.push(`/programs/${programId}`);
       return;
     }
@@ -482,34 +452,6 @@ const ProgramApplyPage = () => {
     }
   }, [currentStep, updateStep, router, programId]);
 
-  // 뒤로가기 핸들러 (브라우저/앱 스와이프)
-  useEffect(() => {
-    const handlePopState = () => {
-      // 신청하기 페이지 내에서만 뒤로가기 처리
-      if (window.location.pathname.includes("/apply")) {
-        // 첫 번째 스텝이면 상세페이지로 이동 (히스토리 조작 없이 자연스럽게)
-        if (currentStep === "schedule-confirm") {
-          router.replace(`/programs/${programId}`);
-          return;
-        }
-        // 다른 스텝에서는 이전 스텝으로 이동
-        goToPreviousStep();
-        // 히스토리 조작으로 실제 뒤로가기 방지 (이전 스텝으로 이동한 후)
-        window.history.pushState(null, "", window.location.href);
-      }
-    };
-
-    // 첫 번째 스텝이 아닐 때만 히스토리 조작
-    if (currentStep !== "schedule-confirm") {
-      window.history.pushState(null, "", window.location.href);
-    }
-
-    window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [goToPreviousStep, currentStep, router, programId]);
-
   // TopBar 설정 및 뒤로가기 커스텀
   const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
   useEffect(() => {
@@ -517,14 +459,7 @@ const ProgramApplyPage = () => {
     // TopBar의 뒤로가기 버튼 커스텀
     const customLeftSlot = (
       <button
-        onClick={() => {
-          // 첫 단계에서는 상세페이지로 이동
-          if (currentStep === "schedule-confirm") {
-            router.push(`/programs/${programId}`);
-          } else {
-            goToPreviousStep();
-          }
-        }}
+        onClick={goToPreviousStep}
         className="hover:cursor-pointer"
         aria-label="이전 단계"
       >
@@ -750,14 +685,7 @@ const ProgramApplyPage = () => {
   // 신청 완료 후 확인
   const handleComplete = useCallback(() => {
     // 홈화면으로 이동하고 히스토리 정리 (뒤로가기 방지)
-    router.replace(LINK_URL.HOME);
-  }, [router]);
-
-  // 신청 성공 모달 확인 핸들러
-  const handleSuccessModalConfirm = useCallback(() => {
-    setShowSuccessModal(false);
-    // 홈화면으로 이동
-    router.replace(LINK_URL.HOME);
+    router.replace(LINK_URL.PROGRAMS + `/${programId}`);
   }, [router]);
 
   // 스텝 순서 정의
@@ -1360,13 +1288,12 @@ const ProgramApplyPage = () => {
         {currentStep === "complete" && (
           <div className="p-5">
             <div className="flex min-h-[60vh] flex-col items-center">
-              <div className="mt-[164px] mb-[22px] flex h-[120px] w-[120px] items-center justify-center">
+              <div className="mt-[174px] mb-[22px] flex h-[120px] w-[120px] items-center justify-center">
                 <Image
                   src={IMAGE_URL.ICON.checkComplete.url}
                   alt={IMAGE_URL.ICON.checkComplete.alt}
                   width={100}
                   height={100}
-                  unoptimized
                 />
               </div>
               <Typography
@@ -1397,20 +1324,6 @@ const ProgramApplyPage = () => {
         onConfirm={handleNicknameConfirm}
         onClose={() => setShowNicknameConfirm(false)}
       />
-
-      {/* 신청 성공 모달 */}
-      {programDetailData && (
-        <Modal
-          isOpen={showSuccessModal}
-          title="프로그램 신청에 성공했습니다"
-          description={`${programName} 신청이 완료되었어요. 홈화면으로 이동합니다.`}
-          confirmText="확인"
-          onConfirm={handleSuccessModalConfirm}
-          onClose={handleSuccessModalConfirm}
-          variant="primary"
-        />
-      )}
-
       {/* 통합 바텀시트 */}
       <ActivityPickerBottomSheet
         pickerType={activePickerType}

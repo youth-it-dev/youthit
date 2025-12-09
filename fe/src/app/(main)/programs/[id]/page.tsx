@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -173,6 +173,30 @@ const ProgramDetailPage = () => {
       refetchOnWindowFocus: true,
     });
 
+  // 오늘 날짜가 신청 기간 내에 있는지 확인
+  const isRecruitmentPeriodActive = useMemo(() => {
+    if (
+      !programDetailData?.recruitmentStartDate ||
+      !programDetailData?.recruitmentEndDate
+    ) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 시간 부분 제거
+
+    const startDate = new Date(programDetailData.recruitmentStartDate);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(programDetailData.recruitmentEndDate);
+    endDate.setHours(23, 59, 59, 999); // 종료일은 하루 끝까지
+
+    return today >= startDate && today <= endDate;
+  }, [
+    programDetailData?.recruitmentStartDate,
+    programDetailData?.recruitmentEndDate,
+  ]);
+
   // 현재 프로그램의 신청 상태 확인
   const isApplied = (() => {
     if (!participatingCommunitiesData || !programDetailData) return false;
@@ -200,9 +224,9 @@ const ProgramDetailPage = () => {
     if (!targetGroup?.items) return false;
 
     const foundItem = targetGroup.items.find(
-      (item) => item.id === programId
+      // TEMP: 미션을 통해 진입한 일부 화면의 경우, 프로그램 ID에 하이픈이 없는 경우가 있음
+      (item) => item.id?.replace(/-/g, "") === programId.replace(/-/g, "")
     ) as { status?: string } | undefined;
-
     return !!foundItem;
   })();
 
@@ -266,23 +290,6 @@ const ProgramDetailPage = () => {
       }
     }
   }, [programDetailData, scrollToTabSection]);
-
-  // 신청 완료 상태에서 뒤로가기 시 홈으로 리다이렉트
-  useEffect(() => {
-    const handlePopState = () => {
-      // 신청이 완료된 상태에서 뒤로가기를 하면 홈으로 이동
-      router.replace(LINK_URL.HOME);
-    };
-
-    // 히스토리에 현재 상태 추가하여 뒤로가기 감지 가능하도록 함
-    window.history.pushState(null, "", window.location.href);
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [isApplied, router]);
 
   // 프로그램 타입에 따른 일러스트 배경색
   const getProgramBgColor = (programType?: string): string => {
@@ -751,10 +758,14 @@ const ProgramDetailPage = () => {
         ) : (
           <Link
             href={`/programs/${programId}/apply`}
-            className="bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white"
+            className={cn(
+              "bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white",
+              !isRecruitmentPeriodActive &&
+                "pointer-events-none cursor-not-allowed opacity-50"
+            )}
           >
             <Typography font="noto" variant="body3R" className="text-white">
-              신청하기
+              {isRecruitmentPeriodActive ? "신청하기" : "모집 기간이 아니에요"}
             </Typography>
           </Link>
         )}
