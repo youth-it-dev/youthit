@@ -11,10 +11,6 @@ const {
   formatNotionBlocks,
   getCoverImageUrl,
 } = require('../utils/notionHelper');
-const { db } = require("../config/database");
-const {
-  MISSION_LIKES_STATS_COLLECTION,
-} = require("../constants/missionConstants");
 const notionFaqService = require("./notionFaqService");
 
 // 상수 정의
@@ -56,8 +52,6 @@ const NOTION_FIELDS = {
   NOTES: "참고 사항",                               // Text
   CERTIFICATION_METHOD: "인증방법(미션상세)",       // Multi-select
   FAQ: "(미션) 자주 묻는 질문이에요!",              // Relation (Q&A 연동)
-  REACTION_COUNT: "반응 수",                        // Number (찜 기능)
-  IS_REVIEW_REGISTERED: "미션 인증글 등록 여부",    // Checkbox
   LAST_EDITED_TIME: "최근 수정 날짜",               // Date
   LINK_URL: "바로 보러 가기",                       // URL
 };
@@ -130,12 +124,12 @@ class NotionMissionService {
    * 미션 목록 조회 (필터링 & 정렬)
    * @param {Object} filters - 필터 조건
    * @param {string} [filters.category] - 카테고리 (자기만족, 취미생활, 건강, 관계, 성장)
-   * @param {string} [filters.sortBy] - 정렬 기준 ("latest" | "popular")
+   * @param {string} [filters.sortBy] - 정렬 기준 ("latest" | "popular") - popular는 무시됨 (컨트롤러에서 처리)
    * @returns {Promise<Object>} 미션 목록
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    * 
    * @note Notion dataSources.cursor 기반 페이지네이션
-   * @note 정렬: 최신순(기본) | 인기순(반응 수)
+   * @note 정렬: 최신순만 지원 (인기순은 컨트롤러에서 missionLikesStats 기반으로 처리)
    * @note 필터: 카테고리 칩
    */
   async getMissions(filters = {}) {
@@ -153,28 +147,13 @@ class NotionMissionService {
         page_size: requestedPageSize,
       };
 
-      // 정렬 조건
-      if (filters.sortBy === 'popular') {
-        // 인기순: 찜 많은 순
-        queryBody.sorts = [
-          {
-            property: NOTION_FIELDS.REACTION_COUNT,
-            direction: "descending"
-          },
-          {
-            property: NOTION_FIELDS.LAST_EDITED_TIME,
-            direction: "descending"
-          }
-        ];
-      } else {
-        // 최신순 (기본)
-        queryBody.sorts = [
-          {
-            property: NOTION_FIELDS.LAST_EDITED_TIME,
-            direction: "descending"
-          }
-        ];
-      }
+      // 정렬 조건: 항상 최신순만 사용 (인기순은 컨트롤러에서 missionLikesStats 기반으로 처리)
+      queryBody.sorts = [
+        {
+          property: NOTION_FIELDS.LAST_EDITED_TIME,
+          direction: "descending"
+        }
+      ];
 
       // 필터 조건
       const filterConditions = [];
@@ -396,9 +375,7 @@ class NotionMissionService {
       certificationMethod: getMultiSelectNames(props[NOTION_FIELDS.CERTIFICATION_METHOD]), // Multi-select
       
       // 통계 & 관계
-      reactionCount: getNumberValue(props[NOTION_FIELDS.REACTION_COUNT]) || 0, // 찜 수
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
-      isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
       
       // 메타
       createdAt: page.created_time,
@@ -408,63 +385,6 @@ class NotionMissionService {
     return missionData;
   }
 
-  /**
-   * Firestore의 미션 좋아요 통계를 Notion "반응 수" 필드에 동기화
-   * @returns {Promise<{total:number, syncedCount:number, failedCount:number}>}
-   */
-  async syncReactionCountsFromFirestore() {
-    try {
-      const snapshot = await db.collection(MISSION_LIKES_STATS_COLLECTION).get();
-
-      if (snapshot.empty) {
-        return {
-          total: 0,
-          syncedCount: 0,
-          failedCount: 0,
-        };
-      }
-
-      let syncedCount = 0;
-      let failedCount = 0;
-
-      for (const doc of snapshot.docs) {
-        const missionId = doc.id;
-        const data = doc.data() || {};
-        const likesCount = data.likesCount || 0;
-
-        try {
-          await this.notion.pages.update({
-            page_id: missionId,
-            properties: {
-              [NOTION_FIELDS.REACTION_COUNT]: {
-                number: likesCount,
-              },
-            },
-          });
-          syncedCount += 1;
-        } catch (error) {
-          failedCount += 1;
-          console.warn("[NotionMissionService] 반응 수 동기화 실패", {
-            missionId,
-            likesCount,
-            message: error.message,
-          });
-        }
-      }
-
-      return {
-        total: snapshot.size,
-        syncedCount,
-        failedCount,
-      };
-    } catch (error) {
-      console.error("[NotionMissionService] 반응 수 동기화 중 오류:", error.message);
-      const syncError = new Error(`미션 반응 수 동기화 중 오류가 발생했습니다: ${error.message}`);
-      syncError.code = ERROR_CODES.SYNC_ERROR;
-      syncError.originalError = error;
-      throw syncError;
-    }
-  }
 }
 
 module.exports = new NotionMissionService();

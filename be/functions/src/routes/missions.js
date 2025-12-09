@@ -77,10 +77,6 @@ const authGuard = require("../middleware/authGuard");
  *           items:
  *             type: string
  *           example: ["사진과 함께 인증글 작성", "3줄 이상 글 작성"]
- *         reactionCount:
- *           type: integer
- *           description: 찜 수
- *           example: 10
  *         faqRelation:
  *           type: object
  *           nullable: true
@@ -100,10 +96,6 @@ const authGuard = require("../middleware/authGuard");
  *               - id: "faq-page-1"
  *               - id: "faq-page-2"
  *             has_more: false
- *         isReviewRegistered:
- *           type: boolean
- *           description: 미션 후기 등록 여부
- *           example: false
  *         createdAt:
  *           type: string
  *           format: date-time
