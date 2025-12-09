@@ -379,13 +379,25 @@ class MissionController {
 
       const finalBuffer = bufferQueue.concat(bufferedOverflow);
       
-      // 인기순/최신순 모두 동일하게 모든 미션을 현재 userId로 enrich
-      // (bufferQueue의 미션들이 이전 요청에서 온 것이므로 현재 userId로 re-enrich 필요)
-      const totalMissionsForLikes = responseMissions.concat(finalBuffer);
-      const enrichedMissions = await missionService.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+      let enrichedMissions;
+      let enrichedBuffer;
+      
+      if (isPopularSort) {
+        // 인기순: responseMissions와 bufferedOverflow는 이미 getPopularSortedMissions에서 enrich됨
+        // bufferQueue만 re-enrich 필요 (이전 요청에서 온 것이므로 현재 userId로)
+        const enrichedBufferQueue = bufferQueue.length > 0
+          ? await missionService.enrichMissionsWithLikes(bufferQueue, userId)
+          : [];
+        enrichedMissions = responseMissions;
+        enrichedBuffer = enrichedBufferQueue.concat(bufferedOverflow);
+      } else {
+        // 최신순: 모든 미션을 enrich 필요
+        const totalMissionsForLikes = responseMissions.concat(finalBuffer);
+        enrichedMissions = await missionService.enrichMissionsWithLikes(totalMissionsForLikes, userId);
+        enrichedBuffer = enrichedMissions.slice(responseMissions.length);
+      }
       
       const enrichedResponses = enrichedMissions.slice(0, responseMissions.length);
-      const enrichedBuffer = enrichedMissions.slice(responseMissions.length);
 
       const hasBufferedItems = enrichedBuffer.length > 0;
       const hasNext = hasBufferedItems || notionHasMore;
