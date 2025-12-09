@@ -100,10 +100,6 @@ const authGuard = require("../middleware/authGuard");
  *               - id: "faq-page-1"
  *               - id: "faq-page-2"
  *             has_more: false
- *         isReviewRegistered:
- *           type: boolean
- *           description: 미션 후기 등록 여부
- *           example: false
  *         createdAt:
  *           type: string
  *           format: date-time

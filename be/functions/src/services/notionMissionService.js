@@ -52,7 +52,6 @@ const NOTION_FIELDS = {
   NOTES: "참고 사항",                               // Text
   CERTIFICATION_METHOD: "인증방법(미션상세)",       // Multi-select
   FAQ: "(미션) 자주 묻는 질문이에요!",              // Relation (Q&A 연동)
-  IS_REVIEW_REGISTERED: "미션 인증글 등록 여부",    // Checkbox
   LAST_EDITED_TIME: "최근 수정 날짜",               // Date
   LINK_URL: "바로 보러 가기",                       // URL
 };
@@ -377,7 +376,6 @@ class NotionMissionService {
       
       // 통계 & 관계
       faqRelation: getRelationValues(props[NOTION_FIELDS.FAQ]),
-      isReviewRegistered: getCheckboxValue(props[NOTION_FIELDS.IS_REVIEW_REGISTERED]),
       
       // 메타
       createdAt: page.created_time,

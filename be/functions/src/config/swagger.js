@@ -349,11 +349,6 @@ const options = {
                 },
               },
             },
-            isReviewRegistered: {
-              type: "boolean",
-              description: "후기 등록 여부",
-              example: true,
-            },
             createdAt: {
               type: "string",
               format: "date-time",
