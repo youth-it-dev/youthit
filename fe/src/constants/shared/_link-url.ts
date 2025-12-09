@@ -2,14 +2,6 @@ export const LINK_URL = {
   ROOT: "/",
   HOME: "/home",
   LOGIN: "/login",
-  KAKAO_LOGIN: "/kakao-login",
-  EMAIL_LOGIN: "/email-login",
-  TERMS_OF_SERVICE:
-    "https://www.notion.so/youthvoice/2a845f524cd0805bb753d8b98694ff3d",
-  PRIVACY_POLICY:
-    "https://www.notion.so/youthvoice/2a845f524cd080278624e57498305bf2",
-  FIND_PASSWORD: "/find-password",
-  EMAIL_SIGNUP: "/signup/email",
   MISSION: "/mission",
   MISSION_LIST: "/mission/list",
   MISSION_CERTIFY: "/mission/certify",
@@ -28,4 +20,13 @@ export const LINK_URL = {
   PERSONAL_INFO: "/settings/personal-info",
   ANNOUNCEMENTS: "/announcements",
   NOTIFICATIONS: "/notifications",
+  // 이용약관
+  TERMS_OF_SERVICE:
+    "https://youthvoice.notion.site/2a845f524cd0805bb753d8b98694ff3d?source=copy_link",
+  // 개인정보 처리방침
+  PRIVACY_POLICY:
+    "https://youthvoice.notion.site/2a845f524cd080d6ab97dd121d47e24b?source=copy_link",
+  // 이벤트∙홍보 등을 위한 개인정보 이용 및 정보 수신 동의
+  MARKETING_TERMS:
+    "https://youthvoice.notion.site/2a845f524cd08068bf04d0add56155bd?source=copy_link",
 } as const;
