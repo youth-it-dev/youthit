@@ -233,6 +233,7 @@ class MissionPostService {
 
     const now = Timestamp.now();
     let newTotalPostsCount = null; // 트랜잭션 내에서 계산한 값 저장 (race condition 방지)
+    let newConsecutiveDays = 0; // 트랜잭션 내에서 계산한 연속일자 저장
 
     await db.runTransaction(async (transaction) => {
       const missionDocSnap = await transaction.get(missionDocRef);
@@ -283,7 +284,7 @@ class MissionPostService {
 
       // 연속일자 업데이트 로직 (튜토리얼 완료 이후부터만 활성화)
       // 3회 이하는 튜토리얼 단계로 연속일자 집계 안 함
-      let newConsecutiveDays = 0;
+      newConsecutiveDays = 0; // 외부 변수 초기화
 
       if (newTotalPostsCount > FIRST_MISSION_REWARD_LIMIT) {
         // 튜토리얼 완료 이후부터만 연속일자 집계 활성화
@@ -370,8 +371,9 @@ class MissionPostService {
       );
     });
 
-    // 트랜잭션 완료 후 리워드 부여 (최초 3회까지만)
-    // totalPostsCount로 리워드 지급 여부 검증 및 중복 지급 방지
+    // 트랜잭션 완료 후 리워드 부여
+    // 1. 최초 3회까지만 미션 인증 리워드 지급
+    // 2. 연속일자 5일 달성 시 리워드 지급
     try {
       if (newTotalPostsCount === null) {
         console.warn('[MISSION_POST] newTotalPostsCount가 null입니다. 리워드 부여를 건너뜁니다.', {
@@ -385,17 +387,25 @@ class MissionPostService {
         };
       }
 
+      const rewardService = new RewardService();
       const finalTotalPostsCount = newTotalPostsCount;
 
-      // 튜토리얼 미완료 시에만 리워드 지급 (3회까지만)
-      // isTutorialCompleted가 false이면 리워드 지급
+      // 1. 튜토리얼 미완료 시에만 미션 인증 리워드 지급 (3회까지만)
       if (finalTotalPostsCount <= FIRST_MISSION_REWARD_LIMIT) {
-        const rewardService = new RewardService();
-        
         // 중복 지급 방지: historyId 기반 체크 (grantActionReward 내부에서 처리)
         await rewardService.grantActionReward(userId, 'mission_cert', {
           postId: postRef.id,
           missionId,
+        });
+      }
+
+      // 2. 연속일자 5일 달성 시 리워드 지급 (정확히 5일일 때만)
+      // 트랜잭션 내에서 계산한 newConsecutiveDays 사용 (race condition 방지)
+      if (newConsecutiveDays === 5) {
+        // 연속일자 5일 달성 리워드 지급
+        // historyId: CONSECUTIVE-DAYS-5-{userId} (사용자당 한 번만 지급)
+        await rewardService.grantActionReward(userId, 'consecutive_days_5', {
+          targetId: userId, // userId를 targetId로 사용
         });
       }
     } catch (rewardError) {

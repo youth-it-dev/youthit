@@ -14,6 +14,7 @@ const ACTION_TYPE_MAP = {
   'gathering_review_media': 'GATHERING-MEDIA',
   'tmi_review': 'TMI',
   'mission_cert': 'MISSION-CERT',
+  'consecutive_days_5': 'CONSECUTIVE-DAYS-5',
 };
 
 // 액션 키 → 리워드 사유 매핑 (rewardsHistory의 reason 필드용)
@@ -25,6 +26,7 @@ const ACTION_REASON_MAP = {
   'gathering_review_media': '소모임 포토 후기',
   'tmi_review': 'TMI 후기',
   'mission_cert': '미션 인증',
+  'consecutive_days_5': '연속 미션 5일 달성',
   'additional_point': '나다움 추가 지급/차감',
 };
 
@@ -479,10 +481,17 @@ class RewardService {
       
       // 3. historyId 생성 (타입 코드 기반)
       const typeCode = ACTION_TYPE_MAP[actionKey] || 'REWARD';
-      const targetId = metadata.commentId || metadata.postId || metadata.targetId;
+      
+      // consecutive_days_5는 userId를 targetId로 사용
+      let targetId;
+      if (actionKey === 'consecutive_days_5') {
+        targetId = userId;
+      } else {
+        targetId = metadata.commentId || metadata.postId || metadata.targetId;
+      }
       
       if (!targetId) {
-        const error = new Error('commentId 또는 postId가 필요합니다');
+        const error = new Error('commentId, postId, 또는 targetId가 필요합니다');
         error.code = 'BAD_REQUEST';
         throw error;
       }
