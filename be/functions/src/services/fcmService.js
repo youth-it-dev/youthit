@@ -148,26 +148,23 @@ class FCMService {
   async sendToUser(userId, notification) {
     try {
       const tokens = await this.getUserTokens(userId);
+      this.notificationService.saveNotification(userId, {
+        title: notification.title,
+        message: notification.message,
+        type: notification.type || "general",
+        postId: notification.postId || undefined,
+        communityId: notification.communityId || undefined,
+        commentId: notification.commentId && notification.commentId !== "" ? notification.commentId : undefined,
+      }).catch(err => {
+        console.error("알림 저장 실패:", err);
+      });
+
       if (tokens.length === 0) {
         return {sentCount: 0, failedCount: 0};
       }
 
       const tokenList = tokens.map((t) => t.token);
       const result = await this.sendToTokens(tokenList, notification);
-
-      // FCM 전송 성공 시 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
-      if (result.successCount > 0) {
-        this.notificationService.saveNotification(userId, {
-          title: notification.title,
-          message: notification.message,
-          type: notification.type || "general",
-          postId: notification.postId || undefined,
-          communityId: notification.communityId || undefined,
-          commentId: notification.commentId && notification.commentId !== "" ? notification.commentId : undefined,
-        }).catch(err => {
-          console.error("알림 저장 실패 (FCM 전송은 성공):", err);
-        });
-      }
 
       return {
         sentCount: result.successCount,
@@ -193,6 +190,27 @@ class FCMService {
     try {
       // 사용자 ID 중복 제거
       const uniqueUserIds = Array.from(new Set(userIds));
+
+      if (uniqueUserIds.length > 0) {
+        const saveAllPromises = uniqueUserIds.map((userId) =>
+          this.notificationService.saveNotification(userId, {
+            title: notification.title,
+            message: notification.message,
+            type: notification.type || "general",
+            postId: notification.postId || undefined,
+            communityId: notification.communityId || undefined,
+            commentId:
+              notification.commentId && notification.commentId !== ""
+                ? notification.commentId
+                : undefined,
+          }).catch((err) => {
+            console.error(`알림 저장 실패 (userId: ${userId}):`, err);
+          })
+        );
+        Promise.all(saveAllPromises).catch((err) => {
+          console.error("다중 사용자 알림 저장 중 오류:", err);
+        });
+      }
       
       // pushTermsAgreed가 true인 사용자만 필터링
       const approvedUserIds = [];
@@ -269,8 +287,7 @@ class FCMService {
 
       const successfulUserIds = Array.from(successfulUserIdsSet);
 
-      // FCM 전송 성공 시 각 사용자별로 알림 저장 (비동기, 실패해도 FCM 전송 결과는 반환)
-      if (result.successCount > 0) {
+      if (approvedUserIds.length > 0) {
         const savePromises = approvedUserIds.map(userId =>
           this.notificationService.saveNotification(userId, {
             title: notification.title,
