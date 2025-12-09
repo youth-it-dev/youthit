@@ -161,6 +161,11 @@ const LoginPageContent = () => {
 
             setKakaoAccessToken(kakaoAccessToken);
             await registerFCMTokenSafely();
+
+            // 인증 쿠키 설정 (미들웨어에서 빠른 체크를 위해)
+            const { setAuthCookie } = await import("@/utils/auth/auth-cookie");
+            setAuthCookie();
+
             setIsLoading(false);
 
             debug.log("신규 회원 처리 완료, 온보딩 페이지로 이동");
@@ -173,6 +178,11 @@ const LoginPageContent = () => {
             const { data: userData } = await refetchUserData();
             const hasNickname = !!userData?.nickname;
             await registerFCMTokenSafely();
+
+            // 인증 쿠키 설정 (미들웨어에서 빠른 체크를 위해)
+            const { setAuthCookie } = await import("@/utils/auth/auth-cookie");
+            setAuthCookie();
+
             setIsLoading(false);
 
             debug.log("기존 사용자 처리 완료", { hasNickname });
@@ -233,6 +243,12 @@ const LoginPageContent = () => {
       // redirect 파라미터가 없고 이미 로그인된 사용자인 경우
       if (!hasAuthParams) {
         debug.log("이미 로그인된 사용자:", user.uid);
+
+        // 인증 쿠키 설정 (미들웨어에서 빠른 체크를 위해)
+        void import("@/utils/auth/auth-cookie").then(({ setAuthCookie }) => {
+          setAuthCookie();
+        });
+
         // 로딩 상태는 설정하지 않음 (이미 로그인된 상태이므로)
         refetchUserData()
           .then(({ data: userData }) => {
@@ -438,12 +454,20 @@ const LoginPageContent = () => {
           </div>
         )}
         <div className="flex items-center justify-center gap-4">
-          <Link href={LINK_URL.TERMS_OF_SERVICE} target="_blank">
+          <Link
+            href={LINK_URL.TERMS_OF_SERVICE}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Typography font="noto" variant="label1M" className="text-gray-400">
               이용약관
             </Typography>
           </Link>
-          <Link href={LINK_URL.PRIVACY_POLICY} target="_blank">
+          <Link
+            href={LINK_URL.PRIVACY_POLICY}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Typography font="noto" variant="label1M" className="text-gray-400">
               개인정보 처리방침
             </Typography>
