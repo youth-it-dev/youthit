@@ -16,6 +16,7 @@ const {
   USER_MISSION_STATS_COLLECTION,
   MISSION_POSTS_COLLECTION,
   MISSION_STATUS,
+  FIRST_MISSION_REWARD_LIMIT,
 } = require("../constants/missionConstants");
 const {
   FIRESTORE_IN_QUERY_LIMIT,
@@ -232,6 +233,7 @@ class MissionPostService {
 
     const now = Timestamp.now();
     let newTotalPostsCount = null; // 트랜잭션 내에서 계산한 값 저장 (race condition 방지)
+    let newConsecutiveDays = 0; // 트랜잭션 내에서 계산한 연속일자 저장
 
     await db.runTransaction(async (transaction) => {
       const missionDocSnap = await transaction.get(missionDocRef);
@@ -276,25 +278,31 @@ class MissionPostService {
       yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
       const yesterdayKey = getDateKeyByUTC(yesterdayDate);
 
-      // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
-      const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
+      // totalPostsCount 계산 (기존 값 + 1)
+      const currentTotalPostsCount = statsData.totalPostsCount || 0;
+      newTotalPostsCount = currentTotalPostsCount + 1; // 트랜잭션 외부 변수에 할당
 
-      // 연속일자 업데이트 로직
-      // - 오늘 이미 인증했으면: 연속일자 유지 (변경 없음)
-      // - 어제 인증했고 오늘 첫 인증이면: 연속일자 +1
-      // - 어제 인증 안 했거나 첫 인증이면: 연속일자 1로 리셋
-      let newConsecutiveDays = statsData.consecutiveDays || 0;
+      // 연속일자 업데이트 로직 (튜토리얼 완료 이후부터만 활성화)
+      // 3회 이하는 튜토리얼 단계로 연속일자 집계 안 함
+      newConsecutiveDays = 0; // 외부 변수 초기화
 
-      if (lastPostDateKey === todayKey) {
-        // 오늘 이미 인증했으면 연속일자 유지
-        // 변경 없음
-      } else if (lastPostDateKey === yesterdayKey) {
-        // 어제 인증했고 오늘 첫 인증이면 +1
-        newConsecutiveDays = (statsData.consecutiveDays || 0) + 1;
-      } else {
-        // 어제 인증 안 했거나 첫 인증이면 1로 리셋
-        newConsecutiveDays = 1;
+      if (newTotalPostsCount > FIRST_MISSION_REWARD_LIMIT) {
+        // 튜토리얼 완료 이후부터만 연속일자 집계 활성화
+        // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
+        const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
+
+        if (lastPostDateKey === todayKey) {
+          // 오늘 이미 인증했으면 연속일자 유지
+          newConsecutiveDays = statsData.consecutiveDays || 0;
+        } else if (lastPostDateKey === yesterdayKey) {
+          // 어제 인증했고 오늘 첫 인증이면 +1
+          newConsecutiveDays = (statsData.consecutiveDays || 0) + 1;
+        } else {
+          // 어제 인증 안 했거나 첫 인증이면 1로 리셋
+          newConsecutiveDays = 1;
+        }
       }
+      // 3회 이하는 연속일자 집계 안 함 (항상 0)
 
       const missionTitle = missionDoc.missionTitle || "";
 
@@ -333,10 +341,6 @@ class MissionPostService {
         updatedAt: now,
       });
 
-      // totalPostsCount 계산 (기존 값 + 1)
-      const currentTotalPostsCount = statsData.totalPostsCount || 0;
-      newTotalPostsCount = currentTotalPostsCount + 1; // 트랜잭션 외부 변수에 할당
-
       // userMissionStats 업데이트: 완료 카운트 증가, 연속일자 업데이트, 총 미션 수 증가
       transaction.set(
         statsDocRef,
@@ -346,7 +350,7 @@ class MissionPostService {
           dailyAppliedCount: statsData.dailyAppliedCount || 0,
           dailyCompletedCount: (statsData.dailyCompletedCount || 0) + 1,
           lastCompletedAt: now, // 마지막 인증 시간 업데이트 (연속일자 계산에 사용)
-          consecutiveDays: newConsecutiveDays, // 연속일자 업데이트 (어제 인증 여부에 따라 +1 또는 1로 리셋)
+          consecutiveDays: newConsecutiveDays, // 연속일자 업데이트 (3회 이후부터만 집계)
           totalPostsCount: newTotalPostsCount, // 총 미션 완료 수 증가
           updatedAt: now,
         },
@@ -367,8 +371,9 @@ class MissionPostService {
       );
     });
 
-    // 트랜잭션 완료 후 리워드 부여 (최초 3회까지만)
-    // totalPostsCount로 리워드 지급 여부 검증 및 중복 지급 방지
+    // 트랜잭션 완료 후 리워드 부여
+    // 1. 최초 3회까지만 미션 인증 리워드 지급
+    // 2. 연속일자 5일 달성 시 리워드 지급
     try {
       if (newTotalPostsCount === null) {
         console.warn('[MISSION_POST] newTotalPostsCount가 null입니다. 리워드 부여를 건너뜁니다.', {
@@ -382,16 +387,25 @@ class MissionPostService {
         };
       }
 
+      const rewardService = new RewardService();
       const finalTotalPostsCount = newTotalPostsCount;
 
-      // 최초 3회까지만 리워드 지급 (totalPostsCount <= 3)
-      if (finalTotalPostsCount <= 3) {
-        const rewardService = new RewardService();
-        
+      // 1. 튜토리얼 미완료 시에만 미션 인증 리워드 지급 (3회까지만)
+      if (finalTotalPostsCount <= FIRST_MISSION_REWARD_LIMIT) {
         // 중복 지급 방지: historyId 기반 체크 (grantActionReward 내부에서 처리)
         await rewardService.grantActionReward(userId, 'mission_cert', {
           postId: postRef.id,
           missionId,
+        });
+      }
+
+      // 2. 연속일자 5일 달성 시 리워드 지급 (정확히 5일일 때만)
+      // 트랜잭션 내에서 계산한 newConsecutiveDays 사용 (race condition 방지)
+      if (newConsecutiveDays === 5) {
+        // 연속일자 5일 달성 리워드 지급
+        // historyId: CONSECUTIVE-DAYS-5-{userId} (사용자당 한 번만 지급)
+        await rewardService.grantActionReward(userId, 'consecutive_days_5', {
+          targetId: userId, // userId를 targetId로 사용
         });
       }
     } catch (rewardError) {

@@ -8,6 +8,7 @@ const {
   MISSION_STATUS,
   BLOCKED_STATUSES,
   MAX_ACTIVE_MISSIONS,
+  FIRST_MISSION_REWARD_LIMIT,
 } = require("../constants/missionConstants");
 
 function buildError(message, code, statusCode) {
@@ -289,26 +290,32 @@ class MissionService {
     const todayActiveCount = Math.max(0, todayTotalCount - todayCompletedCount);
 
     // 3. 연속 미션일 (userMissionStats에서 가져오기)
-    // state에 저장된 연속일자를 읽고, 마지막 인증일을 확인하여 유효성 검증
-    let consecutiveDays = statsData.consecutiveDays || 0;
-    
-    // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
-    const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
-    const todayKey = getDateKeyByUTC(getTodayByUTC());
+    // 3회 이하는 튜토리얼 단계로 연속일자는 0
+    const totalPostsCount = statsData.totalPostsCount || 0;
+    let consecutiveDays = 0;
 
-    // 어제 날짜 계산: UTC 기반 오늘에서 하루를 뺀 후 날짜 키로 변환
-    const todayDate = getTodayByUTC();
-    const yesterdayDate = new Date(todayDate);
-    yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
-    const yesterdayKey = getDateKeyByUTC(yesterdayDate);
+    if (totalPostsCount > FIRST_MISSION_REWARD_LIMIT) {
+      // 3회 이후부터만 연속일자 집계
+      consecutiveDays = statsData.consecutiveDays || 0;
+      
+      // 마지막 인증일을 날짜 키로 변환 (UTC 20:00 기준)
+      const lastPostDateKey = getDateKeyByUTC(statsData.lastCompletedAt);
+      const todayKey = getDateKeyByUTC(getTodayByUTC());
 
-    // 어제 또는 오늘 인증하지 않았으면 연속일자 0으로 처리
-    if (lastPostDateKey !== yesterdayKey && lastPostDateKey !== todayKey) {
-      consecutiveDays = 0;
+      // 어제 날짜 계산: UTC 기반 오늘에서 하루를 뺀 후 날짜 키로 변환
+      const todayDate = getTodayByUTC();
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterdayKey = getDateKeyByUTC(yesterdayDate);
+
+      // 어제 또는 오늘 인증하지 않았으면 연속일자 0으로 처리
+      if (lastPostDateKey !== yesterdayKey && lastPostDateKey !== todayKey) {
+        consecutiveDays = 0;
+      }
     }
 
     // 4. 누적 게시글 수 (userMissionStats의 totalPostsCount 사용)
-    const totalPostsCount = statsData.totalPostsCount || 0;
+    // totalPostsCount는 위에서 이미 계산됨
 
     return {
       todayTotalCount, // 오늘 신청한 미션 수 (QUIT 제외, IN_PROGRESS + COMPLETED)
