@@ -57,6 +57,7 @@ const PAYMENT_RESULT = {
   COMPLETED: '지급 완료',
   PARTIAL: '부분 완료',
   FAILED: '지급 실패',
+  NOT_APPLICABLE: '미해당',
 };
 
 // 배치 처리 상수
@@ -538,6 +539,10 @@ class NotificationService {
 
       // 필터링된 사용자 ID로 교체
       const finalUserIds = filteredUserIds;
+
+      if (nadumAmount === 0) {
+        paymentResult = PAYMENT_RESULT.NOT_APPLICABLE;
+      }
 
       let rewardResults = [];
       let rewardedUserIds = [];
