@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Image as ImageIcon } from "lucide-react";
+import { Camera, Image as ImageIcon, User } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import useIsMobile from "@/hooks/shared/useIsMobile";
@@ -10,6 +10,7 @@ interface ProfileImageBottomSheetProps {
   onClose: () => void;
   onSelectCamera: () => void;
   onSelectGallery: () => void;
+  onSelectDefault?: () => void;
 }
 
 /**
@@ -22,6 +23,7 @@ const ProfileImageBottomSheet = ({
   onClose,
   onSelectCamera,
   onSelectGallery,
+  onSelectDefault,
 }: ProfileImageBottomSheetProps) => {
   const isMobile = useIsMobile();
 
@@ -32,6 +34,11 @@ const ProfileImageBottomSheet = ({
 
   const handleGalleryClick = () => {
     onSelectGallery();
+    onClose();
+  };
+
+  const handleDefaultClick = () => {
+    onSelectDefault?.();
     onClose();
   };
 
@@ -63,6 +70,20 @@ const ProfileImageBottomSheet = ({
             {isMobile ? "앨범에서 사진 선택" : "사진 선택"}
           </Typography>
         </button>
+
+        {/* 기본 이미지 적용 */}
+        {onSelectDefault && (
+          <button
+            onClick={handleDefaultClick}
+            className="flex items-center gap-4 rounded-xl p-4 transition-colors hover:bg-gray-50"
+            aria-label="기본 이미지 적용"
+          >
+            <User className="h-6 w-6 text-gray-700" />
+            <Typography font="noto" variant="body1R" className="text-gray-900">
+              기본 이미지 적용
+            </Typography>
+          </button>
+        )}
       </div>
     </BottomSheet>
   );

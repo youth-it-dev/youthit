@@ -569,6 +569,15 @@ const ProfileEditPage = () => {
   };
 
   /**
+   * 기본 이미지 적용 핸들러
+   * 프로필 이미지를 null로 설정 (저장하기 전까지는 서버에 요청하지 않음)
+   */
+  const handleDefaultImageSelect = () => {
+    selectedFileRef.current = null;
+    setValue("profileImageUrl", "", { shouldDirty: true });
+  };
+
+  /**
    * 변경사항 저장 확인 모달의 확인 버튼 핸들러
    * 온보딩 중이면 회원탈퇴 API 호출 후 로그인 페이지로 이동
    * 일반 편집 중이면 마이페이지로 이동
@@ -753,6 +762,7 @@ const ProfileEditPage = () => {
         onClose={closeBottomSheet}
         onSelectCamera={handleCameraSelect}
         onSelectGallery={handleGallerySelect}
+        onSelectDefault={handleDefaultImageSelect}
       />
 
       <Modal
