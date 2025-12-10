@@ -1,6 +1,6 @@
 # 🚀 Yourdentity Backend
 
-> 청소년의 정체성 형성을 돕는 커뮤니티 플랫폼 - Firebase Functions 기반 REST API 서버
+청소년의 정체성 형성을 돕는 커뮤니티 플랫폼 - Firebase Functions 기반 REST API 서버
 
 ## 🛠️ 개발 환경 설정
 
@@ -42,9 +42,9 @@ firebase emulators:start --only functions
 - 에뮬레이터 환경에서는 카카오 로그인 불가능 (프로덕션 환경에서만 테스트 가능)
 - 에뮬레이터 종료 시 데이터 초기화
 
-## 🔄 프로덕션 배포
+### 프로덕션 배포
 
-### 수동 배포
+#### 수동 배포
 ```bash
 firebase deploy --only functions
 ```
@@ -82,6 +82,9 @@ firebase deploy --only functions
 - **API 문서화**: Swagger (swagger-jsdoc ^6.2.8, swagger-ui-express ^5.0.1)
 
 ### 외부 서비스 연동
+- **Notion API**: 프로그램, 상점, FAQ 등 콘텐츠 관리
+  - @notionhq/client ^5.1.0
+  - notion-client 7.7.1
 - **카카오 API**: 소셜 로그인 및 프로필 동기화
 - **Firebase Cloud Messaging (FCM)**: 푸시 알림
 - **ImgBB API**: 이미지 호스팅
@@ -235,6 +238,22 @@ firebase deploy --only functions
 │   │   ├── store.js
 │   │   └── users.js
 │   │
+│   ├── 📂 services/                  # 서비스 (비즈니스 로직)
+│   │   ├── authService.js            # 인증 서비스
+│   │   ├── userService.js            # 사용자 서비스
+│   │   ├── missionService.js          # 미션 서비스
+│   │   ├── rewardService.js           # 리워드 서비스
+│   │   ├── communityService.js        # 커뮤니티 서비스
+│   │   ├── notionUserService.js       # Notion 사용자 동기화
+│   │   └── ...
+│   │
+│   ├── 📂 routes/                     # 라우트 정의
+│   │   ├── auth.js
+│   │   ├── users.js
+│   │   ├── missions.js
+│   │   └── ...
+>>>>>>> origin/main
+│   │
 │   ├── 📂 middleware/                 # 미들웨어
 │   │   ├── authGuard.js               # 인증 가드
 │   │   ├── errorHandler.js            # 에러 핸들러
@@ -248,6 +267,7 @@ firebase deploy --only functions
 │   │   └── storageCleanupScheduler.js # 스토리지 정리 스케줄러
 │   │
 │   ├── 📂 utils/                      # 유틸리티 함수
+<<<<<<< HEAD
 │   │   ├── fcmHelper.js
 │   │   ├── helpers.js
 │   │   ├── kakaoApiHelper.js
@@ -262,6 +282,24 @@ firebase deploy --only functions
 │       ├── getIdToken.js
 │       ├── setKakaoTestClaims.js
 │       └── updateAuthType.js
+=======
+│   │   ├── kakaoApiHelper.js          # 카카오 API 헬퍼
+│   │   ├── notionHelper.js            # Notion API 헬퍼
+│   │   ├── fcmHelper.js               # FCM 푸시 알림 헬퍼
+│   │   ├── paginationHelper.js        # 페이지네이션 헬퍼
+│   │   ├── sanitizeHelper.js          # HTML 정제 헬퍼
+│   │   └── ...
+│   │
+│   ├── 📂 scripts/                    # 유틸리티 스크립트
+│   │   ├── getIdToken.js              # ID 토큰 발급
+│   │   ├── createFirestoreCollections.js
+│   │   └── ...
+│   │
+│   └── 📂 tests/                      # 테스트 스크립트
+│       ├── test-all-policies.sh
+│       ├── test-reward-system.sh
+│       └── ...
+>>>>>>> origin/main
 │
 ├── 📄 index.js                        # 진입점 (Express 앱 설정)
 ├── 📄 package.json
@@ -340,12 +378,32 @@ firebase deploy --only functions
 **프로덕션**: `https://asia-northeast3-{project-id}.cloudfunctions.net/api/api-docs`  
 **JSON**: `/api-docs.json` 엔드포인트로 Swagger 스펙 다운로드 가능
 
+<<<<<<< HEAD
+=======
+## 🔄 Firebase Triggers
+
+### Auth Triggers
+- `createUserDocument`: 사용자 생성 시 Firestore 문서 자동 생성
+- `deleteUserDocument`: 사용자 삭제 시 개인정보 가명처리
+
+### Schedulers
+- `missionDailyResetScheduler`: 매일 자정 미션 리셋
+- `storageCleanupScheduler`: 스토리지 정리 작업
+
+>>>>>>> origin/main
 ## 📋 Git 전략
 - 브랜치: `feature` → `main`
 - 커밋 전: 코드 품질 검사 (ESLint)
 
 ## 🔗 관련 문서
+<<<<<<< HEAD
 
 - [Firebase Functions 문서](https://firebase.google.com/docs/functions)
 - [Firestore 보안 규칙](functions/firestore.rules)
 - [인증 아키텍처 플로우](./docs/auth-architecture.md)
+=======
+- [인증 아키텍처 플로우](./docs/auth-architecture.md)
+- [Firebase Functions 문서](https://firebase.google.com/docs/functions)
+- [Firestore 보안 규칙](functions/firestore.rules)
+
+>>>>>>> origin/main
