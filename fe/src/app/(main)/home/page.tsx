@@ -7,6 +7,7 @@ import Image from "next/image";
 import type { ExtendedRecordMap } from "notion-types";
 import "react-notion-x/src/styles.css";
 import { CustomPageLink, CustomImage } from "@/components/shared/notion";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useMounted } from "@/hooks/shared/useMounted";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -277,48 +278,41 @@ const HomePage = () => {
             height: `${backgroundContainerHeight}px`,
           }}
         >
-          <div
-            className="relative w-full"
-            style={{
-              height: `${backgroundContainerHeight}px`,
-            }}
-          >
-            {backgroundImages.map((bgImage, index: number) => {
-              const imageUrl = bgImage?.url;
-              if (!imageUrl) return null;
+          {backgroundImages.map((bgImage, index: number) => {
+            const imageUrl = bgImage?.url;
+            if (!imageUrl) return null;
 
-              const imageHeight = imageHeights[index] || defaultHeight;
-              const cumulativeTop = getCumulativeHeight(index);
+            const imageHeight = imageHeights[index] || defaultHeight;
+            const cumulativeTop = getCumulativeHeight(index);
 
-              return (
-                <div
-                  key={index}
-                  className="absolute right-0 left-0 bg-contain bg-center bg-no-repeat"
-                  style={{
-                    backgroundSize: "contain",
-                    top: `${cumulativeTop}px`,
-                    height: `${imageHeight}px`,
-                    width: "100%",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <Image
-                    src={imageUrl}
-                    alt=""
-                    fill
-                    className="object-contain"
-                    priority={index === 0}
-                    unoptimized={!imageUrl.startsWith("/")}
-                  />
-                </div>
-              );
-            })}
-          </div>
+            return (
+              <div
+                key={index}
+                className="absolute right-0 left-0 bg-contain bg-center bg-no-repeat"
+                style={{
+                  backgroundSize: "contain",
+                  top: `${cumulativeTop}px`,
+                  height: `${imageHeight}px`,
+                  width: "100%",
+                  pointerEvents: "none",
+                }}
+              >
+                <Image
+                  src={imageUrl}
+                  alt=""
+                  fill
+                  className="object-contain"
+                  priority={index === 0}
+                  unoptimized={!imageUrl.startsWith("/")}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* 콘텐츠 레이어 */}
-      <div ref={contentRef} className="relative min-h-screen">
+      <div ref={contentRef} className="relative min-h-screen pb-[80px]">
         <div
           ref={sentinelRef}
           className="pointer-events-none absolute top-[80px] left-0 h-px w-full"
@@ -339,6 +333,15 @@ const HomePage = () => {
                 }}
               />
             )}
+            {/* 홈 페이지 하단에 기술보증 관련 이미지를 고정적으로 표시 */}
+            <div className="mx-auto flex w-full items-center justify-center px-1 pb-[40px]">
+              <Image
+                src={IMAGE_URL.IMG.home.warranty.url}
+                alt={IMAGE_URL.IMG.home.warranty.alt}
+                width={430}
+                height={63}
+              />
+            </div>
           </div>
         </div>
       </div>

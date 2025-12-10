@@ -142,6 +142,12 @@ const IMG = {
       alt: "메인 이미지",
     },
   },
+  home: {
+    warranty: {
+      url: "/imgs/warranty.png",
+      alt: "기술보증",
+    },
+  },
 };
 
 export const IMAGE_URL = {
