@@ -125,13 +125,13 @@ class NotionUserService {
             const notionPage = {
               '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
               "프로필 사진": {
-                files: user.profileImageUrl ? [
+                files: [
                   {
                     name: "profile-image",
                     type: "external",
-                    external: { url: user.profileImageUrl },
+                    external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
                   },
-                ] : [],
+                ],
               },
               "사용자ID": { rich_text: [{ text: { content: userId } }] },
               "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
@@ -523,13 +523,13 @@ async syncAllUserAccounts() {
           const notionPage = {
             '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
             "프로필 사진": {
-              files: user.profileImageUrl ? [
+              files: [
                 {
                   name: "profile-image",
                   type: "external",
-                  external: { url: user.profileImageUrl },
+                  external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
                 },
-              ] : [],
+              ],
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
@@ -1322,13 +1322,13 @@ async syncSelectedUsers() {
       const notionPageUpdate = {
         '기본 닉네임': { title: [{ text: { content: updatedUserData.nickname || "" } }] },
         "프로필 사진": {
-          files: updatedUserData.profileImageUrl ? [
+          files: [
             {
               name: "profile-image",
               type: "external",
-              external: { url: updatedUserData.profileImageUrl },
+              external: { url: updatedUserData.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
             },
-          ] : [],
+          ],
         },
         "사용자ID": { rich_text: [{ text: { content: userId } }] },
         "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
@@ -2090,13 +2090,13 @@ async syncSingleUserToNotion(userId) {
     const notionPage = {
       '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
       "프로필 사진": {
-        files: user.profileImageUrl ? [
+        files: [
           {
             name: "profile-image",
             type: "external",
-            external: { url: user.profileImageUrl },
+            external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
           },
-        ] : [],
+        ],
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
