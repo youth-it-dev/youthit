@@ -346,6 +346,6 @@ firebase deploy --only functions
 
 ## 🔗 관련 문서
 
-- [인증 아키텍처 플로우](./docs/auth-architecture.md)
 - [Firebase Functions 문서](https://firebase.google.com/docs/functions)
 - [Firestore 보안 규칙](functions/firestore.rules)
+- [인증 아키텍처 플로우](./docs/auth-architecture.md)
