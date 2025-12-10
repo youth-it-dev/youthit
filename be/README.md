@@ -49,7 +49,7 @@ firebase emulators:start --only functions
 firebase deploy --only functions
 ```
 
-#### 자동 배포 (GitHub Actions)
+### 자동 배포 (GitHub Actions)
 
 `main` 브랜치에 `be/functions/**` 경로 변경사항이 push되면 자동으로 배포됩니다.
 
@@ -103,14 +103,50 @@ firebase deploy --only functions
 - **패키지 매니저**: pnpm
 - **배포**: Firebase Functions (asia-northeast3 리전)
 
+## 📝 Notion DB 콘텐츠 관리 시스템
+
+이 프로젝트는 **Notion을 콘텐츠 관리 시스템(CMS) 및 관리자 도구로 활용**하여 동적 콘텐츠와 사용자 데이터를 관리합니다.
+
+### 주요 특징
+
+- ✅ **콘텐츠 관리**: 프로그램, 미션, 상점, FAQ 등 비개발자(일반 관리자)도 쉽게 관리
+- ✅ **실시간 동기화**: Notion API를 통해 최신 콘텐츠 자동 조회
+- ✅ **유연한 구조**: Notion의 풍부한 블록 타입 활용 (텍스트, 이미지, 임베드 등)
+- ✅ **데이터 동기화**: 사용자 정보, 리워드 히스토리 등 Firestore와 Notion 양방향 동기화
+
+### 활용 영역
+
+- **프로그램 관리**: 한끗루틴, 월간소모임, TMI 등 프로그램 정보 및 상세 페이지
+- **미션 관리**: 미션 목록, 상세 정보, FAQ
+- **상점 관리**: 리워드 포인트로 구매 가능한 상품 정보
+- **FAQ 관리**: 자주 묻는 질문 및 답변
+- **사용자 동기화**: Firestore 사용자 정보를 Notion에 백업 및 관리
+- **리워드 히스토리**: 사용자 리워드 내역 Notion 동기화
+- **신고 관리**: 신고된 콘텐츠 관리 및 처리
+
+### 사용 라이브러리
+
+- `@notionhq/client ^5.1.0`: 공식 Notion API 클라이언트
+- `notion-client 7.7.1`: Notion 페이지 렌더링용
+
 ## 🏗️ 아키텍처 특징
 
 - **계층형 구조**: Controller → Service → FirestoreService
 - **RESTful API**: 표준 HTTP 메서드 및 상태 코드 사용
 - **미들웨어 기반**: 인증, 에러 처리, 응답 포맷팅
-- **Swagger 자동 문서화**: API 스펙 자동 생성 및 관리
 - **Firebase Triggers**: Auth, Scheduler 이벤트 자동 처리
-- **Notion 연동**: 콘텐츠 관리 시스템으로 활용
+- **Notion 연동**: 콘텐츠 관리 시스템(CMS) 및 관리자 도구로 활용
+- **Swagger 자동 문서화**: API 스펙 자동 생성 및 관리
+
+## 🔄 Firebase Triggers
+
+### Auth Triggers
+- `createUserDocument`: 사용자 생성 시 Firestore 문서 자동 생성
+- `deleteUserDocument`: 사용자 삭제 시 개인정보 가명처리
+
+### Schedulers
+- `missionDailyResetScheduler`: 매일 자정 미션 리셋
+- `storageCleanupScheduler`: 스토리지 정리 작업
 
 ## 📁 폴더 아키텍처
 
@@ -122,18 +158,85 @@ firebase deploy --only functions
 │   │   └── swagger.js                # Swagger 설정
 │   │
 │   ├── 📂 constants/                 # 상수 정의
-│   │   ├── userConstants.js          # 사용자 관련 상수
-│   │   ├── missionConstants.js       # 미션 관련 상수
-│   │   ├── kakaoConstants.js         # 카카오 API 상수
-│   │   └── ...
+│   │   ├── adminLogActions.js
+│   │   ├── firestoreConstants.js
+│   │   ├── kakaoConstants.js
+│   │   ├── missionConstants.js
+│   │   ├── paginationConstants.js
+│   │   ├── termsConstants.js
+│   │   ├── urlConstants.js
+│   │   └── userConstants.js
 │   │
 │   ├── 📂 controllers/               # 컨트롤러 (요청/응답 처리)
-│   │   ├── authController.js         # 인증
-│   │   ├── userController.js         # 사용자
-│   │   ├── missionController.js      # 미션
-│   │   ├── communityController.js    # 커뮤니티
-│   │   ├── programController.js      # 프로그램
-│   │   └── ...
+│   │   ├── adminLogsController.js
+│   │   ├── announcementController.js
+│   │   ├── authController.js
+│   │   ├── commentController.js
+│   │   ├── communityController.js
+│   │   ├── faqController.js
+│   │   ├── fcmController.js
+│   │   ├── fileController.js
+│   │   ├── homeController.js
+│   │   ├── imageController.js
+│   │   ├── missionController.js
+│   │   ├── notificationController.js
+│   │   ├── notionRewardHistoryController.js
+│   │   ├── notionUserController.js
+│   │   ├── programController.js
+│   │   ├── qnaController.js
+│   │   ├── reportContentController.js
+│   │   ├── storeController.js
+│   │   └── userController.js
+│   │
+│   ├── 📂 services/                  # 서비스 (비즈니스 로직)
+│   │   ├── adminLogsService.js
+│   │   ├── announcementService.js
+│   │   ├── authService.js
+│   │   ├── commentService.js
+│   │   ├── communityService.js
+│   │   ├── faqService.js
+│   │   ├── fcmService.js
+│   │   ├── fileService.js
+│   │   ├── firestoreService.js
+│   │   ├── homeService.js
+│   │   ├── imgbbService.js
+│   │   ├── missionLikeService.js
+│   │   ├── missionPostService.js
+│   │   ├── missionService.js
+│   │   ├── nicknameService.js
+│   │   ├── notificationService.js
+│   │   ├── notionFaqService.js
+│   │   ├── notionMissionService.js
+│   │   ├── notionRewardHistoryService.js
+│   │   ├── notionUserService.js
+│   │   ├── programService.js
+│   │   ├── qnaService.js
+│   │   ├── reportContentService.js
+│   │   ├── rewardService.js
+│   │   ├── storeService.js
+│   │   ├── termsService.js
+│   │   └── userService.js
+│   │
+│   ├── 📂 routes/                     # 라우트 정의
+│   │   ├── adminLogs.js
+│   │   ├── announcements.js
+│   │   ├── auth.js
+│   │   ├── comments.js
+│   │   ├── communities.js
+│   │   ├── faqs.js
+│   │   ├── fcm.js
+│   │   ├── files.js
+│   │   ├── home.js
+│   │   ├── images.js
+│   │   ├── missions.js
+│   │   ├── notifications.js
+│   │   ├── notionRewardHistory.js
+│   │   ├── notionUsers.js
+│   │   ├── programs.js
+│   │   ├── qna.js
+│   │   ├── reportContent.js
+│   │   ├── store.js
+│   │   └── users.js
 │   │
 │   ├── 📂 services/                  # 서비스 (비즈니스 로직)
 │   │   ├── authService.js            # 인증 서비스
@@ -145,10 +248,25 @@ firebase deploy --only functions
 │   │   └── ...
 │   │
 │   ├── 📂 routes/                     # 라우트 정의
+│   │   ├── adminLogs.js
+│   │   ├── announcements.js
 │   │   ├── auth.js
-│   │   ├── users.js
+│   │   ├── comments.js
+│   │   ├── communities.js
+│   │   ├── faqs.js
+│   │   ├── fcm.js
+│   │   ├── files.js
+│   │   ├── home.js
+│   │   ├── images.js
 │   │   ├── missions.js
-│   │   └── ...
+│   │   ├── notifications.js
+│   │   ├── notionRewardHistory.js
+│   │   ├── notionUsers.js
+│   │   ├── programs.js
+│   │   ├── qna.js
+│   │   ├── reportContent.js
+│   │   ├── store.js
+│   │   └── users.js
 │   │
 │   ├── 📂 middleware/                 # 미들웨어
 │   │   ├── authGuard.js               # 인증 가드
@@ -163,22 +281,20 @@ firebase deploy --only functions
 │   │   └── storageCleanupScheduler.js # 스토리지 정리 스케줄러
 │   │
 │   ├── 📂 utils/                      # 유틸리티 함수
-│   │   ├── kakaoApiHelper.js          # 카카오 API 헬퍼
-│   │   ├── notionHelper.js            # Notion API 헬퍼
-│   │   ├── fcmHelper.js               # FCM 푸시 알림 헬퍼
-│   │   ├── paginationHelper.js        # 페이지네이션 헬퍼
-│   │   ├── sanitizeHelper.js          # HTML 정제 헬퍼
-│   │   └── ...
+│   │   ├── fcmHelper.js
+│   │   ├── helpers.js
+│   │   ├── kakaoApiHelper.js
+│   │   ├── nicknameValidator.js
+│   │   ├── notionHelper.js
+│   │   ├── paginationHelper.js
+│   │   └── sanitizeHelper.js
 │   │
-│   ├── 📂 scripts/                    # 유틸리티 스크립트
-│   │   ├── getIdToken.js              # ID 토큰 발급
-│   │   ├── createFirestoreCollections.js
-│   │   └── ...
-│   │
-│   └── 📂 tests/                      # 테스트 스크립트
-│       ├── test-all-policies.sh
-│       ├── test-reward-system.sh
-│       └── ...
+│   └── 📂 scripts/                    # 유틸리티 스크립트
+│       ├── createFirestoreCollections.js
+│       ├── createTestCommunityData.js
+│       ├── getIdToken.js
+│       ├── setKakaoTestClaims.js
+│       └── updateAuthType.js
 │
 ├── 📄 index.js                        # 진입점 (Express 앱 설정)
 ├── 📄 package.json
@@ -257,22 +373,12 @@ firebase deploy --only functions
 **프로덕션**: `https://asia-northeast3-{project-id}.cloudfunctions.net/api/api-docs`  
 **JSON**: `/api-docs.json` 엔드포인트로 Swagger 스펙 다운로드 가능
 
-## 🔄 Firebase Triggers
-
-### Auth Triggers
-- `createUserDocument`: 사용자 생성 시 Firestore 문서 자동 생성
-- `deleteUserDocument`: 사용자 삭제 시 개인정보 가명처리
-
-### Schedulers
-- `missionDailyResetScheduler`: 매일 자정 미션 리셋
-- `storageCleanupScheduler`: 스토리지 정리 작업
-
 ## 📋 Git 전략
 - 브랜치: `feature` → `main`
 - 커밋 전: 코드 품질 검사 (ESLint)
 
 ## 🔗 관련 문서
-- [인증 아키텍처 플로우](./docs/auth-architecture.md)
+
 - [Firebase Functions 문서](https://firebase.google.com/docs/functions)
 - [Firestore 보안 규칙](functions/firestore.rules)
-
+- [인증 아키텍처 플로우](./docs/auth-architecture.md)
