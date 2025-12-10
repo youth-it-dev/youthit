@@ -125,13 +125,13 @@ class NotionUserService {
             const notionPage = {
               '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
               "프로필 사진": {
-                files: [
+                files: user.profileImageUrl ? [
                   {
                     name: "profile-image",
                     type: "external",
-                    external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+                    external: { url: user.profileImageUrl },
                   },
-                ],
+                ] : [],
               },
               "사용자ID": { rich_text: [{ text: { content: userId } }] },
               "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
@@ -523,13 +523,13 @@ async syncAllUserAccounts() {
           const notionPage = {
             '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
             "프로필 사진": {
-              files: [
+              files: user.profileImageUrl ? [
                 {
                   name: "profile-image",
                   type: "external",
-                  external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+                  external: { url: user.profileImageUrl },
                 },
-              ],
+              ] : [],
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
@@ -1322,13 +1322,13 @@ async syncSelectedUsers() {
       const notionPageUpdate = {
         '기본 닉네임': { title: [{ text: { content: updatedUserData.nickname || "" } }] },
         "프로필 사진": {
-          files: [
+          files: updatedUserData.profileImageUrl ? [
             {
               name: "profile-image",
               type: "external",
-              external: { url: updatedUserData.profileImageUrl || "https://example.com/default-profile.png" },
+              external: { url: updatedUserData.profileImageUrl },
             },
-          ],
+          ] : [],
         },
         "사용자ID": { rich_text: [{ text: { content: userId } }] },
         "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
@@ -2090,13 +2090,13 @@ async syncSingleUserToNotion(userId) {
     const notionPage = {
       '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
       "프로필 사진": {
-        files: [
+        files: user.profileImageUrl ? [
           {
             name: "profile-image",
             type: "external",
-            external: { url: user.profileImageUrl || "https://example.com/default-profile.png" },
+            external: { url: user.profileImageUrl },
           },
-        ],
+        ] : [],
       },
       "사용자ID": { rich_text: [{ text: { content: userId } }] },
       "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
