@@ -168,16 +168,42 @@ class NotionRewardHistoryService {
         let userStartCursor;
 
         while (hasMoreUsers) {
-          const response = await this.notion.dataSources.query({
-            data_source_id: userDbId,
-            page_size: 100,
-            start_cursor: userStartCursor,
+          const res = await fetch(`https://api.notion.com/v1/databases/${userDbId}/query`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+              "Notion-Version": "2022-06-28",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              page_size: 100,
+              start_cursor: userStartCursor,
+            }),
           });
 
-          if (response.results) {
-            userResults = userResults.concat(response.results);
-            hasMoreUsers = response.has_more;
-            userStartCursor = response.next_cursor;
+          // HTTP 응답 상태 확인
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`[Notion 사용자 API Error] Status: ${res.status}, Response: ${errorText}`);
+            const error = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+            error.code = 'INTERNAL_ERROR';
+            throw error;
+          }
+
+          const data = await res.json();
+
+          // Notion API 에러 응답 확인
+          if (data.error) {
+            console.error(`[Notion 사용자 API Error]`, data.error);
+            const error = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+            error.code = 'INTERNAL_ERROR';
+            throw error;
+          }
+
+          if (data.results) {
+            userResults = userResults.concat(data.results);
+            hasMoreUsers = data.has_more;
+            userStartCursor = data.next_cursor;
           } else {
             hasMoreUsers = false;
           }
