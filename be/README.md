@@ -5,7 +5,7 @@
 ## 🛠️ 개발 환경 설정
 
 ### 필수 요구사항
-- Node.js 20+
+- Node.js 20+ (LTS 버전 권장)
 - pnpm (권장 패키지 매니저)
 - Firebase CLI
 - Firebase 프로젝트 설정
@@ -13,32 +13,40 @@
 ### 설치 및 실행
 
 ```bash
-# 의존성 설치
+# 프로젝트 클론
+git clone https://github.com/youth-it-dev/youthit.git
+
+# 백엔드 디렉토리로 이동 및 의존성 설치
 cd be/functions
 pnpm install
 
-# 환경 변수 설정 (.env 파일 생성 필요)
-# Firebase 프로젝트 설정 및 서비스 계정 키 필요
+# 환경 변수 설정
+# ⚠️ .env 파일은 보안상 Git에 포함되지 않으며, 프로젝트 관리자에게 요청
 
-# Firebase 에뮬레이터 실행 (로컬 개발)
+# Firebase 프로젝트 설정
+firebase use  # 현재 프로젝트 확인
+
+# Firebase 에뮬레이터 실행
 firebase emulators:start --only functions,auth,firestore
 
-# 프로덕션 배포
-firebase deploy --only functions
+# Firebase 프로덕션 환경에서 실행 (functions 테스트용, 카카오 로그인 가능)
+# ⚠️ 프로덕션 데이터를 사용하므로 신중한 테스트 필요 (데이터 변경/삭제 주의)
+firebase emulators:start --only functions
+
 ```
 
-### 개발 도구
+**접속 URL**
+- Emulator UI: `http://127.0.0.1:4000`
+- Swagger API: `http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/api-docs`
+
+**주의사항**
+- 에뮬레이터 환경에서는 카카오 로그인 불가능 (프로덕션 환경에서만 테스트 가능)
+- 에뮬레이터 종료 시 데이터 초기화
+
+### 프로덕션 배포
 
 ```bash
-# Swagger API 문서 확인
-# 서버 실행 후 http://localhost:5001/{project-id}/asia-northeast3/api/api-docs 접속
-
-# 테스트 스크립트 실행
-cd src/tests
-./test-all-policies.sh
-
-# ID 토큰 발급 (테스트용)
-pnpm run get:token:example
+firebase deploy --only functions
 ```
 
 ## 🚀 테크 스택
@@ -46,22 +54,33 @@ pnpm run get:token:example
 ### 핵심 프레임워크 & 라이브러리
 - **런타임**: Node.js 20
 - **프레임워크**: Express.js ^4.21.2
-- **플랫폼**: Firebase Functions v2 (onRequest)
-- **데이터베이스**: Cloud Firestore
-- **인증**: Firebase Admin SDK ^12.6.0
-- **API 문서화**: Swagger (swagger-jsdoc, swagger-ui-express)
+- **언어**: JavaScript (CommonJS)
+- **플랫폼**: Firebase Functions v2 (^4.9.0, onRequest)
+- **데이터베이스**: Cloud Firestore (Firebase)
+- **인증**: Firebase Admin SDK ^12.6.0, Firebase Authentication (JWT Bearer Token)
+- **API 문서화**: Swagger (swagger-jsdoc ^6.2.8, swagger-ui-express ^5.0.1)
 
 ### 외부 서비스 연동
 - **Notion API**: 프로그램, 상점, FAQ 등 콘텐츠 관리
+  - @notionhq/client ^5.1.0
+  - notion-client 7.7.1
 - **카카오 API**: 소셜 로그인 및 프로필 동기화
-- **Firebase Cloud Messaging**: 푸시 알림
+- **Firebase Cloud Messaging (FCM)**: 푸시 알림
 - **ImgBB API**: 이미지 호스팅
 
-### 유틸리티
-- **busboy**: 파일 업로드 처리
-- **sanitize-html**: HTML 콘텐츠 정제
-- **cors**: CORS 설정
-- **dotenv**: 환경 변수 관리
+### 파일 처리 & 보안
+- **파일 업로드**: busboy ^1.6.0
+- **파일 타입 검증**: file-type ^21.0.0
+- **HTML 정제**: sanitize-html ^2.17.0
+- **CORS**: cors ^2.8.5
+- **환경 변수**: dotenv ^17.2.3
+
+### 스케줄러 & 배포
+- **스케줄러**: Firebase Cloud Scheduler
+  - Storage Cleanup (일일/주간)
+  - Mission Reset (일일)
+- **패키지 매니저**: pnpm
+- **배포**: Firebase Functions (asia-northeast3 리전)
 
 ## 🏗️ 아키텍처 특징
 
