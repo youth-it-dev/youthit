@@ -70,13 +70,43 @@ firebase deploy --only functions
 
 **워크플로우 파일**: `.github/workflows/firebase-deploy.yml`
 
+## 🚀 테크 스택
+
+### 핵심 프레임워크 & 라이브러리
+- **런타임**: Node.js 20
+- **프레임워크**: Express.js ^4.21.2
+- **언어**: JavaScript (CommonJS)
+- **플랫폼**: Firebase Functions v2 (^4.9.0, onRequest)
+- **데이터베이스**: Cloud Firestore (Firebase)
+- **인증**: Firebase Admin SDK ^12.6.0, Firebase Authentication (JWT Bearer Token)
+- **API 문서화**: Swagger (swagger-jsdoc ^6.2.8, swagger-ui-express ^5.0.1)
+
+### 외부 서비스 연동
+- **카카오 API**: 소셜 로그인 및 프로필 동기화
+- **Firebase Cloud Messaging (FCM)**: 푸시 알림
+- **ImgBB API**: 이미지 호스팅
+
+### 파일 처리 & 보안
+- **파일 업로드**: busboy ^1.6.0
+- **파일 타입 검증**: file-type ^21.0.0
+- **HTML 정제**: sanitize-html ^2.17.0
+- **CORS**: cors ^2.8.5
+- **환경 변수**: dotenv ^17.2.3
+
+### 스케줄러 & 배포
+- **스케줄러**: Firebase Cloud Scheduler
+  - Storage Cleanup (일일/주간)
+  - Mission Reset (일일)
+- **패키지 매니저**: pnpm
+- **배포**: Firebase Functions (asia-northeast3 리전)
+
 ## 📝 Notion DB 콘텐츠 관리 시스템
 
-이 프로젝트는 **Notion을 콘텐츠 관리 시스템(CMS)으로 활용**하여 동적 콘텐츠를 관리합니다.
+이 프로젝트는 **Notion을 콘텐츠 관리 시스템(CMS) 및 관리자 도구로 활용**하여 동적 콘텐츠와 사용자 데이터를 관리합니다.
 
 ### 주요 특징
 
-- ✅ **콘텐츠 관리**: 프로그램, 미션, 상점, FAQ 등 비개발자도 쉽게 관리
+- ✅ **콘텐츠 관리**: 프로그램, 미션, 상점, FAQ 등 비개발자(일반 관리자)도 쉽게 관리
 - ✅ **실시간 동기화**: Notion API를 통해 최신 콘텐츠 자동 조회
 - ✅ **유연한 구조**: Notion의 풍부한 블록 타입 활용 (텍스트, 이미지, 임베드 등)
 - ✅ **데이터 동기화**: 사용자 정보, 리워드 히스토리 등 Firestore와 Notion 양방향 동기화
@@ -96,47 +126,14 @@ firebase deploy --only functions
 - `@notionhq/client ^5.1.0`: 공식 Notion API 클라이언트
 - `notion-client 7.7.1`: Notion 페이지 렌더링용
 
-## 🚀 테크 스택
-
-### 핵심 프레임워크 & 라이브러리
-- **런타임**: Node.js 20
-- **프레임워크**: Express.js ^4.21.2
-- **언어**: JavaScript (CommonJS)
-- **플랫폼**: Firebase Functions v2 (^4.9.0, onRequest)
-- **데이터베이스**: Cloud Firestore (Firebase)
-- **인증**: Firebase Admin SDK ^12.6.0, Firebase Authentication (JWT Bearer Token)
-- **API 문서화**: Swagger (swagger-jsdoc ^6.2.8, swagger-ui-express ^5.0.1)
-
-### 외부 서비스 연동
-- **Notion API**: 프로그램, 상점, FAQ 등 콘텐츠 관리
-  - @notionhq/client ^5.1.0
-  - notion-client 7.7.1
-- **카카오 API**: 소셜 로그인 및 프로필 동기화
-- **Firebase Cloud Messaging (FCM)**: 푸시 알림
-- **ImgBB API**: 이미지 호스팅
-
-### 파일 처리 & 보안
-- **파일 업로드**: busboy ^1.6.0
-- **파일 타입 검증**: file-type ^21.0.0
-- **HTML 정제**: sanitize-html ^2.17.0
-- **CORS**: cors ^2.8.5
-- **환경 변수**: dotenv ^17.2.3
-
-### 스케줄러 & 배포
-- **스케줄러**: Firebase Cloud Scheduler
-  - Storage Cleanup (일일/주간)
-  - Mission Reset (일일)
-- **패키지 매니저**: pnpm
-- **배포**: Firebase Functions (asia-northeast3 리전)
-
 ## 🏗️ 아키텍처 특징
 
 - **계층형 구조**: Controller → Service → FirestoreService
 - **RESTful API**: 표준 HTTP 메서드 및 상태 코드 사용
 - **미들웨어 기반**: 인증, 에러 처리, 응답 포맷팅
-- **Swagger 자동 문서화**: API 스펙 자동 생성 및 관리
 - **Firebase Triggers**: Auth, Scheduler 이벤트 자동 처리
-- **Notion 연동**: 콘텐츠 관리 시스템으로 활용
+- **Notion 연동**: 콘텐츠 관리 시스템(CMS) 및 관리자 도구로 활용
+- **Swagger 자동 문서화**: API 스펙 자동 생성 및 관리
 
 ## 🔄 Firebase Triggers
 
