@@ -9,6 +9,7 @@ import TopBar from "@/components/shared/layouts/top-bar";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
+import { useSamsungBrowserWarning } from "@/hooks/shared/useSamsungBrowserWarning";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETHomeRes } from "@/types/generated/home-types";
 
@@ -20,6 +21,9 @@ export default function MainLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
+  // 삼성 브라우저 경고 표시
+  useSamsungBrowserWarning();
+
   const pathname = usePathname();
   const isHomePage = pathname === LINK_URL.HOME;
   const isCommunityPage = pathname === LINK_URL.COMMUNITY;
