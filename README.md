@@ -4,7 +4,7 @@
 
 **학교 밖 청소년의 나다움을 응원하는 플랫폼을 만들 수 있을까?**
 
-[프로젝트 소개 보기](https://techforimpact.io/lab/project/14)
+[프로젝트 공식 홈페이지 바로가기](https://techforimpact.io/lab/project/14)
 
 ---
 
