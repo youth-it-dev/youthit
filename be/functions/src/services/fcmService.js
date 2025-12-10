@@ -145,8 +145,16 @@ class FCMService {
    * @param {Object} notification - 알림 데이터
    * @return {Promise<Object>} 전송 결과
    */
-  async sendToUser(userId, notification) {
+  async sendToUser(userId, notification, options = {}) {
     try {
+      const { skipPushTermsFilter = false } = options;
+      if (!skipPushTermsFilter) {
+        const userDoc = await this.firestoreService.getById(userId);
+        if (!userDoc || userDoc.pushTermsAgreed !== true) {
+          return {sentCount: 0, failedCount: 0, filteredOut: true};
+        }
+      }
+
       const tokens = await this.getUserTokens(userId);
       this.notificationService.saveNotification(userId, {
         title: notification.title,

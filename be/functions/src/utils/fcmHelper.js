@@ -18,7 +18,7 @@ class FCMHelper {
    * @param {string} commentId - 댓글 ID (COMMENT_LIKE 타입일 때 사용)
    * @return {Promise<Object>} 전송 결과
    */
-  async sendNotification(userId, title, message, type = "general", postId = "", communityId = "", link = "", commentId = "") {
+  async sendNotification(userId, title, message, type = "general", postId = "", communityId = "", link = "", commentId = "", options = {}) {
     try {
       const notification = {
         title,
@@ -30,7 +30,7 @@ class FCMHelper {
         commentId,
       };
 
-      return await this.fcmService.sendToUser(userId, notification);
+      return await this.fcmService.sendToUser(userId, notification, options);
     } catch (error) {
       console.error("알림 전송 실패:", error);
       return null; // 에러 시 null 반환
