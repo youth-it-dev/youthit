@@ -155,33 +155,85 @@ firebase deploy --only functions
 │   │   └── swagger.js                # Swagger 설정
 │   │
 │   ├── 📂 constants/                 # 상수 정의
-│   │   ├── userConstants.js          # 사용자 관련 상수
-│   │   ├── missionConstants.js       # 미션 관련 상수
-│   │   ├── kakaoConstants.js         # 카카오 API 상수
-│   │   └── ...
+│   │   ├── adminLogActions.js
+│   │   ├── firestoreConstants.js
+│   │   ├── kakaoConstants.js
+│   │   ├── missionConstants.js
+│   │   ├── paginationConstants.js
+│   │   ├── termsConstants.js
+│   │   ├── urlConstants.js
+│   │   └── userConstants.js
 │   │
 │   ├── 📂 controllers/               # 컨트롤러 (요청/응답 처리)
-│   │   ├── authController.js         # 인증
-│   │   ├── userController.js         # 사용자
-│   │   ├── missionController.js      # 미션
-│   │   ├── communityController.js    # 커뮤니티
-│   │   ├── programController.js      # 프로그램
-│   │   └── ...
+│   │   ├── adminLogsController.js
+│   │   ├── announcementController.js
+│   │   ├── authController.js
+│   │   ├── commentController.js
+│   │   ├── communityController.js
+│   │   ├── faqController.js
+│   │   ├── fcmController.js
+│   │   ├── fileController.js
+│   │   ├── homeController.js
+│   │   ├── imageController.js
+│   │   ├── missionController.js
+│   │   ├── notificationController.js
+│   │   ├── notionRewardHistoryController.js
+│   │   ├── notionUserController.js
+│   │   ├── programController.js
+│   │   ├── qnaController.js
+│   │   ├── reportContentController.js
+│   │   ├── storeController.js
+│   │   └── userController.js
 │   │
 │   ├── 📂 services/                  # 서비스 (비즈니스 로직)
-│   │   ├── authService.js            # 인증 서비스
-│   │   ├── userService.js            # 사용자 서비스
-│   │   ├── missionService.js          # 미션 서비스
-│   │   ├── rewardService.js           # 리워드 서비스
-│   │   ├── communityService.js        # 커뮤니티 서비스
-│   │   ├── notionUserService.js       # Notion 사용자 동기화
-│   │   └── ...
+│   │   ├── adminLogsService.js
+│   │   ├── announcementService.js
+│   │   ├── authService.js
+│   │   ├── commentService.js
+│   │   ├── communityService.js
+│   │   ├── faqService.js
+│   │   ├── fcmService.js
+│   │   ├── fileService.js
+│   │   ├── firestoreService.js
+│   │   ├── homeService.js
+│   │   ├── imgbbService.js
+│   │   ├── missionLikeService.js
+│   │   ├── missionPostService.js
+│   │   ├── missionService.js
+│   │   ├── nicknameService.js
+│   │   ├── notificationService.js
+│   │   ├── notionFaqService.js
+│   │   ├── notionMissionService.js
+│   │   ├── notionRewardHistoryService.js
+│   │   ├── notionUserService.js
+│   │   ├── programService.js
+│   │   ├── qnaService.js
+│   │   ├── reportContentService.js
+│   │   ├── rewardService.js
+│   │   ├── storeService.js
+│   │   ├── termsService.js
+│   │   └── userService.js
 │   │
 │   ├── 📂 routes/                     # 라우트 정의
+│   │   ├── adminLogs.js
+│   │   ├── announcements.js
 │   │   ├── auth.js
-│   │   ├── users.js
+│   │   ├── comments.js
+│   │   ├── communities.js
+│   │   ├── faqs.js
+│   │   ├── fcm.js
+│   │   ├── files.js
+│   │   ├── home.js
+│   │   ├── images.js
 │   │   ├── missions.js
-│   │   └── ...
+│   │   ├── notifications.js
+│   │   ├── notionRewardHistory.js
+│   │   ├── notionUsers.js
+│   │   ├── programs.js
+│   │   ├── qna.js
+│   │   ├── reportContent.js
+│   │   ├── store.js
+│   │   └── users.js
 │   │
 │   ├── 📂 middleware/                 # 미들웨어
 │   │   ├── authGuard.js               # 인증 가드
@@ -196,22 +248,20 @@ firebase deploy --only functions
 │   │   └── storageCleanupScheduler.js # 스토리지 정리 스케줄러
 │   │
 │   ├── 📂 utils/                      # 유틸리티 함수
-│   │   ├── kakaoApiHelper.js          # 카카오 API 헬퍼
-│   │   ├── notionHelper.js            # Notion API 헬퍼
-│   │   ├── fcmHelper.js               # FCM 푸시 알림 헬퍼
-│   │   ├── paginationHelper.js        # 페이지네이션 헬퍼
-│   │   ├── sanitizeHelper.js          # HTML 정제 헬퍼
-│   │   └── ...
+│   │   ├── fcmHelper.js
+│   │   ├── helpers.js
+│   │   ├── kakaoApiHelper.js
+│   │   ├── nicknameValidator.js
+│   │   ├── notionHelper.js
+│   │   ├── paginationHelper.js
+│   │   └── sanitizeHelper.js
 │   │
-│   ├── 📂 scripts/                    # 유틸리티 스크립트
-│   │   ├── getIdToken.js              # ID 토큰 발급
-│   │   ├── createFirestoreCollections.js
-│   │   └── ...
-│   │
-│   └── 📂 tests/                      # 테스트 스크립트
-│       ├── test-all-policies.sh
-│       ├── test-reward-system.sh
-│       └── ...
+│   └── 📂 scripts/                    # 유틸리티 스크립트
+│       ├── createFirestoreCollections.js
+│       ├── createTestCommunityData.js
+│       ├── getIdToken.js
+│       ├── setKakaoTestClaims.js
+│       └── updateAuthType.js
 │
 ├── 📄 index.js                        # 진입점 (Express 앱 설정)
 ├── 📄 package.json
