@@ -23,6 +23,7 @@ import {
 } from "@/constants/shared/_comment-constants";
 import { usePostCommentsLikeById } from "@/hooks/generated/comments-hooks";
 import { usePostMissionsPostsCommentsLikeByTwoIds } from "@/hooks/generated/missions-hooks";
+import type * as Schema from "@/types/generated/api-schema";
 import type * as Types from "@/types/generated/comments-types";
 import { parseCommentContent } from "@/utils/community/parse-comment-content";
 import { cn } from "@/utils/shared/cn";
@@ -52,7 +53,7 @@ interface CommentItemProps {
   >[number];
   postId?: string;
   communityId?: string;
-  userName: string;
+  userData?: Schema.User;
   isExpanded?: boolean;
   onToggleReplies: () => void;
   onStartReply: (commentId: string, author: string) => void;
@@ -89,7 +90,7 @@ const CommentItemComponent = ({
   comment,
   postId,
   communityId,
-  userName,
+  userData,
   isExpanded = false,
   onToggleReplies,
   onStartReply,
@@ -118,8 +119,13 @@ const CommentItemComponent = ({
   >({});
   const [localReplyToReplyInput, setLocalReplyToReplyInput] = useState("");
   const [isGiphyOpen, setIsGiphyOpen] = useState(false);
+  const [isEditGiphyOpen, setIsEditGiphyOpen] = useState(false);
   const replyToReplyInputRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLDivElement>(null);
+  const editReplyInputRef = useRef<HTMLDivElement>(null);
   const isInternalChangeRef = useRef(false);
+  const isEditInternalChangeRef = useRef(false);
+  const isEditReplyInternalChangeRef = useRef(false);
   const queryClient = useQueryClient();
 
   const commentId = comment.id || "";
@@ -142,7 +148,10 @@ const CommentItemComponent = ({
   const hiddenRepliesCount = Math.max(0, repliesCount - 1);
   const shouldShowMoreButton = repliesCount >= 2 && !isExpanded;
 
-  const isOwnComment = comment.author === userName;
+  const userId = userData?.id;
+  const userName = userData?.nickname;
+
+  const isOwnComment = comment.userId === userId;
   const isEditing = editingCommentId === commentId;
   const isReplying =
     replyingTo?.commentId === commentId && !replyingTo?.isReply;
@@ -760,6 +769,174 @@ const CommentItemComponent = ({
     return textContent.length > 0 || hasImage;
   }, [actualReplyToReplyInput]);
 
+  // 댓글 수정 입력창에 내용이 있는지 확인 (텍스트 또는 이미지)
+  const hasEditContent = useMemo(() => {
+    const textContent = editingContent.replace(/<[^>]*>/g, "").trim();
+    const hasImage = /<img[^>]*>/i.test(editingContent);
+    return textContent.length > 0 || hasImage;
+  }, [editingContent]);
+
+  // 공통 GIF 삽입 로직
+  const insertGifToEditInput = useCallback(
+    (inputRef: React.RefObject<HTMLDivElement | null>, gifUrl: string) => {
+      const inputElement = inputRef.current;
+      if (!inputElement) return;
+
+      inputElement.focus();
+      const currentHtml = editingContent || "";
+      const imgTag = `<img src="${gifUrl}" alt="GIF" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 4px 0;" />`;
+      const newHtml = currentHtml
+        ? `${currentHtml}<br>${imgTag}<br>`
+        : `${imgTag}<br>`;
+
+      onEditContentChange(newHtml);
+
+      setTimeout(() => {
+        inputElement.innerHTML = newHtml;
+        const range = document.createRange();
+        const selection = window.getSelection();
+        if (selection && inputElement.lastChild) {
+          range.selectNodeContents(inputElement);
+          range.collapse(false);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        inputElement.focus();
+      }, 0);
+    },
+    [editingContent, onEditContentChange]
+  );
+
+  // 댓글 수정용 GIF 선택 핸들러
+  const handleEditGifSelect = useCallback(
+    (gifUrl: string) => {
+      insertGifToEditInput(editInputRef, gifUrl);
+    },
+    [insertGifToEditInput]
+  );
+
+  // 답글 수정용 GIF 선택 핸들러
+  const handleEditReplyGifSelect = useCallback(
+    (gifUrl: string) => {
+      insertGifToEditInput(editReplyInputRef, gifUrl);
+    },
+    [insertGifToEditInput]
+  );
+
+  // 공통 입력 변경 핸들러
+  const createEditInputChangeHandler = useCallback(
+    (internalChangeRef: React.MutableRefObject<boolean>) =>
+      (e: React.FormEvent<HTMLDivElement>) => {
+        internalChangeRef.current = true;
+        onEditContentChange(e.currentTarget.innerHTML);
+      },
+    [onEditContentChange]
+  );
+
+  // 댓글 수정 입력창 변경 핸들러
+  const handleEditInputChangeEvent = useMemo(
+    () => createEditInputChangeHandler(isEditInternalChangeRef),
+    [createEditInputChangeHandler]
+  );
+
+  // 답글 수정 입력창 변경 핸들러
+  const handleEditReplyInputChangeEvent = useMemo(
+    () => createEditInputChangeHandler(isEditReplyInternalChangeRef),
+    [createEditInputChangeHandler]
+  );
+
+  // 공통 키다운 핸들러 (img 태그 삭제)
+  const createEditKeyDownHandler = useCallback(
+    (containerRef: React.RefObject<HTMLDivElement | null>) =>
+      (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== "Backspace" && e.key !== "Delete") return;
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        const container = containerRef.current;
+        if (!container) return;
+
+        let node = range.startContainer;
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentNode as Node;
+        }
+
+        let imgElement: HTMLImageElement | null = null;
+        if (node instanceof HTMLImageElement) {
+          imgElement = node;
+        } else {
+          let current: Node | null = node;
+          while (current && current !== container) {
+            if (current instanceof HTMLImageElement) {
+              imgElement = current;
+              break;
+            }
+            current = current.parentNode;
+          }
+        }
+
+        if (imgElement) {
+          e.preventDefault();
+          const parent = imgElement.parentNode;
+          if (parent) {
+            const prevSibling = imgElement.previousSibling;
+            if (prevSibling && prevSibling instanceof HTMLBRElement) {
+              parent.removeChild(prevSibling);
+            }
+            parent.removeChild(imgElement);
+            const nextSibling = imgElement.nextSibling;
+            if (nextSibling && nextSibling instanceof HTMLBRElement) {
+              parent.removeChild(nextSibling);
+            }
+
+            const newRange = document.createRange();
+            newRange.setStart(parent, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+
+            onEditContentChange(container.innerHTML);
+          }
+        }
+      },
+    [onEditContentChange]
+  );
+
+  // 댓글 수정 입력창 키다운 핸들러
+  const handleEditKeyDown = useMemo(
+    () => createEditKeyDownHandler(editInputRef),
+    [createEditKeyDownHandler]
+  );
+
+  // 답글 수정 입력창 키다운 핸들러
+  const handleEditReplyKeyDown = useMemo(
+    () => createEditKeyDownHandler(editReplyInputRef),
+    [createEditKeyDownHandler]
+  );
+
+  // contentEditable div의 내용 동기화 (댓글/답글 수정용)
+  useEffect(() => {
+    const syncEditInput = (
+      ref: React.RefObject<HTMLDivElement | null>,
+      internalChangeRef: React.MutableRefObject<boolean>
+    ) => {
+      if (internalChangeRef.current) {
+        internalChangeRef.current = false;
+        return;
+      }
+
+      const inputElement = ref.current;
+      if (!inputElement || inputElement.innerHTML === editingContent) return;
+
+      inputElement.innerHTML = editingContent || "";
+    };
+
+    syncEditInput(editInputRef, isEditInternalChangeRef);
+    syncEditInput(editReplyInputRef, isEditReplyInternalChangeRef);
+  }, [editingContent]);
+
   if (isCommentLocked) {
     return (
       <div className="flex flex-col gap-1">
@@ -858,43 +1035,73 @@ const CommentItemComponent = ({
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (editingContent.trim()) {
+                  if (hasEditContent) {
                     onEditSubmit(commentId);
                   }
                 }}
+                className="relative"
               >
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => onEditContentChange(e.target.value)}
-                  className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 text-sm focus:ring-2 focus:outline-none"
-                  rows={
-                    editingContent.trim()
-                      ? Math.min(editingContent.split("\n").length + 1, 5)
-                      : 1
-                  }
+                <div
+                  ref={editInputRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleEditInputChangeEvent}
+                  onKeyDown={handleEditKeyDown}
+                  data-placeholder={COMMENT_PLACEHOLDER}
+                  className={cn(
+                    "max-h-[200px] min-h-[40px] w-full resize-none overflow-y-auto rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:outline-none",
+                    "empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)]",
+                    "focus:ring-main-400 focus:ring-2",
+                    "[&_img]:my-1 [&_img]:block [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
+                  )}
+                  style={{
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                  }}
                 />
-                <div className="mt-2 flex justify-end">
+                <div className="absolute right-2 bottom-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditGiphyOpen((prev) => !prev)}
+                    className={cn(
+                      "flex h-[40px] w-[40px] items-center justify-center rounded-lg transition-all",
+                      "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                    )}
+                    aria-label="GIF 선택"
+                  >
+                    <ImageIcon size={16} />
+                  </button>
                   <button
                     type="submit"
-                    disabled={!editingContent.trim()}
+                    disabled={!hasEditContent}
                     className={cn(
-                      "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                      editingContent.trim()
-                        ? "bg-main-600 hover:bg-main-700 text-white"
-                        : "bg-gray-200 text-gray-400"
+                      "flex h-8 items-center rounded-lg px-3 py-2 transition-all",
+                      hasEditContent
+                        ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                        : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                     )}
                   >
                     <Typography
                       font="noto"
-                      variant="body2M"
+                      variant="body3M"
                       className={
-                        editingContent.trim() ? "text-white" : "text-gray-400"
+                        hasEditContent ? "text-white" : "text-gray-400"
                       }
                     >
-                      등록
+                      {COMMENT_SUBMIT_BUTTON}
                     </Typography>
                   </button>
                 </div>
+                {/* GIPHY 선택 UI - 바텀시트로 표시 */}
+                <ExpandableBottomSheet
+                  isOpen={isEditGiphyOpen}
+                  onClose={() => setIsEditGiphyOpen(false)}
+                >
+                  <GiphySelector
+                    onGifSelect={handleEditGifSelect}
+                    onClose={() => setIsEditGiphyOpen(false)}
+                  />
+                </ExpandableBottomSheet>
               </form>
             </div>
           ) : (
@@ -1070,50 +1277,77 @@ const CommentItemComponent = ({
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
-                            if (editingContent.trim()) {
+                            if (hasEditContent) {
                               onEditSubmit(replyId);
                             }
                           }}
+                          className="relative"
                         >
-                          <textarea
-                            value={editingContent}
-                            onChange={(e) =>
-                              onEditContentChange(e.target.value)
-                            }
-                            className="focus:ring-main-400 w-full resize-none rounded-lg border border-gray-200 p-3 text-sm focus:ring-2 focus:outline-none"
-                            rows={
-                              editingContent.trim()
-                                ? Math.min(
-                                    editingContent.split("\n").length + 1,
-                                    5
-                                  )
-                                : 1
-                            }
+                          <div
+                            ref={editReplyInputRef}
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={handleEditReplyInputChangeEvent}
+                            onKeyDown={handleEditReplyKeyDown}
+                            data-placeholder={COMMENT_PLACEHOLDER}
+                            className={cn(
+                              "max-h-[200px] min-h-[40px] w-full resize-none overflow-y-auto rounded-lg border border-gray-200 p-3 pr-20 pb-12 text-sm focus:outline-none",
+                              "empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)]",
+                              "focus:ring-main-400 focus:ring-2",
+                              "[&_img]:my-1 [&_img]:block [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
+                            )}
+                            style={{
+                              wordBreak: "break-word",
+                              whiteSpace: "pre-wrap",
+                            }}
                           />
-                          <div className="mt-2 flex justify-end">
+                          <div className="absolute right-2 bottom-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsEditGiphyOpen((prev) => !prev)
+                              }
+                              className={cn(
+                                "flex h-[40px] w-[40px] items-center justify-center rounded-lg transition-all",
+                                "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                              )}
+                              aria-label="GIF 선택"
+                            >
+                              <ImageIcon size={16} />
+                            </button>
                             <button
                               type="submit"
-                              disabled={!editingContent.trim()}
+                              disabled={!hasEditContent}
                               className={cn(
-                                "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                                editingContent.trim()
-                                  ? "bg-main-600 hover:bg-main-700 text-white"
-                                  : "bg-gray-200 text-gray-400"
+                                "flex h-8 items-center rounded-lg px-3 py-2 transition-all",
+                                hasEditContent
+                                  ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                                  : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
                             >
                               <Typography
                                 font="noto"
-                                variant="body2M"
+                                variant="body3M"
                                 className={
-                                  editingContent.trim()
+                                  hasEditContent
                                     ? "text-white"
                                     : "text-gray-400"
                                 }
                               >
-                                등록
+                                {COMMENT_SUBMIT_BUTTON}
                               </Typography>
                             </button>
                           </div>
+                          {/* GIPHY 선택 UI - 바텀시트로 표시 */}
+                          <ExpandableBottomSheet
+                            isOpen={isEditGiphyOpen}
+                            onClose={() => setIsEditGiphyOpen(false)}
+                          >
+                            <GiphySelector
+                              onGifSelect={handleEditReplyGifSelect}
+                              onClose={() => setIsEditGiphyOpen(false)}
+                            />
+                          </ExpandableBottomSheet>
                         </form>
                       </div>
                     ) : (

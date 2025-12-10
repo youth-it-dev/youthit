@@ -24,16 +24,15 @@ import {
   useDeleteCommentsById,
 } from "@/hooks/generated/comments-hooks";
 import { useCommentFocus } from "@/hooks/shared/use-comment-focus";
+import type * as Schema from "@/types/generated/api-schema";
 import type * as CommentTypes from "@/types/generated/comments-types";
 import type { ReplyingToState } from "@/types/shared/comment";
-import { debug } from "@/utils/shared/debugger";
 
 interface CommentsSectionProps {
   postId: string;
   communityId: string;
   postType?: string;
-  authorName?: string;
-  profileImageUrl?: string;
+  userData?: Schema.User;
   commentInputRef?: React.RefObject<
     HTMLDivElement | HTMLTextAreaElement | null
   >;
@@ -49,8 +48,7 @@ interface CommentsSectionProps {
 const CommentsSection = ({
   postId,
   communityId,
-  authorName = "",
-  profileImageUrl,
+  userData,
   commentInputRef,
   onFocusRequestRef,
 }: CommentsSectionProps) => {
@@ -191,7 +189,7 @@ const CommentsSection = ({
           },
         });
       } catch (error) {
-        debug.error("댓글 작성 실패:", error);
+        console.error("댓글 작성 실패:", error);
       }
     },
     [
@@ -265,7 +263,7 @@ const CommentsSection = ({
           },
         });
       } catch (error) {
-        debug.error("댓글 수정 실패:", error);
+        console.error("댓글 수정 실패:", error);
       }
     },
     [editingContent, putCommentAsync]
@@ -286,7 +284,7 @@ const CommentsSection = ({
         commentId: deleteTargetId,
       });
     } catch (error) {
-      debug.error("댓글 삭제 실패:", error);
+      console.error("댓글 삭제 실패:", error);
     }
   }, [deleteTargetId, deleteCommentAsync]);
 
@@ -353,7 +351,7 @@ const CommentsSection = ({
                 comment={comment}
                 postId={postId}
                 communityId={communityId}
-                userName={authorName}
+                userData={userData}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -387,8 +385,7 @@ const CommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            userName={authorName}
-            profileImageUrl={profileImageUrl}
+            userData={userData}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />

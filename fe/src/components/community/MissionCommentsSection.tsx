@@ -82,8 +82,6 @@ const MissionCommentsSection = ({
   const { data: userData } = useGetUsersMe({
     select: (data) => data?.user,
   });
-  const currentUserNickname = userData?.nickname || "";
-  const currentUserProfileImageUrl = userData?.profileImageUrl;
 
   // 댓글 목록 조회 API (무한 스크롤)
   const {
@@ -400,7 +398,7 @@ const MissionCommentsSection = ({
                 key={comment.id}
                 comment={comment}
                 postId={postId}
-                userName={currentUserNickname}
+                userData={userData}
                 isExpanded={expandedReplies.has(comment.id || "")}
                 onToggleReplies={() => handleToggleReplies(comment.id || "")}
                 onStartReply={handleStartReplyToRoot}
@@ -444,8 +442,7 @@ const MissionCommentsSection = ({
             onCommentSubmit={handleCommentSubmit}
             replyingTo={replyingTo}
             onCancelReply={handleCancelReply}
-            userName={currentUserNickname}
-            profileImageUrl={currentUserProfileImageUrl}
+            userData={userData}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
           />
