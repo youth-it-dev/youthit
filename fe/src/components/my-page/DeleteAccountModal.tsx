@@ -133,7 +133,7 @@ const DeleteAccountModal = ({
                 setNameError("");
               }
             }}
-            placeholder="사용중인 닉네임을 입력하세요"
+            placeholder={`${nickname ?? ""}`}
             disabled={isLoading}
             className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm shadow-sm focus:border-gray-300 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
           />
