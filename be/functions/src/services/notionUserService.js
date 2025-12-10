@@ -18,7 +18,7 @@ const crypto = require("crypto");
  */
 const DELAY_MS = 1200; // 지연시간
 const BATCH_SIZE = 500; // 배치 사이즈
-const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
+const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/J_jxAZxz1mqa/Profile_Default_HKbv3z1iVz8v.png";
 
 class NotionUserService {
 

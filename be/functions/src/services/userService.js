@@ -12,8 +12,8 @@ const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 const CommunityService = require("./communityService");
 
 // 기본 프로필 아바타 이미지 URL (공용 이미지)
-const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
-const DEFAULT_PROFILE_AVATAR_PATH = "files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
+const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/J_jxAZxz1mqa/Profile_Default_HKbv3z1iVz8v.png";
+const DEFAULT_PROFILE_AVATAR_PATH = "files/J_jxAZxz1mqa/Profile_Default_HKbv3z1iVz8v.png";
 
 /**
  * User Service (비즈니스 로직 계층)
