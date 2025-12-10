@@ -37,7 +37,6 @@ firebase emulators:start --only functions
 
 **접속 URL**
 - Emulator UI: `http://127.0.0.1:4000`
-- Swagger API: `http://127.0.0.1:5001/youthvoice-2025/asia-northeast3/api/api-docs`
 
 **주의사항**
 - 에뮬레이터 환경에서는 카카오 로그인 불가능 (프로덕션 환경에서만 테스트 가능)
@@ -170,7 +169,7 @@ firebase deploy --only functions
 ### 인증 (Auth)
 - Firebase ID Token 기반 인증
 - 카카오 소셜 로그인 연동
-- 로그아웃 (Refresh Token 무효화)
+- 로그아웃 (Firebase Refresh Token 무효화)
 - 회원 탈퇴 (개인정보 가명처리)
 
 ### 사용자 (Users)
@@ -232,9 +231,9 @@ firebase deploy --only functions
 
 ## 📊 Swagger API 문서
 
-- **로컬**: `http://localhost:5001/{project-id}/asia-northeast3/api/api-docs`
-- **프로덕션**: `https://asia-northeast3-{project-id}.cloudfunctions.net/api/api-docs`
-- **JSON**: `/api-docs.json` 엔드포인트로 Swagger 스펙 다운로드 가능
+**에뮬레이터**: `http://127.0.0.1:5001/{project-id}/asia-northeast3/api/api-docs`  
+**프로덕션**: `https://asia-northeast3-{project-id}.cloudfunctions.net/api/api-docs`  
+**JSON**: `/api-docs.json` 엔드포인트로 Swagger 스펙 다운로드 가능
 
 ## 🔄 Firebase Triggers
 
@@ -247,12 +246,10 @@ firebase deploy --only functions
 - `storageCleanupScheduler`: 스토리지 정리 작업
 
 ## 📋 Git 전략
-
 - 브랜치: `feature` → `main`
 - 커밋 전: 코드 품질 검사 (ESLint)
 
 ## 🔗 관련 문서
-
 - [인증 아키텍처 플로우](./docs/auth-architecture.md)
 - [Firebase Functions 문서](https://firebase.google.com/docs/functions)
 - [Firestore 보안 규칙](functions/firestore.rules)
