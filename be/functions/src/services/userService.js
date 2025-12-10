@@ -11,6 +11,10 @@ const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 const CommunityService = require("./communityService");
 
+// 기본 프로필 아바타 이미지 URL (공용 이미지)
+const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
+const DEFAULT_PROFILE_AVATAR_PATH = "files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
+
 /**
  * User Service (비즈니스 로직 계층)
  * Firebase Auth + Firestore 통합 관리
@@ -71,11 +75,17 @@ class UserService {
     let newProfileImageUrl = update.profileImageUrl !== undefined ? update.profileImageUrl : null;
     let previousProfilePath = existing.profileImagePath || null;
 
-    const requestedProfileUrl = typeof update.profileImageUrl === "string"
+    let requestedProfileUrl = typeof update.profileImageUrl === "string"
       ? update.profileImageUrl.trim()
       : null;
+    
+    if (!requestedProfileUrl) {
+      requestedProfileUrl = DEFAULT_PROFILE_AVATAR_URL;
+      newProfileImageUrl = DEFAULT_PROFILE_AVATAR_URL;
+      newProfileImagePath = DEFAULT_PROFILE_AVATAR_PATH;
+    }
 
-    if (requestedProfileUrl) {
+    if (requestedProfileUrl && requestedProfileUrl !== DEFAULT_PROFILE_AVATAR_URL) {
       let profileFileDoc;
       try {
         profileFileDoc = await fileService.getFileByUrlForUser(requestedProfileUrl, uid);
@@ -151,12 +161,26 @@ class UserService {
       transaction.update(userRef, userUpdate);
     });
 
-    if (newProfileImagePath && previousProfilePath && previousProfilePath !== newProfileImagePath) {
+    const previousProfileUrl = existing.profileImageUrl || "";
+    const isPreviousDefaultAvatar = previousProfileUrl === DEFAULT_PROFILE_AVATAR_URL;
+    const isSwitchingToDefaultAvatar = requestedProfileUrl === DEFAULT_PROFILE_AVATAR_URL;
+
+    const shouldDeletePrevious =
+      previousProfilePath &&
+      !isPreviousDefaultAvatar &&
+      (
+        (newProfileImagePath && previousProfilePath !== newProfileImagePath) ||
+        (!newProfileImagePath && isSwitchingToDefaultAvatar)
+      );
+
+    if (shouldDeletePrevious) {
       try {
         await fileService.deleteFile(previousProfilePath, uid);
       } catch (cleanupError) {
         console.warn("[USER][updateOnboarding] 이전 프로필 이미지 삭제 실패", cleanupError.message);
       }
+    } else if (previousProfilePath && isPreviousDefaultAvatar) {
+      console.log("[USER][updateOnboarding] 기본 아바타 이미지는 삭제하지 않음");
     }
 
 
