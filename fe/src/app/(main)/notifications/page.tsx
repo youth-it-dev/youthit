@@ -71,7 +71,7 @@ const NotificationsPage = () => {
         <button
           onClick={handleMarkAllAsRead}
           disabled={markAllAsReadMutation.isPending}
-          className="flex items-center justify-center px-2 py-1 text-sm text-gray-600 disabled:opacity-50"
+          className="flex items-center justify-center py-1 text-sm text-gray-600 disabled:opacity-50"
           aria-label="모두 읽음"
         >
           <Typography font="noto" variant="caption1M">
@@ -167,12 +167,12 @@ const NotificationsPage = () => {
   // 로딩 상태
   if (isLoading) {
     return (
-      <div className="mt-12 min-h-screen bg-white p-4">
-        <div className="space-y-3">
+      <div className="mt-12 min-h-screen bg-white">
+        <div className="space-y-0">
           {Array.from({ length: 5 }).map((_, index) => (
             <div
               key={`skeleton-${index}`}
-              className="rounded-lg border border-gray-200 bg-white p-4"
+              className="border-b border-white bg-white p-4 first:border-t"
             >
               <div className="mb-2">
                 <Skeleton className="h-4 w-20" />
@@ -205,7 +205,7 @@ const NotificationsPage = () => {
   const notifications = notificationsData?.notifications || [];
 
   return (
-    <div className="mt-12 min-h-screen bg-white p-4">
+    <div className="mt-12 min-h-screen bg-white">
       {notifications.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <Typography font="noto" variant="body2R" className="text-gray-500">
@@ -213,7 +213,7 @@ const NotificationsPage = () => {
           </Typography>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-0">
           {notifications.map((notification) => {
             const isRead = notification.isRead || false;
             const categoryLabel = getNotificationTypeLabel(notification.type);
@@ -224,41 +224,39 @@ const NotificationsPage = () => {
               <button
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                  isRead
-                    ? "border-gray-200 bg-white"
-                    : "border-pink-200 bg-pink-50"
+                className={`w-full border-b border-white px-5 py-6 text-left transition-colors first:border-t ${
+                  isRead ? "bg-white" : "bg-main-50"
                 }`}
               >
-                <div className="mb-2">
+                <div className="mb-2 flex items-center justify-between">
                   <Typography
                     font="noto"
-                    variant="caption1M"
+                    variant="body3R"
                     className="text-gray-600"
                   >
                     {categoryLabel}
                   </Typography>
+                  {createdAt && (
+                    <div>
+                      <Typography
+                        font="noto"
+                        variant="body3R"
+                        className="text-gray-500"
+                      >
+                        {getTimeAgo(createdAt)}
+                      </Typography>
+                    </div>
+                  )}
                 </div>
                 <div className="mb-3">
                   <Typography
                     font="noto"
-                    variant="body2R"
-                    className={`${isRead ? "text-gray-900" : "text-gray-900"}`}
+                    variant="body1M"
+                    className="line-clamp-2 text-gray-950"
                   >
                     {message}
                   </Typography>
                 </div>
-                {createdAt && (
-                  <div>
-                    <Typography
-                      font="noto"
-                      variant="caption1R"
-                      className="text-gray-500"
-                    >
-                      {getTimeAgo(createdAt)}
-                    </Typography>
-                  </div>
-                )}
               </button>
             );
           })}
