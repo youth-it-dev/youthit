@@ -56,13 +56,13 @@ authTrigger.onCreate 트리거 실행 → Firestore users/{uid} 문서 생성
 ## 4. 로그아웃 / 회원 탈퇴
 
 **로그아웃**:
-```
+```text
 1. revokeRefreshTokens() → 모든 Refresh Token 무효화
 2. auth.signOut() → 로컬 세션 정리
 ```
 
 **회원 탈퇴**:
-```
+```text
 1. 카카오 재인증 → 새로운 액세스 토큰 발급
 2. 카카오 연결 해제
 3. Firestore 개인정보 가명처리 (생년월일만 YYYY-**-** 형태로 보존)

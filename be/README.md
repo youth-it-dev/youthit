@@ -35,10 +35,10 @@ firebase emulators:start --only functions
 
 ```
 
-**접속 URL**
+### 접속 URL
 - Emulator UI: `http://127.0.0.1:4000`
 
-**주의사항**
+### 주의사항
 - 에뮬레이터 환경에서는 카카오 로그인 불가능 (프로덕션 환경에서만 테스트 가능)
 - 에뮬레이터 종료 시 데이터 초기화
 
@@ -92,7 +92,7 @@ firebase deploy --only functions
 
 ## 📁 폴더 아키텍처
 
-```
+```text
 📦 be/functions/
 ├── 📂 src/
 │   ├── 📂 config/                    # 설정 파일
