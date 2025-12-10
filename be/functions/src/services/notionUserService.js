@@ -18,6 +18,7 @@ const crypto = require("crypto");
  */
 const DELAY_MS = 1200; // 지연시간
 const BATCH_SIZE = 500; // 배치 사이즈
+const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/olGPuQqQLqVa/26acc714-7927-4889-b00e-1ec02142a86a__Generic_avatar_DVbfhtiFCJ8E.png";
 
 class NotionUserService {
 
@@ -129,7 +130,7 @@ class NotionUserService {
                   {
                     name: "profile-image",
                     type: "external",
-                    external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
+                    external: { url: user.profileImageUrl || DEFAULT_PROFILE_AVATAR_URL },
                   },
                 ],
               },
@@ -527,7 +528,7 @@ async syncAllUserAccounts() {
                 {
                   name: "profile-image",
                   type: "external",
-                  external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
+                  external: { url: user.profileImageUrl || DEFAULT_PROFILE_AVATAR_URL },
                 },
               ],
             },
@@ -1326,7 +1327,7 @@ async syncSelectedUsers() {
             {
               name: "profile-image",
               type: "external",
-              external: { url: updatedUserData.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
+              external: { url: updatedUserData.profileImageUrl || DEFAULT_PROFILE_AVATAR_URL },
             },
           ],
         },
@@ -2094,7 +2095,7 @@ async syncSingleUserToNotion(userId) {
           {
             name: "profile-image",
             type: "external",
-            external: { url: user.profileImageUrl || "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/MDk2Sz1Xrh39/23dad3ce-a543-45d8-869d-8cf970b99e27__Generic_avatar_BZl-yim0zhiA.png" },
+            external: { url: user.profileImageUrl || DEFAULT_PROFILE_AVATAR_URL },
           },
         ],
       },
