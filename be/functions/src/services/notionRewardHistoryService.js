@@ -185,7 +185,9 @@ class NotionRewardHistoryService {
           if (!res.ok) {
             const errorText = await res.text();
             console.error(`[Notion 사용자 API Error] Status: ${res.status}, Response: ${errorText}`);
-            throw new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+            const error = new Error(`Notion API 요청 실패: ${res.status} - ${errorText}`);
+            error.code = 'INTERNAL_ERROR';
+            throw error;
           }
 
           const data = await res.json();
@@ -193,7 +195,9 @@ class NotionRewardHistoryService {
           // Notion API 에러 응답 확인
           if (data.error) {
             console.error(`[Notion 사용자 API Error]`, data.error);
-            throw new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+            const error = new Error(`Notion API 에러: ${data.error.message || JSON.stringify(data.error)}`);
+            error.code = 'INTERNAL_ERROR';
+            throw error;
           }
 
           if (data.results) {
