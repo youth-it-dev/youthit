@@ -44,9 +44,31 @@ firebase emulators:start --only functions
 
 ### 프로덕션 배포
 
+#### 수동 배포
 ```bash
 firebase deploy --only functions
 ```
+
+#### 자동 배포 (GitHub Actions)
+
+`main` 브랜치에 `be/functions/**` 경로 변경사항이 push되면 자동으로 배포됩니다.
+
+**배포 워크플로우**:
+```
+1. 코드 체크아웃
+2. pnpm 설치 및 Node.js 20 설정
+3. Firebase CLI 설치
+4. Firebase 서비스 계정 인증 (GitHub Secrets)
+5. 배포용 .env 생성 (GitHub Secrets의 ENV_VARS 사용)
+6. 빌드 테스트 (pnpm run build)
+7. Firebase Functions 배포
+```
+
+**필수 GitHub Secrets**:
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase 서비스 계정 JSON
+- `ENV_VARS`: 배포용 환경 변수 (key=value 형식)
+
+**워크플로우 파일**: `.github/workflows/firebase-deploy.yml`
 
 ## 🚀 테크 스택
 
