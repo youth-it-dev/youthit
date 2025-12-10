@@ -248,11 +248,25 @@ firebase deploy --only functions
 │   │   └── ...
 │   │
 │   ├── 📂 routes/                     # 라우트 정의
+│   │   ├── adminLogs.js
+│   │   ├── announcements.js
 │   │   ├── auth.js
-│   │   ├── users.js
+│   │   ├── comments.js
+│   │   ├── communities.js
+│   │   ├── faqs.js
+│   │   ├── fcm.js
+│   │   ├── files.js
+│   │   ├── home.js
+│   │   ├── images.js
 │   │   ├── missions.js
-│   │   └── ...
->>>>>>> origin/main
+│   │   ├── notifications.js
+│   │   ├── notionRewardHistory.js
+│   │   ├── notionUsers.js
+│   │   ├── programs.js
+│   │   ├── qna.js
+│   │   ├── reportContent.js
+│   │   ├── store.js
+│   │   └── users.js
 │   │
 │   ├── 📂 middleware/                 # 미들웨어
 │   │   ├── authGuard.js               # 인증 가드
@@ -267,7 +281,6 @@ firebase deploy --only functions
 │   │   └── storageCleanupScheduler.js # 스토리지 정리 스케줄러
 │   │
 │   ├── 📂 utils/                      # 유틸리티 함수
-<<<<<<< HEAD
 │   │   ├── fcmHelper.js
 │   │   ├── helpers.js
 │   │   ├── kakaoApiHelper.js
@@ -282,24 +295,6 @@ firebase deploy --only functions
 │       ├── getIdToken.js
 │       ├── setKakaoTestClaims.js
 │       └── updateAuthType.js
-=======
-│   │   ├── kakaoApiHelper.js          # 카카오 API 헬퍼
-│   │   ├── notionHelper.js            # Notion API 헬퍼
-│   │   ├── fcmHelper.js               # FCM 푸시 알림 헬퍼
-│   │   ├── paginationHelper.js        # 페이지네이션 헬퍼
-│   │   ├── sanitizeHelper.js          # HTML 정제 헬퍼
-│   │   └── ...
-│   │
-│   ├── 📂 scripts/                    # 유틸리티 스크립트
-│   │   ├── getIdToken.js              # ID 토큰 발급
-│   │   ├── createFirestoreCollections.js
-│   │   └── ...
-│   │
-│   └── 📂 tests/                      # 테스트 스크립트
-│       ├── test-all-policies.sh
-│       ├── test-reward-system.sh
-│       └── ...
->>>>>>> origin/main
 │
 ├── 📄 index.js                        # 진입점 (Express 앱 설정)
 ├── 📄 package.json
@@ -378,32 +373,12 @@ firebase deploy --only functions
 **프로덕션**: `https://asia-northeast3-{project-id}.cloudfunctions.net/api/api-docs`  
 **JSON**: `/api-docs.json` 엔드포인트로 Swagger 스펙 다운로드 가능
 
-<<<<<<< HEAD
-=======
-## 🔄 Firebase Triggers
-
-### Auth Triggers
-- `createUserDocument`: 사용자 생성 시 Firestore 문서 자동 생성
-- `deleteUserDocument`: 사용자 삭제 시 개인정보 가명처리
-
-### Schedulers
-- `missionDailyResetScheduler`: 매일 자정 미션 리셋
-- `storageCleanupScheduler`: 스토리지 정리 작업
-
->>>>>>> origin/main
 ## 📋 Git 전략
 - 브랜치: `feature` → `main`
 - 커밋 전: 코드 품질 검사 (ESLint)
 
 ## 🔗 관련 문서
-<<<<<<< HEAD
 
 - [Firebase Functions 문서](https://firebase.google.com/docs/functions)
 - [Firestore 보안 규칙](functions/firestore.rules)
 - [인증 아키텍처 플로우](./docs/auth-architecture.md)
-=======
-- [인증 아키텍처 플로우](./docs/auth-architecture.md)
-- [Firebase Functions 문서](https://firebase.google.com/docs/functions)
-- [Firestore 보안 규칙](functions/firestore.rules)
-
->>>>>>> origin/main
