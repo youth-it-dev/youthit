@@ -5,8 +5,8 @@ import axios, {
 } from "axios";
 import { onAuthStateChanged } from "firebase/auth";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
-import { triggerSuspensionDialog } from "@/contexts/shared/suspension-dialog";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { triggerSuspensionDialog } from "@/contexts/shared/suspension-dialog";
 import { isPublicRoute } from "@/utils/auth/is-public-route";
 import { auth } from "./firebase";
 
