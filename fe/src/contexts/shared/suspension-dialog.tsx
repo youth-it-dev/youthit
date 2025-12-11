@@ -7,6 +7,8 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import useToggle from "@/hooks/shared/useToggle";
 import { signOut } from "@/lib/auth";
 import { getQueryClient } from "@/lib/query-client";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
+import { removeKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 
 interface SuspensionDialogContextValue {
@@ -28,6 +30,7 @@ export const SuspensionDialogProvider = ({
   children: ReactNode;
 }) => {
   const { isOpen, open, close } = useToggle();
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   // 전역 함수로 등록할 showSuspensionDialog 함수
   // useRef를 사용하여 최신 open 함수를 항상 참조하도록 함
@@ -59,7 +62,8 @@ export const SuspensionDialogProvider = ({
   }, [showSuspensionDialog]);
 
   /**
-   * @description 로그아웃 처리 및 로그인 페이지로 리다이렉트
+   * @description 로그아웃 처리 및 메인페이지로 리다이렉트
+   * 자격정지 회원은 비회원처럼 사용 가능하도록 메인페이지로 이동
    */
   const handleLogout = useCallback(async () => {
     // 다이얼로그 닫기
@@ -70,10 +74,19 @@ export const SuspensionDialogProvider = ({
       return;
     }
 
+    // 로그아웃 시작 플래그 설정 (중복 다이얼로그 방지)
+    setLoggingOut(true);
+
     try {
       // React Query 캐시 정리 (로그아웃 전에 정리하여 불필요한 요청 방지)
       const queryClient = getQueryClient();
       queryClient.clear();
+
+      // Zustand store 초기화
+      resetTopBar();
+
+      // 카카오 액세스 토큰 제거
+      removeKakaoAccessToken();
 
       // 로그아웃 처리
       await signOut();
@@ -83,10 +96,11 @@ export const SuspensionDialogProvider = ({
       const queryClient = getQueryClient();
       queryClient.clear();
     } finally {
-      // 성공/실패 여부와 관계없이 로그인 페이지로 리다이렉트
-      window.location.replace(LINK_URL.LOGIN);
+      // 성공/실패 여부와 관계없이 메인페이지로 리다이렉트
+      // 자격정지 회원은 비회원처럼 사용 가능하도록
+      window.location.replace(LINK_URL.HOME);
     }
-  }, [close]);
+  }, [close, resetTopBar]);
 
   const value: SuspensionDialogContextValue = {
     showSuspensionDialog,
@@ -120,6 +134,11 @@ export const SuspensionDialogProvider = ({
 let showSuspensionDialogRef: (() => void) | null = null;
 
 /**
+ * @description 로그아웃 진행 중 플래그 (중복 다이얼로그 방지)
+ */
+let isLoggingOut = false;
+
+/**
  * @description 자격정지 다이얼로그 표시 함수 등록
  * SuspensionDialogProvider에서 호출하여 함수를 등록
  */
@@ -128,10 +147,22 @@ export const setShowSuspensionDialog = (fn: () => void) => {
 };
 
 /**
+ * @description 로그아웃 시작 플래그 설정
+ */
+export const setLoggingOut = (value: boolean) => {
+  isLoggingOut = value;
+};
+
+/**
  * @description 자격정지 다이얼로그 표시 함수 호출
  * axios 인터셉터에서 사용
  */
 export const triggerSuspensionDialog = () => {
+  // 로그아웃 진행 중이면 다이얼로그를 표시하지 않음
+  if (isLoggingOut) {
+    return;
+  }
+
   if (showSuspensionDialogRef) {
     showSuspensionDialogRef();
   } else {
