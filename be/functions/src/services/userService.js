@@ -1079,7 +1079,7 @@ class UserService {
     });
 
     const postsArrays = await Promise.all(communityPromises);
-    const allPostsFlat = postsArrays.flat();
+    const allPostsFlat = postsArrays.flat().filter((post) => post.isLocked !== true);
     
     const postsMap = {};
     allPostsFlat.forEach(post => {
@@ -1088,7 +1088,8 @@ class UserService {
     
     const allPosts = postIds
       .map(postId => postsMap[postId])
-      .filter(post => post !== undefined);
+      .filter(post => post !== undefined)
+      .filter(post => post.isLocked !== true);
 
     // 사용자 프로필 배치 조회
     const userIds = [];
@@ -1176,7 +1177,9 @@ class UserService {
       const profileMap = userIds.length > 0 ? await missionPostService.loadUserProfiles(userIds) : {};
 
       // 프로필 정보 매핑하여 응답 생성
-      const processedPosts = missionPosts.map((post) => {
+    const processedPosts = missionPosts
+      .filter((post) => post.isLocked !== true)
+      .map((post) => {
         const data = post;
         const createdAtDate = data.createdAt?.toDate?.() || (data.createdAt ? new Date(data.createdAt) : null);
         const updatedAtDate = data.updatedAt?.toDate?.() || (data.updatedAt ? new Date(data.updatedAt) : null);
