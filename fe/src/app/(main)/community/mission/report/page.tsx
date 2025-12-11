@@ -1,12 +1,21 @@
 "use client";
 
-import { Suspense, useCallback, useEffect } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ReportReasonPage } from "@/components/community/ReportReasonPage";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetMissionsPostsById } from "@/hooks/generated/missions-hooks";
 import { usePostReportcontent } from "@/hooks/generated/reports-hooks";
+import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import { getErrorMessage } from "@/utils/shared/error";
 import { showToast } from "@/utils/shared/toast";
 
@@ -141,6 +150,31 @@ const MissionReportPageContent = () => {
  * @description 미션 인증글/댓글 신고 공통 페이지
  */
 const MissionReportPage = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      removeAuthCookie();
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <MissionReportPageContent />

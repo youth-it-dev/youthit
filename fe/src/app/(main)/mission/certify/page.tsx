@@ -1,6 +1,13 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useLayoutEffect,
+  Suspense,
+} from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,8 +36,10 @@ import {
   usePostMissionsPostsById,
 } from "@/hooks/generated/missions-hooks";
 import useToggle from "@/hooks/shared/useToggle";
+import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import {
   replaceEditorFileHrefWithUploadedUrls,
   replaceEditorImageSrcWithUploadedUrls,
@@ -660,8 +669,34 @@ const MissionCertifyPageContent = () => {
 
 /**
  * @description 미션 인증 페이지
+ * 페이지 레벨에서 동기적으로 인증 체크하여 스켈레톤이 보이지 않도록 합니다.
  */
 const Page = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      removeAuthCookie();
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
   return (
     <Suspense
       fallback={
