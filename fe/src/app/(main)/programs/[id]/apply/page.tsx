@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -31,6 +38,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { ProgramDetailResponse } from "@/types/generated/api-schema";
 import * as Schema from "@/types/generated/api-schema";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import { cn } from "@/utils/shared/cn";
 import {
   formatDateRange,
@@ -78,9 +86,9 @@ interface ApplicationFormData {
 }
 
 /**
- * @description 활동 신청 페이지
+ * @description 활동 신청 페이지 콘텐츠
  */
-const ProgramApplyPage = () => {
+const ProgramApplyPageContent = () => {
   const params = useParams();
   const router = useRouter();
   const programId = params.id as string;
@@ -1366,6 +1374,38 @@ const ProgramApplyPage = () => {
       />
     </div>
   );
+};
+
+/**
+ * @description 활동 신청 페이지
+ */
+const ProgramApplyPage = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      removeAuthCookie();
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
+  return <ProgramApplyPageContent />;
 };
 
 export default ProgramApplyPage;

@@ -10,8 +10,10 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useSamsungBrowserWarning } from "@/hooks/shared/useSamsungBrowserWarning";
+import { AuthGuard } from "@/contexts/shared/guard";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETHomeRes } from "@/types/generated/home-types";
+import { isPublicRoute } from "@/utils/auth/is-public-route";
 
 /**
  * @description 하단 네브바 포함 레이아웃
@@ -30,6 +32,9 @@ export default function MainLayout({
   const isMyPage = pathname === LINK_URL.MY_PAGE;
   const isMissionPage = pathname === LINK_URL.MISSION;
   const hideTopBarState = useTopBarStore((state) => state.hideTopBar);
+
+  // 공개 경로가 아니면 AuthGuard 적용 (미들웨어와 동일한 로직)
+  const requiresAuth = !isPublicRoute(pathname);
 
   // 정적 경로는 본 페이지(Layout)에서 위와같이 pathname 기반으로 처리하고,
   // 동적 조건이 필요한 경우에만 스토어(useTopBarStore)의 hideTopBar를 제어합니다.
@@ -113,7 +118,7 @@ export default function MainLayout({
     }
   }, [isHomePage, isHomeLoading, homeData]);
 
-  return (
+  const layoutContent = (
     <div className="flex min-h-[100dvh] w-full flex-col items-center bg-white">
       {showOverlay && (
         <div
@@ -154,4 +159,7 @@ export default function MainLayout({
       </div>
     </div>
   );
+
+  // 보호가 필요한 경로에만 AuthGuard 적용
+  return requiresAuth ? <AuthGuard>{layoutContent}</AuthGuard> : layoutContent;
 }

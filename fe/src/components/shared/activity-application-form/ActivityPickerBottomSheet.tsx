@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useSidoList, useSigunguList } from "@/hooks/shared/useRegions";
 import { cn } from "@/utils/shared/cn";
 import type { ActivityApplicationFormData } from "./types";
@@ -333,7 +334,8 @@ export const ActivityPickerBottomSheet = ({
             </Typography>
           </label>
           <a
-            href="https://www.notion.so/youthvoice/2a845f524cd080d6ab97dd121d47e24b?source=copy_link#2a845f524cd080d0b276ca0f1769bdd5"
+            // TODO: 개인정보 처리방침 > 개인정보 제3자 동의 내용 블럭으로 이동되게
+            href={LINK_URL.TERMS_OF_SERVICE}
             target="_blank"
             rel="noopener noreferrer"
             className="text-main-500 underline"

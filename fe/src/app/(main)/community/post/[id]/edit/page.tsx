@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useLayoutEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
@@ -27,9 +27,11 @@ import {
   usePutCommunitiesPostsByTwoIds,
 } from "@/hooks/generated/communities-hooks";
 import useToggle from "@/hooks/shared/useToggle";
+import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type * as CommunityTypes from "@/types/generated/communities-types";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import {
   replaceEditorFileHrefWithUploadedUrls,
   replaceEditorImageSrcWithUploadedUrls,
@@ -882,6 +884,31 @@ const EditPageContent = () => {
 };
 
 const Page = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      removeAuthCookie();
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
   return (
     <Suspense>
       <EditPageContent />

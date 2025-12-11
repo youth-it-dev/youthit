@@ -1,11 +1,20 @@
 "use client";
 
-import { Suspense, useCallback, useEffect } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ReportReasonPage } from "@/components/community/ReportReasonPage";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { usePostReportcontent } from "@/hooks/generated/reports-hooks";
+import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 
 import { getErrorMessage } from "@/utils/shared/error";
 import { showToast } from "@/utils/shared/toast";
@@ -94,8 +103,36 @@ const ReportPageContent = () => {
  * @description 신고 페이지
  * - 게시글/댓글 신고 기능
  * - 신고 사유 선택 및 직접 작성
+ * 페이지 레벨에서 동기적으로 인증 체크하여 스켈레톤이 보이지 않도록 합니다.
  */
 const ReportPage = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      if (initialHasCookie) {
+        removeAuthCookie();
+      }
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect, initialHasCookie]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <ReportPageContent />

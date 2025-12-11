@@ -6,6 +6,7 @@ import axios, {
 import { onAuthStateChanged } from "firebase/auth";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { isPublicRoute } from "@/utils/auth/is-public-route";
 import { auth } from "./firebase";
 
 const getBaseURL = () => {
@@ -107,8 +108,9 @@ instance.interceptors.response.use(
         const user = auth.currentUser;
         if (!user && typeof window !== "undefined") {
           const currentPath = window.location.pathname;
-          // 로그인 페이지가 아니고, 이미 리다이렉트 중이 아닌 경우에만 리다이렉트
-          if (currentPath !== LINK_URL.LOGIN) {
+          // 공개 경로이거나 로그인 페이지인 경우 리다이렉트하지 않음
+          const isCurrentPathPublic = isPublicRoute(currentPath);
+          if (currentPath !== LINK_URL.LOGIN && !isCurrentPathPublic) {
             window.location.replace(LINK_URL.LOGIN);
           }
         }

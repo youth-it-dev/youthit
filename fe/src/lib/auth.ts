@@ -475,11 +475,21 @@ export const signOut = async (): Promise<void> => {
       await post("auth/logout");
     }
 
-    // 2. Firebase 로그아웃 (localStorage 자동 삭제)
+    // 2. 인증 쿠키 삭제 (미들웨어에서 빠른 체크를 위해)
+    if (typeof window !== "undefined") {
+      const { removeAuthCookie } = await import("@/utils/auth/auth-cookie");
+      removeAuthCookie();
+    }
+
+    // 3. Firebase 로그아웃 (localStorage 자동 삭제)
     await auth.signOut();
   } catch {
     debug.warn("로그아웃 실패");
     // 에러가 나도 로컬 로그아웃은 진행
+    if (typeof window !== "undefined") {
+      const { removeAuthCookie } = await import("@/utils/auth/auth-cookie");
+      removeAuthCookie();
+    }
     await auth.signOut();
   }
 };
