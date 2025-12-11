@@ -59,7 +59,8 @@ export const SuspensionDialogProvider = ({
   }, [showSuspensionDialog]);
 
   /**
-   * @description 로그아웃 처리 및 로그인 페이지로 리다이렉트
+   * @description 로그아웃 처리 및 메인페이지로 리다이렉트
+   * 자격정지 회원은 비회원처럼 사용 가능하도록 메인페이지로 이동
    */
   const handleLogout = useCallback(async () => {
     // 다이얼로그 닫기
@@ -83,8 +84,9 @@ export const SuspensionDialogProvider = ({
       const queryClient = getQueryClient();
       queryClient.clear();
     } finally {
-      // 성공/실패 여부와 관계없이 로그인 페이지로 리다이렉트
-      window.location.replace(LINK_URL.LOGIN);
+      // 성공/실패 여부와 관계없이 메인페이지로 리다이렉트
+      // 자격정지 회원은 비회원처럼 사용 가능하도록
+      window.location.replace(LINK_URL.HOME);
     }
   }, [close]);
 
