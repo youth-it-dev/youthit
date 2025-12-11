@@ -188,10 +188,11 @@ const LoginPageContent = () => {
             debug.log("기존 사용자 처리 완료", { hasNickname });
             handlePostLoginRouting(hasNickname);
           } catch (error) {
-            // 423 에러는 refetchUserData에서 이미 처리됨
-            // 여기서는 다른 에러만 처리
+            // 423 에러(자격정지) 처리
             if (error instanceof AxiosError && error.response?.status === 423) {
-              return; // 이미 모달이 띄워졌으므로 종료
+              // 이미 모달이 띄워졌으므로 종료
+              // Firebase Auth 로그아웃은 모달 확인 시 처리됨
+              return;
             }
             throw error;
           }
@@ -256,9 +257,11 @@ const LoginPageContent = () => {
             handlePostLoginRouting(hasNickname);
           })
           .catch((error) => {
-            // 423 에러는 refetchUserData에서 이미 처리됨 (모달 표시)
+            // 423 에러(자격정지) 처리
             if (error instanceof AxiosError && error.response?.status === 423) {
-              return; // 이미 모달이 띄워졌으므로 종료
+              // 이미 모달이 띄워졌으므로 종료
+              // Firebase Auth 로그아웃은 모달 확인 시 처리됨
+              return;
             }
             debug.error("사용자 정보 조회 실패:", error);
           });
@@ -314,19 +317,20 @@ const LoginPageContent = () => {
   };
 
   /**
-   * @description 자격정지 모달 확인 버튼 클릭 시 로그아웃 처리
+   * @description 자격정지 모달 확인 버튼 클릭 시 로그아웃 처리 및 메인페이지로 리다이렉트
    */
   const handleSuspensionConfirm = () => {
     setIsSuspensionModalOpen(false);
     logoutMutate(undefined, {
       onSuccess: () => {
         cleanupFrontendState();
-        router.replace(LINK_URL.LOGIN);
+        // 자격정지 회원은 비회원처럼 사용 가능하도록 메인페이지로 리다이렉트
+        router.replace(LINK_URL.HOME);
       },
       onError: () => {
-        // 에러가 나도 프론트엔드 상태 정리 후 로그인 페이지로 이동
+        // 에러가 나도 프론트엔드 상태 정리 후 메인페이지로 이동
         cleanupFrontendState();
-        router.replace(LINK_URL.LOGIN);
+        router.replace(LINK_URL.HOME);
       },
     });
   };
@@ -401,9 +405,11 @@ const LoginPageContent = () => {
           setIsLoading(false);
           handlePostLoginRouting(hasNickname);
         } catch (error) {
-          // 423 에러는 refetchUserData에서 이미 처리됨
+          // 423 에러(자격정지) 처리
           if (error instanceof AxiosError && error.response?.status === 423) {
-            return; // 이미 모달이 띄워졌으므로 종료
+            // 이미 모달이 띄워졌으므로 종료
+            // Firebase Auth 로그아웃은 모달 확인 시 처리됨
+            return;
           }
           debug.error("사용자 정보 조회 실패:", error);
           setIsLoading(false);
@@ -476,12 +482,12 @@ const LoginPageContent = () => {
       </div>
       <Modal
         isOpen={isSuspensionModalOpen}
-        title="자격정지된 회원입니다"
-        description="관리자에게 문의해주세요"
+        title="자격정지"
+        description="관리자에 의해 계정이 자격정지되었습니다. 자세한 사항은 관리자에게 문의해주세요."
         confirmText="확인"
         onConfirm={handleSuspensionConfirm}
         onClose={handleSuspensionConfirm}
-        variant="primary"
+        variant="danger"
         closeOnOverlayClick={false}
         closeOnEscape={false}
       />
