@@ -122,10 +122,12 @@ const ReportPage = () => {
       !hasRedirectedRef.current
     ) {
       hasRedirectedRef.current = true;
-      removeAuthCookie();
+      if (initialHasCookie) {
+        removeAuthCookie();
+      }
       window.location.replace(LINK_URL.LOGIN);
     }
-  }, [shouldRedirect]);
+  }, [shouldRedirect, initialHasCookie]);
 
   if (shouldRedirect) {
     return null;
