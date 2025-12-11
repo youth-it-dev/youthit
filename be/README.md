@@ -167,28 +167,16 @@ firebase deploy --only functions
 │   │   ├── urlConstants.js
 │   │   └── userConstants.js
 │   │
-│   ├── 📂 controllers/               # 컨트롤러 (요청/응답 처리)
-│   │   ├── adminLogsController.js
-│   │   ├── announcementController.js
-│   │   ├── authController.js
-│   │   ├── commentController.js
-│   │   ├── communityController.js
-│   │   ├── faqController.js
-│   │   ├── fcmController.js
-│   │   ├── fileController.js
-│   │   ├── homeController.js
-│   │   ├── imageController.js
-│   │   ├── missionController.js
-│   │   ├── notificationController.js
-│   │   ├── notionRewardHistoryController.js
-│   │   ├── notionUserController.js
-│   │   ├── programController.js
-│   │   ├── qnaController.js
-│   │   ├── reportContentController.js
-│   │   ├── storeController.js
-│   │   └── userController.js
+│   ├── 📂 utils/                      # 유틸리티 함수 (공통 도구)
+│   │   ├── fcmHelper.js
+│   │   ├── helpers.js
+│   │   ├── kakaoApiHelper.js
+│   │   ├── nicknameValidator.js
+│   │   ├── notionHelper.js
+│   │   ├── paginationHelper.js
+│   │   └── sanitizeHelper.js
 │   │
-│   ├── 📂 services/                  # 서비스 (비즈니스 로직)
+│   ├── 📂 services/                   # 서비스 (비즈니스 로직)
 │   │   ├── adminLogsService.js
 │   │   ├── announcementService.js
 │   │   ├── authService.js
@@ -217,77 +205,59 @@ firebase deploy --only functions
 │   │   ├── termsService.js
 │   │   └── userService.js
 │   │
-│   ├── 📂 routes/                     # 라우트 정의
-│   │   ├── adminLogs.js
-│   │   ├── announcements.js
-│   │   ├── auth.js
-│   │   ├── comments.js
-│   │   ├── communities.js
-│   │   ├── faqs.js
-│   │   ├── fcm.js
-│   │   ├── files.js
-│   │   ├── home.js
-│   │   ├── images.js
-│   │   ├── missions.js
-│   │   ├── notifications.js
-│   │   ├── notionRewardHistory.js
-│   │   ├── notionUsers.js
-│   │   ├── programs.js
-│   │   ├── qna.js
-│   │   ├── reportContent.js
-│   │   ├── store.js
-│   │   └── users.js
+│   ├── 📂 controllers/                # 컨트롤러 (요청/응답 처리)
+│   │   ├── adminLogsController.js
+│   │   ├── announcementController.js
+│   │   ├── authController.js
+│   │   ├── commentController.js
+│   │   ├── communityController.js
+│   │   ├── faqController.js
+│   │   ├── fcmController.js
+│   │   ├── fileController.js
+│   │   ├── homeController.js
+│   │   ├── imageController.js
+│   │   ├── missionController.js
+│   │   ├── notificationController.js
+│   │   ├── notionRewardHistoryController.js
+│   │   ├── notionUserController.js
+│   │   ├── programController.js
+│   │   ├── qnaController.js
+│   │   ├── reportContentController.js
+│   │   ├── storeController.js
+│   │   └── userController.js
 │   │
-│   ├── 📂 services/                  # 서비스 (비즈니스 로직)
-│   │   ├── authService.js            # 인증 서비스
-│   │   ├── userService.js            # 사용자 서비스
-│   │   ├── missionService.js          # 미션 서비스
-│   │   ├── rewardService.js           # 리워드 서비스
-│   │   ├── communityService.js        # 커뮤니티 서비스
-│   │   ├── notionUserService.js       # Notion 사용자 동기화
-│   │   └── ...
-│   │
-│   ├── 📂 routes/                     # 라우트 정의
-│   │   ├── adminLogs.js
-│   │   ├── announcements.js
-│   │   ├── auth.js
-│   │   ├── comments.js
-│   │   ├── communities.js
-│   │   ├── faqs.js
-│   │   ├── fcm.js
-│   │   ├── files.js
-│   │   ├── home.js
-│   │   ├── images.js
-│   │   ├── missions.js
-│   │   ├── notifications.js
-│   │   ├── notionRewardHistory.js
-│   │   ├── notionUsers.js
-│   │   ├── programs.js
-│   │   ├── qna.js
-│   │   ├── reportContent.js
-│   │   ├── store.js
-│   │   └── users.js
-│   │
-│   ├── 📂 middleware/                 # 미들웨어
+│   ├── 📂 middleware/                 # 미들웨어 (요청/응답 처리)
 │   │   ├── authGuard.js               # 인증 가드
 │   │   ├── errorHandler.js            # 에러 핸들러
+│   │   ├── optionalAuth.js            # 선택적 인증
 │   │   ├── responseHandler.js         # 응답 포맷터
-│   │   ├── rewardHandler.js           # 리워드 부여
-│   │   └── optionalAuth.js            # 선택적 인증
+│   │   └── rewardHandler.js           # 리워드 부여
 │   │
-│   ├── 📂 triggers/                   # Firebase Triggers
+│   ├── 📂 routes/                     # 라우트 정의 (API 엔드포인트)
+│   │   ├── adminLogs.js
+│   │   ├── announcements.js
+│   │   ├── auth.js
+│   │   ├── comments.js
+│   │   ├── communities.js
+│   │   ├── faqs.js
+│   │   ├── fcm.js
+│   │   ├── files.js
+│   │   ├── home.js
+│   │   ├── images.js
+│   │   ├── missions.js
+│   │   ├── notifications.js
+│   │   ├── notionRewardHistory.js
+│   │   ├── notionUsers.js
+│   │   ├── programs.js
+│   │   ├── qna.js
+│   │   ├── reportContent.js
+│   │   ├── store.js
+│   │   └── users.js
+│   │
+│   ├── 📂 triggers/                   # Firebase Triggers (이벤트 핸들러)
 │   │   ├── authTrigger.js             # Auth 이벤트 (onCreate/onDelete)
 │   │   ├── missionResetScheduler.js   # 미션 일일 리셋 스케줄러
 │   │   └── storageCleanupScheduler.js # 스토리지 정리 스케줄러
-│   │
-│   ├── 📂 utils/                      # 유틸리티 함수
-│   │   ├── fcmHelper.js
-│   │   ├── helpers.js
-│   │   ├── kakaoApiHelper.js
-│   │   ├── nicknameValidator.js
-│   │   ├── notionHelper.js
-│   │   ├── paginationHelper.js
-│   │   └── sanitizeHelper.js
 │   │
 │   └── 📂 scripts/                    # 유틸리티 스크립트
 │       ├── createFirestoreCollections.js
