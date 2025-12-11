@@ -466,6 +466,8 @@ class NotificationService {
     let successfulUserIds = [];
     let failedUserIds = [];
     let rewardFailedUserIds = [];
+    let fcmFailedUserIds = [];
+    let pushFilteredUserIds = [];
 
     try {
       const { title, content, userIds, nadumAmount, expiresAt, isMarketingNotification } = await this.getNotificationData(pageId);
@@ -725,7 +727,6 @@ class NotificationService {
       // 알림 전송 (나다움 지급 성공한 사용자에게만, 배치 처리)
       let totalSuccessCount = 0;
       let totalFailureCount = 0;
-      let sendResult = { successCount: 0, failureCount: 0 };
 
       try {
         // 순환 참조 방지를 위해 lazy require
@@ -755,13 +756,24 @@ class NotificationService {
             const batchSuccessCount = batchResult?.successCount || batchResult?.sentCount || 0;
             const batchFailureCount = batchResult?.failureCount || batchResult?.failedCount || 0;
             const batchSuccessfulUserIds = batchResult?.successfulUserIds || [];
+            const batchFilteredOutUserIds = batchResult?.filteredOutUserIds || [];
 
             totalSuccessCount += batchSuccessCount;
             totalFailureCount += batchFailureCount;
             successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
 
-            const batchFailedUserIds = batch.filter(userId => !batchSuccessfulUserIds.includes(userId));
+            const batchFailedUserIds = batch.filter(
+              userId =>
+                !batchSuccessfulUserIds.includes(userId) &&
+                !batchFilteredOutUserIds.includes(userId)
+            );
             failedUserIds = failedUserIds.concat(batchFailedUserIds);
+            fcmFailedUserIds = fcmFailedUserIds.concat(batchFailedUserIds);
+
+            // pushTerms 미동의로 제외된 사용자 수집
+            if (batchFilteredOutUserIds.length > 0) {
+              pushFilteredUserIds = pushFilteredUserIds.concat(batchFilteredOutUserIds);
+            }
 
             console.log(`[알림 전송 배치 완료] 성공=${batchSuccessCount}, 실패=${batchFailureCount} (총 진행률: ${totalSuccessCount + totalFailureCount}/${rewardedUserIds.length})`);
 
@@ -778,10 +790,6 @@ class NotificationService {
           }
         }
 
-        sendResult = {
-          successCount: totalSuccessCount,
-          failureCount: totalFailureCount,
-        };
       } catch (notificationError) {
         fcmFailed = true;
         const fcmError = new Error(`알림 전송에 실패했습니다: ${notificationError.message}`);
@@ -791,8 +799,9 @@ class NotificationService {
         throw fcmError;
       }
 
-      const successCount = totalSuccessCount;
-      const failureCount = totalFailureCount;
+      // 사용자 기준 성공/실패 카운트 (토큰 수가 아닌 사용자 단위)
+      const successCount = successfulUserIds.length;
+      const userFailureCount = finalUserIds.length - successCount;
       // 전체 사용자 수는 원본 userIds.length (마케팅 동의하지 않은 사용자 포함)
       const totalCount = userIds.length;
       const rewardFailureCount = nadumAmount > 0 ? finalUserIds.length - rewardedUserIds.length : 0;
@@ -801,8 +810,15 @@ class NotificationService {
       const successfulUserCount = successfulUserIds.length;
       const totalUserCount = rewardedUserIds.length;
 
-      // 마케팅 동의하지 않은 사용자도 실패로 처리
-      const totalFailureCountWithMarketing = failureCount + marketingFilteredFailedUserIds.length;
+      // 동의 미완료/필터 제외 사용자 집계
+      const termsFilteredIds = [
+        ...new Set([
+          ...marketingFilteredFailedUserIds,
+          ...pushFilteredUserIds,
+        ]),
+      ];
+
+      const failureCountUsers = (finalUserIds.length - successCount);
 
       // 전송 상태 결정 (전체 사용자 기준)
       // - 마케팅 동의하지 않은 사용자가 있으면 무조건 부분 완료 또는 실패
@@ -824,17 +840,31 @@ class NotificationService {
         fcmFailed = true;
       }
 
+      const fcmSendFailedUserIds = fcmFailedUserIds;
+
       return {
         success: true,
         notificationId: pageId,
         title,
         totalUsers: totalCount,
-        successCount,
-        failureCount: totalFailureCountWithMarketing,
+        successCount, // 사용자 단위 성공 수
+        failureCount: failureCountUsers, // 사용자 단위 실패 + 동의 미완료
         rewardFailureCount,
         rewardedUsers: rewardedUserIds.length,
-        failedUserIds: failedUserIds, // 실패한 유저 ID 배열 (마케팅 동의하지 않은 사용자 포함)
-        sendResult,
+        termsFiltered:
+          termsFilteredIds.length > 0
+            ? {
+                userIds: termsFilteredIds,
+                message: "푸시/마케팅 동의 미완료로 전송 제외",
+              }
+            : [],
+        fcmSendFailed:
+          fcmSendFailedUserIds.length > 0
+            ? {
+                userIds: fcmSendFailedUserIds,
+                message: "FCM 토큰 없음/만료 또는 전송 오류로 실패",
+              }
+            : [],
       };
     } catch (error) {
       console.error("알림 전송 실패:", error.message);

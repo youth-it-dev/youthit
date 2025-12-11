@@ -198,6 +198,7 @@ class FCMService {
     try {
       // 사용자 ID 중복 제거
       const uniqueUserIds = Array.from(new Set(userIds));
+      const filteredOutUserIds = [];
 
       if (uniqueUserIds.length > 0) {
         const saveAllPromises = uniqueUserIds.map((userId) =>
@@ -246,13 +247,15 @@ class FCMService {
           users.forEach((user) => {
             if (user?.pushTermsAgreed === true) {
               approvedUserIds.push(user.id);
+            } else if (user?.id) {
+              filteredOutUserIds.push(user.id); // 푸시 미동의 사용자
             }
           });
         }
       }
 
       if (approvedUserIds.length === 0) {
-        return {sentCount: 0, failedCount: 0, successfulUserIds: []};
+        return {sentCount: 0, failedCount: 0, successfulUserIds: [], filteredOutUserIds};
       }
 
       const tokenPromises = approvedUserIds.map((userId) => this.getUserTokens(userId));
@@ -317,6 +320,7 @@ class FCMService {
         sentCount: result.successCount,
         failedCount: result.failureCount,
         successfulUserIds: successfulUserIds,
+        filteredOutUserIds,
       };
     } catch (error) {
       console.error("다중 사용자 알림 전송 실패:", error);
