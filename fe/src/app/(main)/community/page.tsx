@@ -27,6 +27,7 @@ import ProgramFilterBottomSheet, {
 } from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
 import { Typography } from "@/components/shared/typography";
+import HorizontalScrollContainer from "@/components/shared/ui/horizontal-scroll-container";
 import Modal from "@/components/shared/ui/modal";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
@@ -692,7 +693,10 @@ const CommunityPageContent = () => {
               </Typography>
               <span className="text-xl">❤️</span>
             </div>
-            <div className="scrollbar-hide flex gap-3 overflow-x-auto">
+            <HorizontalScrollContainer
+              containerClassName="flex gap-3"
+              showGradient={false}
+            >
               {programsData.slice(0, 10).map((program) => {
                 const getProgramBgColor = (programType?: string): string => {
                   switch (programType) {
@@ -761,7 +765,7 @@ const CommunityPageContent = () => {
                   </div>
                 );
               })}
-            </div>
+            </HorizontalScrollContainer>
           </div>
         )}
 
