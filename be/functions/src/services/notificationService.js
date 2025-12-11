@@ -460,390 +460,77 @@ class NotificationService {
   async sendNotification(pageId) {
     let finalStatus = null;
     let shouldUpdateLastPaymentDate = false;
-    let rewardFailed = false;
-    let fcmFailed = false;
     let paymentResult = null;
-    let successfulUserIds = [];
     let failedUserIds = [];
     let rewardFailedUserIds = [];
+    let rewardFailed = false;
+    let fcmFailed = false;
 
     try {
-      const { title, content, userIds, nadumAmount, expiresAt, isMarketingNotification } = await this.getNotificationData(pageId);
+      const notificationData = await this.getNotificationData(pageId);
+      const filtered = await this.filterUsersForNotification(
+        notificationData.userIds,
+        notificationData.title,
+        notificationData.content,
+        notificationData.isMarketingNotification
+      );
+      failedUserIds = failedUserIds.concat(filtered.initialFailedUserIds);
 
-      if (!title || !content) {
-        const error = new Error("알림 제목과 내용은 필수입니다.");
-        error.code = ERROR_CODES.INVALID_NOTIFICATION_DATA;
-        error.statusCode = 400;
-        throw error;
-      }
+      const rewards = await this.processRewards(
+        pageId,
+        filtered.finalUserIds,
+        notificationData.nadumAmount,
+        notificationData.expiresAt
+      );
 
-      // 이벤트∙홍보 알림인 경우 marketingTermsAgreed가 true인 사용자만 필터링
-      let filteredUserIds = userIds;
-      let marketingFilteredFailedUserIds = []; // 마케팅 동의하지 않은 사용자들
-      if (isMarketingNotification) {
-        try {
-          // 사용자 정보를 조회하여 marketingTermsAgreed가 true인 사용자만 필터링
-          const chunks = [];
-          for (let i = 0; i < userIds.length; i += 10) {
-            chunks.push(userIds.slice(i, i + 10));
-          }
-
-          const userResults = await Promise.all(
-            chunks.map((chunk) =>
-              this.firestoreService.getCollectionWhereIn("users", "__name__", chunk)
-            )
-          );
-
-          const users = userResults.flat();
-          const approvedUsers = users.filter((user) => user?.marketingTermsAgreed === true);
-          const rejectedUsers = users.filter((user) => user?.marketingTermsAgreed !== true);
-          
-          filteredUserIds = approvedUsers.map((user) => user.id);
-          marketingFilteredFailedUserIds = rejectedUsers.map((user) => user.id);
-
-          console.log(`[알림 필터링] 이벤트∙홍보 알림: 전체 ${userIds.length}명 중 ${filteredUserIds.length}명에게 전송, ${marketingFilteredFailedUserIds.length}명 마케팅 동의 없음`);
-          
-          if (marketingFilteredFailedUserIds.length > 0) {
-            failedUserIds = failedUserIds.concat(marketingFilteredFailedUserIds);
-            console.log(`[알림 필터링] 마케팅 동의하지 않은 사용자 ${marketingFilteredFailedUserIds.length}명을 실패 회원으로 추가`);
-
-            const savePromises = marketingFilteredFailedUserIds.map((userId) =>
-              this.saveNotification(userId, {
-                title,
-                message: content,
-                type: "announcement",
-                postId: "",
-                communityId: "",
-                commentId: ""
-              }).catch((err) => {
-                console.error(`[알림 저장 실패] userId=${userId}:`, err);
-              })
-            );
-            await Promise.all(savePromises);
-          }
-        } catch (filterError) {
-          console.error("[알림 필터링] marketingTermsAgreed 필터링 실패:", filterError.message);
-          // 필터링 실패 시 원본 userIds 사용
-          filteredUserIds = userIds;
-          marketingFilteredFailedUserIds = [];
-        }
-      }
-
-      // 필터링된 사용자가 없으면 에러
-      if (filteredUserIds.length === 0) {
-        const error = new Error("마케팅 동의 사용자가 없습니다.");
-        error.code = ERROR_CODES.NO_VALID_USER_IDS;
-        error.statusCode = 400;
-        throw error;
-      }
-
-      // 필터링된 사용자 ID로 교체
-      const finalUserIds = filteredUserIds;
-
-      if (nadumAmount === 0) {
-        paymentResult = PAYMENT_RESULT.NOT_APPLICABLE;
-      }
-
-      let rewardResults = [];
-      let rewardedUserIds = [];
-
-      // 나다움 지급 (배치 처리 + 부분 성공 허용)
-      if (nadumAmount > 0) {
-        try {
-          let totalRewardSuccessCount = 0;
-          let totalRewardFailureCount = 0;
-
-          // 배치 처리로 나다움 지급
-          for (let i = 0; i < finalUserIds.length; i += BATCH_SIZE) {
-            const batch = finalUserIds.slice(i, i + BATCH_SIZE);
-            console.log(`[나다움 지급 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(finalUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, finalUserIds.length)}번째)`);
-
-            const batchPromises = batch.map(async (userId) => {
-              const historyId = `additional_point_${pageId}_${userId}`;
-              try {
-                const rewardOptions = expiresAt ? { expiresAt } : undefined;
-                const { isDuplicate } = await this.rewardService.addRewardToUser(
-                  userId,
-                  nadumAmount,
-                  'additional_point',
-                  historyId,
-                  null,  // actionTimestamp: 서버 시간 사용
-                  true,
-                  null,
-                  rewardOptions
-                );
-                
-                if (isDuplicate) {
-                  console.log(`[나다움 중복 지급 방지] userId=${userId}, pageId=${pageId}`);
-                  return { userId, success: true, duplicate: true };
-                }
-                
-                return { userId, success: true };
-              } catch (error) {
-                console.error(`[나다움 지급 실패] userId=${userId}:`, error.message);
-                return { userId, success: false, error: error.message };
-              }
-            });
-
-            const batchResults = await Promise.allSettled(batchPromises);
-            const batchRewardedUserIds = batchResults
-              .filter(result => result.status === 'fulfilled' && result.value.success && !result.value.duplicate)
-              .map(result => result.value.userId);
-
-            totalRewardSuccessCount += batchRewardedUserIds.length;
-            totalRewardFailureCount += batch.length - batchRewardedUserIds.length;
-            rewardedUserIds = rewardedUserIds.concat(batchRewardedUserIds);
-
-            console.log(`[나다움 지급 배치 완료] 성공=${batchRewardedUserIds.length}, 실패=${batch.length - batchRewardedUserIds.length} (총 진행률: ${totalRewardSuccessCount + totalRewardFailureCount}/${finalUserIds.length})`);
-
-            // 마지막 배치가 아니면 지연
-            if (i + BATCH_SIZE < finalUserIds.length) {
-              console.log(`[나다움 지급] ${DELAY_MS/1000}초 대기 중...`);
-              await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-            }
-          }
-
-          console.log(`[나다움 지급 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`);
-
-          // 지급 실패한 유저 ID 계산
-          rewardFailedUserIds = finalUserIds.filter(userId => !rewardedUserIds.includes(userId));
-
-          // 지급 결과 결정
-          if (totalRewardSuccessCount === 0) {
-            paymentResult = PAYMENT_RESULT.FAILED;
-            rewardFailed = true;
-            // 지급 실패한 유저는 모든 유저
-            rewardFailedUserIds = finalUserIds;
-            const error = new Error("모든 사용자에게 나다움 지급에 실패했습니다.");
-            error.code = ERROR_CODES.REWARD_FAILED;
-            error.statusCode = 500;
-            throw error;
-          } else if (totalRewardSuccessCount === finalUserIds.length) {
-            paymentResult = PAYMENT_RESULT.COMPLETED;
-          } else {
-            paymentResult = PAYMENT_RESULT.PARTIAL;
-          }
-        } catch (rewardError) {
-          paymentResult = PAYMENT_RESULT.FAILED;
-          rewardFailed = true;
-          // 에러 발생 시 지급 실패한 유저는 모든 유저 (rewardedUserIds가 비어있거나 부분 성공)
-          if (rewardFailedUserIds.length === 0) {
-            rewardFailedUserIds = finalUserIds.filter(userId => !rewardedUserIds.includes(userId));
-          }
-          console.error("나다움 지급 처리 실패:", rewardError.message);
-          if (!rewardError.code) {
-            rewardError.code = ERROR_CODES.REWARD_FAILED;
-            rewardError.statusCode = 500;
-          }
-          throw rewardError;
-        }
-      } else if (nadumAmount < 0) {
-        try {
-          let totalRewardSuccessCount = 0;
-          let totalRewardFailureCount = 0;
-
-          // 배치 처리로 나다움 차감
-          for (let i = 0; i < finalUserIds.length; i += BATCH_SIZE) {
-            const batch = finalUserIds.slice(i, i + BATCH_SIZE);
-            console.log(`[나다움 차감 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(finalUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, finalUserIds.length)}번째)`);
-
-            const batchPromises = batch.map(async (userId) => {
-              const historyId = `additional_point_${pageId}_${userId}`;
-              try {
-                const { isDuplicate, deducted } = await this.rewardService.deductRewardFromUser(
-                  userId,
-                  Math.abs(nadumAmount),
-                  'additional_point',
-                  historyId,
-                  null,  // actionTimestamp: 서버 시간 사용
-                  true,
-                  null
-                );
-                
-                if (isDuplicate) {
-                  console.log(`[나다움 중복 차감 방지] userId=${userId}, pageId=${pageId}`);
-                  return { userId, success: true, duplicate: true, deducted: 0 };
-                }
-                
-                return { userId, success: true, deducted };
-              } catch (error) {
-                console.error(`[나다움 차감 실패] userId=${userId}:`, error.message);
-                return { userId, success: false, error: error.message };
-              }
-            });
-
-            const batchResults = await Promise.allSettled(batchPromises);
-            const batchRewardedUserIds = batchResults
-              .filter(result => result.status === 'fulfilled' && result.value.success && !result.value.duplicate)
-              .map(result => result.value.userId);
-
-            totalRewardSuccessCount += batchRewardedUserIds.length;
-            totalRewardFailureCount += batch.length - batchRewardedUserIds.length;
-            rewardedUserIds = rewardedUserIds.concat(batchRewardedUserIds);
-
-            console.log(`[나다움 차감 배치 완료] 성공=${batchRewardedUserIds.length}, 실패=${batch.length - batchRewardedUserIds.length} (총 진행률: ${totalRewardSuccessCount + totalRewardFailureCount}/${finalUserIds.length})`);
-
-            // 마지막 배치가 아니면 지연
-            if (i + BATCH_SIZE < finalUserIds.length) {
-              console.log(`[나다움 차감] ${DELAY_MS/1000}초 대기 중...`);
-              await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-            }
-          }
-
-          console.log(`[나다움 차감 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`);
-
-          // 지급 실패한 유저 ID 계산
-          rewardFailedUserIds = finalUserIds.filter(userId => !rewardedUserIds.includes(userId));
-
-          // 차감은 실패해도 알림 자체는 진행 가능하게 유지(정책에 따라 조정)
-          if (totalRewardSuccessCount === 0) {
-            paymentResult = PAYMENT_RESULT.FAILED;
-          } else if (totalRewardSuccessCount === finalUserIds.length) {
-            paymentResult = PAYMENT_RESULT.COMPLETED;
-          } else {
-            paymentResult = PAYMENT_RESULT.PARTIAL;
-          }
-        } catch (rewardError) {
-          paymentResult = PAYMENT_RESULT.FAILED;
-          rewardFailed = true;
-          console.error("나다움 차감 처리 실패:", rewardError.message);
-          if (!rewardError.code) {
-            rewardError.code = ERROR_CODES.REWARD_FAILED;
-            rewardError.statusCode = 500;
-          }
-          throw rewardError;
-        }
-      } else {
-        rewardedUserIds = finalUserIds;
-        rewardFailedUserIds = []; // 나다움 지급이 없으면 지급 실패 없음
-        // 나다움 지급이 없으면 지급 결과 업데이트 불필요
-      }
-
-      // 지급 실패한 유저는 알림 전송도 실패한 것으로 처리
+      rewardFailedUserIds = rewards.rewardFailedUserIds;
+      paymentResult = rewards.paymentResult;
+      rewardFailed = rewards.rewardFailed;
       failedUserIds = failedUserIds.concat(rewardFailedUserIds);
 
-      // 알림 전송 (나다움 지급 성공한 사용자에게만, 배치 처리)
-      let totalSuccessCount = 0;
-      let totalFailureCount = 0;
-      let sendResult = { successCount: 0, failureCount: 0 };
+      const fcm = await this.sendFcmBatches(
+        filtered.finalUserIds,
+        rewards.rewardedUserIds,
+        notificationData.title,
+        notificationData.content,
+        notificationData.isMarketingNotification
+      );
 
-      try {
-        // 순환 참조 방지를 위해 lazy require
-        const fcmHelper = require('../utils/fcmHelper');
+      failedUserIds = failedUserIds.concat(fcm.fcmFailedUserIds);
+      fcmFailed = fcm.fcmFailedUserIds.length > 0;
 
-        // 배치 처리로 알림 전송
-        for (let i = 0; i < rewardedUserIds.length; i += BATCH_SIZE) {
-          const batch = rewardedUserIds.slice(i, i + BATCH_SIZE);
-          console.log(`[알림 전송 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(rewardedUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, rewardedUserIds.length)}번째)`);
-
-          try {
-            const batchResult = await fcmHelper.sendNotificationToUsers(
-              batch,
-              title,
-              content,
-              "announcement",
-              "",
-              "",
-              "",
-              "",
-              {
-                // 마케팅 알림이면 pushTermsAgreed 필터를 건너뛰고, 마케팅 동의만으로 전송
-                skipPushTermsFilter: isMarketingNotification,
-              }
-            );
-
-            const batchSuccessCount = batchResult?.successCount || batchResult?.sentCount || 0;
-            const batchFailureCount = batchResult?.failureCount || batchResult?.failedCount || 0;
-            const batchSuccessfulUserIds = batchResult?.successfulUserIds || [];
-
-            totalSuccessCount += batchSuccessCount;
-            totalFailureCount += batchFailureCount;
-            successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
-
-            const batchFailedUserIds = batch.filter(userId => !batchSuccessfulUserIds.includes(userId));
-            failedUserIds = failedUserIds.concat(batchFailedUserIds);
-
-            console.log(`[알림 전송 배치 완료] 성공=${batchSuccessCount}, 실패=${batchFailureCount} (총 진행률: ${totalSuccessCount + totalFailureCount}/${rewardedUserIds.length})`);
-
-            // 마지막 배치가 아니면 지연
-            if (i + BATCH_SIZE < rewardedUserIds.length) {
-              console.log(`[알림 전송] ${DELAY_MS/1000}초 대기 중...`);
-              await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-            }
-          } catch (batchError) {
-            console.error(`[알림 전송 배치 실패] 배치 ${Math.floor(i / BATCH_SIZE) + 1}:`, batchError.message);
-            totalFailureCount += batch.length;
-            failedUserIds = failedUserIds.concat(batch);
-            // 배치 실패해도 다음 배치 계속 진행
-          }
-        }
-
-        sendResult = {
-          successCount: totalSuccessCount,
-          failureCount: totalFailureCount,
-        };
-      } catch (notificationError) {
-        fcmFailed = true;
-        const fcmError = new Error(`알림 전송에 실패했습니다: ${notificationError.message}`);
-        fcmError.code = ERROR_CODES.FCM_SEND_FAILED;
-        fcmError.statusCode = 500;
-        fcmError.originalError = notificationError;
-        throw fcmError;
-      }
-
-      const successCount = totalSuccessCount;
-      const failureCount = totalFailureCount;
-      // 전체 사용자 수는 원본 userIds.length (마케팅 동의하지 않은 사용자 포함)
-      const totalCount = userIds.length;
-      const rewardFailureCount = nadumAmount > 0 ? finalUserIds.length - rewardedUserIds.length : 0;
-
-
-      const successfulUserCount = successfulUserIds.length;
-      const totalUserCount = rewardedUserIds.length;
-
-      // 마케팅 동의하지 않은 사용자도 실패로 처리
-      const totalFailureCountWithMarketing = failureCount + marketingFilteredFailedUserIds.length;
-
-      // 전송 상태 결정 (전체 사용자 기준)
-      // - 마케팅 동의하지 않은 사용자가 있으면 무조건 부분 완료 또는 실패
-      if (marketingFilteredFailedUserIds.length > 0 && successfulUserCount > 0) {
-        // 일부는 전송 성공, 일부는 마케팅 동의 없음 → 부분 완료
-        finalStatus = SEND_STATUS.PARTIAL;
-        shouldUpdateLastPaymentDate = true;
-      } else if (successfulUserCount === totalUserCount && successfulUserCount > 0) {
-        // 모든 필터링된 사용자에게 전송 성공
-        finalStatus = SEND_STATUS.COMPLETED;
-        shouldUpdateLastPaymentDate = true;
-      } else if (successfulUserCount > 0) {
-        // 일부만 전송 성공
-        finalStatus = SEND_STATUS.PARTIAL;
-        shouldUpdateLastPaymentDate = true;
-      } else {
-        // 전송 실패
-        finalStatus = SEND_STATUS.FAILED;
-        fcmFailed = true;
-      }
-
-      return {
-        success: true,
+      const outcome = this.buildSendOutcome({
         notificationId: pageId,
-        title,
-        totalUsers: totalCount,
-        successCount,
-        failureCount: totalFailureCountWithMarketing,
-        rewardFailureCount,
-        rewardedUsers: rewardedUserIds.length,
-        failedUserIds: failedUserIds, // 실패한 유저 ID 배열 (마케팅 동의하지 않은 사용자 포함)
-        sendResult,
-      };
+        title: notificationData.title,
+        userIds: notificationData.userIds,
+        finalUserIds: filtered.finalUserIds,
+        rewardedUserIds: rewards.rewardedUserIds,
+        successfulUserIds: fcm.successfulUserIds,
+        marketingFilteredFailedUserIds: filtered.marketingFilteredFailedUserIds,
+        pushFilteredUserIds: fcm.pushFilteredUserIds,
+        fcmFailedUserIds: fcm.fcmFailedUserIds,
+        nadumAmount: notificationData.nadumAmount,
+        paymentResult,
+      });
+
+      finalStatus = outcome.finalStatus;
+      shouldUpdateLastPaymentDate = outcome.shouldUpdateLastPaymentDate;
+      paymentResult = outcome.paymentResult;
+      failedUserIds = [
+        ...new Set([
+          ...failedUserIds,
+          ...(outcome.failedUserIds || []),
+          ...rewardFailedUserIds,
+        ]),
+      ];
+
+      return outcome.responseData;
     } catch (error) {
       console.error("알림 전송 실패:", error.message);
 
-      // 에러 발생 시 최종 상태 결정
       if (!finalStatus) {
         finalStatus = SEND_STATUS.FAILED;
       }
-      // 나다움 지급 실패 시 지급 결과 설정
       if (rewardFailed && !paymentResult) {
         paymentResult = PAYMENT_RESULT.FAILED;
       }
@@ -853,18 +540,21 @@ class NotificationService {
       }
 
       const serviceError = new Error(`알림 전송에 실패했습니다: ${error.message}`);
-      serviceError.code = fcmFailed ? ERROR_CODES.FCM_SEND_FAILED : (rewardFailed ? ERROR_CODES.REWARD_FAILED : ERROR_CODES.FCM_SEND_FAILED);
+      serviceError.code = fcmFailed
+        ? ERROR_CODES.FCM_SEND_FAILED
+        : rewardFailed
+          ? ERROR_CODES.REWARD_FAILED
+          : ERROR_CODES.FCM_SEND_FAILED;
       serviceError.statusCode = 500;
       serviceError.originalError = error;
       throw serviceError;
     } finally {
-      // Notion 필드 배치 업데이트 (한 번의 API 호출로 처리)
       try {
         await this.updateNotionFieldsBatch(pageId, {
           finalStatus,
           shouldUpdateLastPaymentDate,
           paymentResult,
-          clearSelected: true, // 전송 후 "선택" 체크박스 해제
+          clearSelected: true,
           failedUserIds: failedUserIds || [],
           rewardFailedUserIds: rewardFailedUserIds || [],
         });
@@ -872,6 +562,443 @@ class NotificationService {
         console.warn("Notion 필드 업데이트 실패:", updateError.message);
       }
     }
+  }
+
+  /**
+   * reward 배치 공통 처리
+   */
+  async processRewardBatch(batch, pageId, nadumAmount, expiresAt) {
+    const options = expiresAt ? { expiresAt } : undefined;
+    return Promise.allSettled(
+      batch.map(async (userId) => {
+        const historyId = `additional_point_${pageId}_${userId}`;
+        try {
+          const result =
+            nadumAmount > 0
+              ? await this.rewardService.addRewardToUser(
+                  userId,
+                  nadumAmount,
+                  "additional_point",
+                  historyId,
+                  null,
+                  true,
+                  null,
+                  options
+                )
+              : await this.rewardService.deductRewardFromUser(
+                  userId,
+                  Math.abs(nadumAmount),
+                  "additional_point",
+                  historyId,
+                  null,
+                  true,
+                  null
+                );
+
+          return { userId, success: true, duplicate: result.isDuplicate };
+        } catch (err) {
+          return { userId, success: false, error: err.message };
+        }
+      })
+    );
+  }
+
+  /**
+   * 마케팅/푸시 동의 필터링 처리
+   */
+  async filterUsersForNotification(userIds, title, content, isMarketingNotification) {
+    let filteredUserIds = userIds;
+    let marketingFilteredFailedUserIds = [];
+    let failedUserIds = [];
+
+    if (isMarketingNotification) {
+      try {
+        const chunks = [];
+        for (let i = 0; i < userIds.length; i += 10) {
+          chunks.push(userIds.slice(i, i + 10));
+        }
+
+        const userResults = await Promise.all(
+          chunks.map((chunk) =>
+            this.firestoreService.getCollectionWhereIn("users", "__name__", chunk)
+          )
+        );
+
+        const users = userResults.flat();
+        const approvedUsers = users.filter((user) => user?.marketingTermsAgreed === true);
+        const rejectedUsers = users.filter((user) => user?.marketingTermsAgreed !== true);
+
+        filteredUserIds = approvedUsers.map((user) => user.id);
+        marketingFilteredFailedUserIds = rejectedUsers.map((user) => user.id);
+
+        console.log(
+          `[알림 필터링] 이벤트∙홍보 알림: 전체 ${userIds.length}명 중 ${filteredUserIds.length}명에게 전송, ${marketingFilteredFailedUserIds.length}명 마케팅 동의 없음`
+        );
+
+        if (marketingFilteredFailedUserIds.length > 0) {
+          failedUserIds = failedUserIds.concat(marketingFilteredFailedUserIds);
+          console.log(
+            `[알림 필터링] 마케팅 동의하지 않은 사용자 ${marketingFilteredFailedUserIds.length}명을 실패 회원으로 추가`
+          );
+
+          const savePromises = marketingFilteredFailedUserIds.map((userId) =>
+            this.saveNotification(userId, {
+              title,
+              message: content,
+              type: "announcement",
+              postId: "",
+              communityId: "",
+              commentId: "",
+            }).catch((err) => {
+              console.error(`[알림 저장 실패] userId=${userId}:`, err);
+            })
+          );
+          await Promise.all(savePromises);
+        }
+      } catch (filterError) {
+        console.error("[알림 필터링] marketingTermsAgreed 필터링 실패:", filterError.message);
+        filteredUserIds = userIds;
+        marketingFilteredFailedUserIds = [];
+      }
+    }
+
+    if (filteredUserIds.length === 0) {
+      const error = new Error("마케팅 동의 사용자가 없습니다.");
+      error.code = ERROR_CODES.NO_VALID_USER_IDS;
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return {
+      finalUserIds: filteredUserIds,
+      marketingFilteredFailedUserIds,
+      initialFailedUserIds: failedUserIds,
+    };
+  }
+
+  /**
+   * 나다움 지급/차감/미해당 처리
+   */
+  async processRewards(pageId, finalUserIds, nadumAmount, expiresAt) {
+    let rewardedUserIds = [];
+    let rewardFailedUserIds = [];
+    let paymentResult = null;
+    let rewardFailed = false;
+
+    if (nadumAmount === 0) {
+      paymentResult = PAYMENT_RESULT.NOT_APPLICABLE;
+      rewardedUserIds = finalUserIds;
+      return { rewardedUserIds, rewardFailedUserIds, paymentResult, rewardFailed };
+    }
+
+    if (nadumAmount > 0) {
+      try {
+        let totalRewardSuccessCount = 0;
+        let totalRewardFailureCount = 0;
+
+        for (let i = 0; i < finalUserIds.length; i += BATCH_SIZE) {
+          const batch = finalUserIds.slice(i, i + BATCH_SIZE);
+          console.log(
+            `[나다움 지급 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(finalUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, finalUserIds.length)}번째)`
+          );
+
+          const batchResults = await this.processRewardBatch(
+            batch,
+            pageId,
+            nadumAmount,
+            expiresAt
+          );
+          const batchRewardedUserIds = batchResults
+            .filter((result) => result.status === "fulfilled" && result.value.success && !result.value.duplicate)
+            .map((result) => result.value.userId);
+
+          totalRewardSuccessCount += batchRewardedUserIds.length;
+          totalRewardFailureCount += batch.length - batchRewardedUserIds.length;
+          rewardedUserIds = rewardedUserIds.concat(batchRewardedUserIds);
+
+          console.log(
+            `[나다움 지급 배치 완료] 성공=${batchRewardedUserIds.length}, 실패=${batch.length - batchRewardedUserIds.length} (총 진행률: ${totalRewardSuccessCount + totalRewardFailureCount}/${finalUserIds.length})`
+          );
+
+          if (i + BATCH_SIZE < finalUserIds.length) {
+            console.log(`[나다움 지급] ${DELAY_MS / 1000}초 대기 중...`);
+            await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          }
+        }
+
+        console.log(
+          `[나다움 지급 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`
+        );
+
+        rewardFailedUserIds = finalUserIds.filter((userId) => !rewardedUserIds.includes(userId));
+
+        if (totalRewardSuccessCount === 0) {
+          paymentResult = PAYMENT_RESULT.FAILED;
+          rewardFailed = true;
+          rewardFailedUserIds = finalUserIds;
+          const error = new Error("모든 사용자에게 나다움 지급에 실패했습니다.");
+          error.code = ERROR_CODES.REWARD_FAILED;
+          error.statusCode = 500;
+          throw error;
+        } else if (totalRewardSuccessCount === finalUserIds.length) {
+          paymentResult = PAYMENT_RESULT.COMPLETED;
+        } else {
+          paymentResult = PAYMENT_RESULT.PARTIAL;
+        }
+      } catch (rewardError) {
+        paymentResult = PAYMENT_RESULT.FAILED;
+        rewardFailed = true;
+        if (rewardFailedUserIds.length === 0) {
+          rewardFailedUserIds = finalUserIds.filter((userId) => !rewardedUserIds.includes(userId));
+        }
+        console.error("나다움 지급 처리 실패:", rewardError.message);
+        if (!rewardError.code) {
+          rewardError.code = ERROR_CODES.REWARD_FAILED;
+          rewardError.statusCode = 500;
+        }
+        throw rewardError;
+      }
+    } else if (nadumAmount < 0) {
+      try {
+        let totalRewardSuccessCount = 0;
+        let totalRewardFailureCount = 0;
+
+        for (let i = 0; i < finalUserIds.length; i += BATCH_SIZE) {
+          const batch = finalUserIds.slice(i, i + BATCH_SIZE);
+          console.log(
+            `[나다움 차감 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(finalUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, finalUserIds.length)}번째)`
+          );
+
+          const batchResults = await this.processRewardBatch(
+            batch,
+            pageId,
+            nadumAmount,
+            expiresAt
+          );
+          const batchRewardedUserIds = batchResults
+            .filter((result) => result.status === "fulfilled" && result.value.success && !result.value.duplicate)
+            .map((result) => result.value.userId);
+
+          totalRewardSuccessCount += batchRewardedUserIds.length;
+          totalRewardFailureCount += batch.length - batchRewardedUserIds.length;
+          rewardedUserIds = rewardedUserIds.concat(batchRewardedUserIds);
+
+          console.log(
+            `[나다움 차감 배치 완료] 성공=${batchRewardedUserIds.length}, 실패=${batch.length - batchRewardedUserIds.length} (총 진행률: ${totalRewardSuccessCount + totalRewardFailureCount}/${finalUserIds.length})`
+          );
+
+          if (i + BATCH_SIZE < finalUserIds.length) {
+            console.log(`[나다움 차감] ${DELAY_MS / 1000}초 대기 중...`);
+            await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          }
+        }
+
+        console.log(
+          `[나다움 차감 완료] pageId=${pageId}, amount=${nadumAmount}, 성공=${totalRewardSuccessCount}, 실패=${totalRewardFailureCount}`
+        );
+
+        rewardFailedUserIds = finalUserIds.filter((userId) => !rewardedUserIds.includes(userId));
+
+        if (totalRewardSuccessCount === 0) {
+          paymentResult = PAYMENT_RESULT.FAILED;
+        } else if (totalRewardSuccessCount === finalUserIds.length) {
+          paymentResult = PAYMENT_RESULT.COMPLETED;
+        } else {
+          paymentResult = PAYMENT_RESULT.PARTIAL;
+        }
+      } catch (rewardError) {
+        paymentResult = PAYMENT_RESULT.FAILED;
+        rewardFailed = true;
+        console.error("나다움 차감 처리 실패:", rewardError.message);
+        if (!rewardError.code) {
+          rewardError.code = ERROR_CODES.REWARD_FAILED;
+          rewardError.statusCode = 500;
+        }
+        throw rewardError;
+      }
+    }
+
+    return { rewardedUserIds, rewardFailedUserIds, paymentResult, rewardFailed };
+  }
+
+  /**
+   * FCM 전송 배치 처리
+   */
+  async sendFcmBatches(finalUserIds, rewardedUserIds, title, content, isMarketingNotification) {
+    let successfulUserIds = [];
+    let fcmFailedUserIds = [];
+    let pushFilteredUserIds = [];
+
+    try {
+      for (let i = 0; i < rewardedUserIds.length; i += BATCH_SIZE) {
+        const batch = rewardedUserIds.slice(i, i + BATCH_SIZE);
+        console.log(
+          `[알림 전송 배치] ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(rewardedUserIds.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, rewardedUserIds.length)}번째)`
+        );
+
+        try {
+          const batchResult = await this.sendFcmBatch(
+            batch,
+            title,
+            content,
+            isMarketingNotification
+          );
+
+          const batchSuccessfulUserIds = batchResult?.successfulUserIds || [];
+          const batchFilteredOutUserIds = batchResult?.filteredOutUserIds || [];
+
+          successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
+
+          const batchFailedUserIds = batch.filter(
+            (userId) =>
+              !batchSuccessfulUserIds.includes(userId) &&
+              !batchFilteredOutUserIds.includes(userId)
+          );
+          fcmFailedUserIds = fcmFailedUserIds.concat(batchFailedUserIds);
+
+          if (batchFilteredOutUserIds.length > 0) {
+            pushFilteredUserIds = pushFilteredUserIds.concat(batchFilteredOutUserIds);
+          }
+
+          console.log(
+            `[알림 전송 배치 완료] 성공=${batchSuccessfulUserIds.length}, 실패=${batchFailedUserIds.length} (총 진행률: ${successfulUserIds.length + fcmFailedUserIds.length}/${rewardedUserIds.length})`
+          );
+
+          if (i + BATCH_SIZE < rewardedUserIds.length) {
+            console.log(`[알림 전송] ${DELAY_MS / 1000}초 대기 중...`);
+            await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          }
+        } catch (batchError) {
+          console.error(
+            `[알림 전송 배치 실패] 배치 ${Math.floor(i / BATCH_SIZE) + 1}:`,
+            batchError.message
+          );
+          fcmFailedUserIds = fcmFailedUserIds.concat(batch);
+        }
+      }
+    } catch (notificationError) {
+      const fcmError = new Error(`알림 전송에 실패했습니다: ${notificationError.message}`);
+      fcmError.code = ERROR_CODES.FCM_SEND_FAILED;
+      fcmError.statusCode = 500;
+      fcmError.originalError = notificationError;
+      throw fcmError;
+    }
+
+    return {
+      successfulUserIds,
+      fcmFailedUserIds,
+      pushFilteredUserIds,
+    };
+  }
+
+  /**
+   * FCM 단일 배치 전송
+   */
+  async sendFcmBatch(userIds, title, content, isMarketingNotification) {
+    const fcmHelper = require("../utils/fcmHelper");
+    return fcmHelper.sendNotificationToUsers(
+      userIds,
+      title,
+      content,
+      "announcement",
+      "",
+      "",
+      "",
+      "",
+      {
+        skipPushTermsFilter: isMarketingNotification,
+      }
+    );
+  }
+
+  /**
+   * 응답 데이터/상태 계산
+   */
+  buildSendOutcome({
+    notificationId,
+    title,
+    userIds,
+    finalUserIds,
+    rewardedUserIds,
+    successfulUserIds,
+    marketingFilteredFailedUserIds,
+    pushFilteredUserIds,
+    fcmFailedUserIds,
+    nadumAmount,
+    paymentResult,
+  }) {
+    const successCount = successfulUserIds.length;
+    const totalCount = userIds.length;
+    const rewardFailureCount = nadumAmount > 0 ? finalUserIds.length - rewardedUserIds.length : 0;
+
+    const termsFilteredIds = [
+      ...new Set([...marketingFilteredFailedUserIds, ...pushFilteredUserIds]),
+    ];
+
+    const failedBySend = finalUserIds.filter(
+      (id) => !successfulUserIds.includes(id) && !termsFilteredIds.includes(id)
+    );
+    const failureCountUsers = new Set([
+      ...failedBySend,
+      ...termsFilteredIds,
+      ...fcmFailedUserIds,
+    ]).size;
+
+    const successfulUserCount = successCount;
+    const totalUserCount = rewardedUserIds.length;
+
+    let finalStatus = SEND_STATUS.FAILED;
+    let shouldUpdateLastPaymentDate = false;
+    let fcmFailed = fcmFailedUserIds.length > 0;
+
+    if (marketingFilteredFailedUserIds.length > 0 && successfulUserCount > 0) {
+      finalStatus = SEND_STATUS.PARTIAL;
+      shouldUpdateLastPaymentDate = true;
+    } else if (successfulUserCount === totalUserCount && successfulUserCount > 0) {
+      finalStatus = SEND_STATUS.COMPLETED;
+      shouldUpdateLastPaymentDate = true;
+    } else if (successfulUserCount > 0) {
+      finalStatus = SEND_STATUS.PARTIAL;
+      shouldUpdateLastPaymentDate = true;
+    } else {
+      finalStatus = SEND_STATUS.FAILED;
+      fcmFailed = true;
+    }
+
+    const responseData = {
+      success: true,
+      notificationId,
+      title,
+      totalUsers: totalCount,
+      successCount,
+      failureCount: failureCountUsers,
+      rewardFailureCount,
+      rewardedUsers: nadumAmount > 0 ? rewardedUserIds.length : 0, // 실제 지급된 경우만 카운트
+      termsFiltered:
+        termsFilteredIds.length > 0
+          ? {
+              userIds: termsFilteredIds,
+              message: "푸시/마케팅 동의 미완료로 전송 제외",
+            }
+          : [],
+      fcmSendFailed:
+        fcmFailedUserIds.length > 0
+          ? {
+              userIds: fcmFailedUserIds,
+              message: "FCM 토큰 없음/만료 또는 전송 오류로 실패",
+            }
+          : [],
+    };
+
+    return {
+      finalStatus,
+      shouldUpdateLastPaymentDate,
+      paymentResult,
+      responseData,
+      failedUserIds: fcmFailedUserIds.concat(termsFilteredIds),
+      fcmFailed,
+      rewardFailedUserIds: [],
+    };
   }
 
   /**
