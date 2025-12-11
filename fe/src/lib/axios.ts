@@ -5,6 +5,7 @@ import axios, {
 } from "axios";
 import { onAuthStateChanged } from "firebase/auth";
 import { AXIOS_INSTANCE_TIME_OUT } from "@/constants/shared/_axios";
+import { triggerSuspensionDialog } from "@/contexts/shared/suspension-dialog";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { isPublicRoute } from "@/utils/auth/is-public-route";
 import { auth } from "./firebase";
@@ -100,8 +101,10 @@ instance.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const status = error.response?.status;
+
     // 401 에러 발생 시 로그인 화면으로 리다이렉트
-    if (error.response?.status === 401) {
+    if (status === 401) {
       // Firebase Auth 초기화 대기 후 다시 확인
       // (새로고침 시 Auth가 아직 초기화되지 않아 일시적으로 currentUser가 null일 수 있음)
       waitForAuthInit().then(() => {
@@ -116,6 +119,13 @@ instance.interceptors.response.use(
         }
       });
     }
+
+    // 423 에러 발생 시 자격정지 다이얼로그 표시
+    if (status === 423) {
+      // 브라우저/PWA 환경에서 다이얼로그 표시
+      triggerSuspensionDialog();
+    }
+
     return Promise.reject(error);
   }
 );
