@@ -16,9 +16,11 @@ import {
   useGetStoreProductsById,
   usePostStorePurchases,
 } from "@/hooks/generated/store-hooks";
+import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
+import { getErrorMessage } from "@/utils/shared/error";
 import { getNotionCoverImage } from "@/utils/shared/getNotionCoverImage";
 import { shareContent } from "@/utils/shared/share";
 
@@ -28,17 +30,30 @@ import { shareContent } from "@/utils/shared/share";
 const QuantitySelectorPopup = ({
   productName,
   requiredPoints,
+  userRewards,
   isOpen,
   onClose,
   onConfirm,
 }: {
   productName?: string;
   requiredPoints?: number;
+  userRewards?: number;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (quantity: number) => void;
 }) => {
   const [quantity, setQuantity] = useState(1);
+
+  const totalRequiredPoints = (requiredPoints || 0) * quantity;
+  const availableRewards = userRewards || 0;
+  const isInsufficientPoints = totalRequiredPoints > availableRewards;
+
+  // 팝업이 열릴 때 수량을 1로 초기화
+  useEffect(() => {
+    if (isOpen) {
+      setQuantity(1);
+    }
+  }, [isOpen]);
 
   const handleDecrease = () => {
     if (quantity > 1) {
@@ -47,7 +62,12 @@ const QuantitySelectorPopup = ({
   };
 
   const handleIncrease = () => {
-    setQuantity(quantity + 1);
+    const nextQuantity = quantity + 1;
+    const nextTotalRequired = (requiredPoints || 0) * nextQuantity;
+    // 보유 포인트를 초과하지 않는 경우에만 증가
+    if (nextTotalRequired <= availableRewards) {
+      setQuantity(nextQuantity);
+    }
   };
 
   const handleConfirm = () => {
@@ -119,7 +139,15 @@ const QuantitySelectorPopup = ({
             </Typography>
             <button
               onClick={handleIncrease}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              disabled={
+                (requiredPoints || 0) * (quantity + 1) > availableRewards
+              }
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full border border-gray-300",
+                (requiredPoints || 0) * (quantity + 1) > availableRewards
+                  ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              )}
               aria-label="수량 증가"
             >
               <svg
@@ -139,10 +167,54 @@ const QuantitySelectorPopup = ({
           </div>
         </div>
 
+        {/* 포인트 정보 및 경고 메시지 */}
+        <div className="mb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <Typography font="noto" variant="label1R" className="text-gray-600">
+              보유 나다움
+            </Typography>
+            <Typography font="noto" variant="label1B" className="text-gray-900">
+              {availableRewards}N
+            </Typography>
+          </div>
+          <div className="mb-2 flex items-center justify-between">
+            <Typography font="noto" variant="label1R" className="text-gray-600">
+              필요 나다움
+            </Typography>
+            <Typography
+              font="noto"
+              variant="label1B"
+              className={cn(
+                isInsufficientPoints ? "text-red-600" : "text-gray-900"
+              )}
+            >
+              {totalRequiredPoints}N
+            </Typography>
+          </div>
+          {isInsufficientPoints && (
+            <div className="mt-2 rounded-lg bg-red-50 p-3">
+              <Typography
+                font="noto"
+                variant="caption1R"
+                className="text-red-600"
+              >
+                보유 나다움이 부족합니다. (필요: {totalRequiredPoints}N, 보유:{" "}
+                {availableRewards}N)
+              </Typography>
+            </div>
+          )}
+        </div>
+
         {/* 신청하기 버튼 */}
         <button
           onClick={handleConfirm}
-          className="bg-main-600 hover:bg-main-700 w-full rounded-lg px-4 py-3 text-white transition-colors"
+          disabled={isInsufficientPoints}
+          className={cn(
+            "w-full rounded-lg px-4 py-3 text-white transition-colors",
+            isInsufficientPoints
+              ? "cursor-not-allowed bg-gray-400"
+              : "bg-main-600 hover:bg-main-700"
+          )}
         >
           <Typography font="noto" variant="body3R" className="text-white">
             신청하기
@@ -163,6 +235,7 @@ const StoreProductDetailPage = () => {
   const [shouldLoadNotion, setShouldLoadNotion] = useState(false);
   const [activeTab, setActiveTab] = useState<"detail" | "inquiry">("detail");
   const [isQuantityPopupOpen, setIsQuantityPopupOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const tabRef = useRef<HTMLDivElement>(null);
   const detailSectionRef = useRef<HTMLDivElement>(null);
   const inquirySectionRef = useRef<HTMLDivElement>(null);
@@ -200,13 +273,22 @@ const StoreProductDetailPage = () => {
     },
   });
 
+  // 사용자 리워드 조회 (React Query 캐시에서 재사용)
+  const { data: userData } = useGetUsersMe({
+    select: (data) => {
+      return data?.user;
+    },
+  });
+
   // 구매 mutation
   const purchaseMutation = usePostStorePurchases({
     onSuccess: () => {
       setIsQuantityPopupOpen(false);
       openSuccessModal();
     },
-    onError: () => {
+    onError: (error: unknown) => {
+      const message = getErrorMessage(error, "신청 중 오류가 발생했습니다.");
+      setErrorMessage(message);
       openErrorModal();
     },
   });
@@ -230,8 +312,6 @@ const StoreProductDetailPage = () => {
   // 상품 데이터 로드 시 TopBar title과 rightSlot 설정
   useEffect(() => {
     if (!productData) return;
-
-    const productTitle = productData.name || "상품 상세";
 
     // 공유하기 버튼
     const shareButton = (
@@ -366,7 +446,8 @@ const StoreProductDetailPage = () => {
   }
 
   const thumbnailUrl = getThumbnailUrl();
-  const totalPoints = (productData.requiredPoints || 0) * 1; // TODO: 수량에 따라 계산
+  const userRewards = userData?.rewards || 0;
+  const isInsufficientPoints = userRewards < (productData.requiredPoints || 0);
 
   return (
     <div className="min-h-screen bg-white pt-12">
@@ -499,7 +580,13 @@ const StoreProductDetailPage = () => {
       <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-transparent p-4">
         <button
           onClick={() => setIsQuantityPopupOpen(true)}
-          className="bg-main-600 hover:bg-main-700 w-full rounded-lg px-4 py-3 text-white transition-colors"
+          disabled={isInsufficientPoints}
+          className={cn(
+            "w-full rounded-lg px-4 py-3 text-white transition-colors",
+            isInsufficientPoints
+              ? "cursor-not-allowed bg-gray-400"
+              : "bg-main-600 hover:bg-main-700"
+          )}
         >
           <Typography font="noto" variant="body3R" className="text-white">
             신청하기
@@ -511,6 +598,7 @@ const StoreProductDetailPage = () => {
       <QuantitySelectorPopup
         productName={productData.name}
         requiredPoints={productData.requiredPoints}
+        userRewards={userRewards}
         isOpen={isQuantityPopupOpen}
         onClose={() => setIsQuantityPopupOpen(false)}
         onConfirm={handlePurchaseConfirm}
@@ -531,7 +619,7 @@ const StoreProductDetailPage = () => {
       <Modal
         isOpen={isErrorModalOpen}
         title="오류가 발생했어요"
-        description="신청 중 오류가 발생했습니다."
+        description={errorMessage || "신청 중 오류가 발생했습니다."}
         confirmText="확인"
         onConfirm={closeErrorModal}
         onClose={closeErrorModal}
