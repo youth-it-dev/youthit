@@ -29,6 +29,8 @@ interface HorizontalScrollContainerProps {
   containerClassName?: string;
   /** 그라데이션 배경색 (Tailwind 색상 클래스명, 예: "gray-200", "white"). 기본값: "gray-200" */
   gradientColor?: string;
+  /** 그라데이션 효과 표시 여부. 기본값: true */
+  showGradient?: boolean;
   /** 왼쪽 버튼 컨테이너의 위치 클래스명 (예: "left-[10px]", "left-0"). 기본값: "left-[10px]" */
   leftButtonPositionClassName?: string;
   /** 오른쪽 버튼 컨테이너의 위치 클래스명 (예: "right-[10px]", "right-0"). 기본값: "right-[10px]" */
@@ -47,6 +49,7 @@ const HorizontalScrollContainer = ({
   className,
   containerClassName,
   gradientColor = "gray-200",
+  showGradient = true,
   leftButtonPositionClassName = "left-[10px]",
   rightButtonPositionClassName = "right-[10px]",
 }: HorizontalScrollContainerProps) => {
@@ -173,20 +176,30 @@ const HorizontalScrollContainer = ({
           )}
         >
           {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보, 컨테이너 밖으로 확장 */}
-          <div className="relative -ml-8 h-full w-32">
+          <div
+            className={cn(
+              "relative h-full",
+              showGradient ? "-ml-8 w-32" : "w-auto"
+            )}
+          >
             {/* 그라데이션 배경 */}
-            <div
-              className={cn(
-                "h-full w-full bg-linear-to-r to-transparent",
-                GRADIENT_COLOR_MAP[gradientColor] ||
-                  GRADIENT_COLOR_MAP["gray-200"]
-              )}
-            />
+            {showGradient && (
+              <div
+                className={cn(
+                  "h-full w-full bg-linear-to-r to-transparent",
+                  GRADIENT_COLOR_MAP[gradientColor] ||
+                    GRADIENT_COLOR_MAP["gray-200"]
+                )}
+              />
+            )}
             {/* 버튼 */}
             <button
               type="button"
               onClick={handleScrollLeft}
-              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 left-8 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
+              className={cn(
+                "focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2",
+                showGradient ? "left-8" : "left-0"
+              )}
               aria-label="왼쪽으로 스크롤"
             >
               <ChevronLeft className="h-5 w-5 text-gray-700" />
@@ -204,20 +217,30 @@ const HorizontalScrollContainer = ({
           )}
         >
           {/* 그라데이션 영역: 버튼과 그라데이션 효과를 위한 충분한 너비 확보, 컨테이너 밖으로 확장 */}
-          <div className="relative -mr-8 h-full w-32">
+          <div
+            className={cn(
+              "relative h-full",
+              showGradient ? "-mr-8 w-32" : "w-auto"
+            )}
+          >
             {/* 그라데이션 배경 */}
-            <div
-              className={cn(
-                "h-full w-full bg-linear-to-l to-transparent",
-                GRADIENT_COLOR_MAP[gradientColor] ||
-                  GRADIENT_COLOR_MAP["gray-200"]
-              )}
-            />
+            {showGradient && (
+              <div
+                className={cn(
+                  "h-full w-full bg-linear-to-l to-transparent",
+                  GRADIENT_COLOR_MAP[gradientColor] ||
+                    GRADIENT_COLOR_MAP["gray-200"]
+                )}
+              />
+            )}
             {/* 버튼 */}
             <button
               type="button"
               onClick={handleScrollRight}
-              className="focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 right-8 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2"
+              className={cn(
+                "focus-visible:outline-main-500 pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110 hover:bg-white/90 focus:outline-none focus-visible:outline-2",
+                showGradient ? "right-8" : "right-0"
+              )}
               aria-label="오른쪽으로 스크롤"
             >
               <ChevronRight className="h-5 w-5 text-gray-700" />
