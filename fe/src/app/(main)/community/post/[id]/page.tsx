@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  useLayoutEffect,
+} from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import CommentsSection from "@/components/community/CommentsSection";
@@ -24,15 +30,17 @@ import {
   useGetUsersMeParticipatingCommunities,
 } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
+import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type * as Schema from "@/types/generated/api-schema";
+import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import { debug } from "@/utils/shared/debugger";
 import { sharePost } from "@/utils/shared/post-share";
 
 /**
- * @description 게시글 상세 페이지
+ * @description 게시글 상세 페이지 콘텐츠
  */
-const PostDetailPage = () => {
+const PostDetailPageContent = () => {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -527,6 +535,39 @@ const PostDetailPage = () => {
       />
     </div>
   );
+};
+
+/**
+ * @description 게시글 상세 페이지
+ * 페이지 레벨에서 동기적으로 인증 체크하여 스켈레톤이 보이지 않도록 합니다.
+ */
+const PostDetailPage = () => {
+  const hasRedirectedRef = useRef(false);
+
+  const initialHasCookie =
+    typeof document !== "undefined" ? hasAuthCookie() : false;
+  const initialCurrentUser =
+    typeof window !== "undefined" ? getCurrentUser() : null;
+
+  const shouldRedirect = !initialHasCookie && !initialCurrentUser;
+
+  useLayoutEffect(() => {
+    if (
+      shouldRedirect &&
+      typeof window !== "undefined" &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      removeAuthCookie();
+      window.location.replace(LINK_URL.LOGIN);
+    }
+  }, [shouldRedirect]);
+
+  if (shouldRedirect) {
+    return null;
+  }
+
+  return <PostDetailPageContent />;
 };
 
 export default PostDetailPage;
