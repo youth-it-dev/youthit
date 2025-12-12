@@ -22,6 +22,7 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
+import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -134,6 +135,14 @@ const WritePageContent = () => {
 
   // 선택된 커뮤니티 ID가 있으면 사용, 없으면 기본값 사용
   const COMMUNITY_ID = selectedCommunityId;
+
+  // 프로그램 상세 정보 조회 (인증 방법 데이터 가져오기)
+  const { data: programData } = useGetProgramsById({
+    request: { programId: selectedCommunityId },
+    enabled: !!selectedCommunityId && !isReview,
+  });
+
+  const certificationMethod = programData?.data?.program?.certificationMethod;
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
@@ -614,25 +623,18 @@ const WritePageContent = () => {
                 )}
               </ButtonBase>
             </div>
-            {isAuthGuideOpen && (
-              // TODO: 인증 가이드 데이터 노션에서 받아와 활용하도록 수정 @grapefruit
-              <p
+            {isAuthGuideOpen && certificationMethod && (
+              <div
                 id="auth-guide-content"
                 className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
               >
-                1. 인증 글 제목 예시 : 9/17 [아침] 정은 인증 <br />
-                &nbsp;날짜 / [아침,점심,저녁] / 닉네임 <br />
-                2. 9월 한끗루틴은 아침, 점심, 저녁 총 세 번의 루틴을 인증하기
-                때문에&nbsp;
-                <Typography font="noto" variant="body3B">
-                  태그
-                </Typography>
-                를 꼭 걸어주세요!
-                <br />
-                3. 모든 루틴 인증글에는 타임스탬프(날짜, 시간 포함) 사진이
-                필수입니다. <br />
-                4. 루틴 인증 소감, 이야기도 꼭 남겨주세요!
-              </p>
+                <p className="whitespace-pre-line">
+                  {certificationMethod
+                    .map((method) => method.plain_text)
+                    .filter(Boolean)
+                    .join("\n")}
+                </p>
+              </div>
             )}
           </div>
         )}
