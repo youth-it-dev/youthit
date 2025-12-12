@@ -400,6 +400,11 @@ const WritePageContent = () => {
       // 3. 파일 업로드 및 URL 교체
       const fileUploadResult = await handleFileUpload(contentWithUrls);
       if (!fileUploadResult) {
+        // 파일 업로드 실패 시 이미 업로드된 이미지 롤백
+        if (uploadedImagePaths.length > 0) {
+          await rollbackUploadedFiles(uploadedImagePaths, []);
+          uploadedImagePaths = [];
+        }
         // 파일 업로드 실패 시 로딩 오버레이 닫기
         closeUploading();
         return;
