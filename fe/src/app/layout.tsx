@@ -6,6 +6,7 @@ import PwaInstallPrompt from "@/components/shared/layouts/pwa-install-prompt";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { SuspensionDialogProvider } from "@/contexts/shared/suspension-dialog";
 import { QueryProvider } from "@/providers/query-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 import { cn } from "@/utils/shared/cn";
 
 const notoSansKr = Noto_Sans_KR({
@@ -265,15 +266,17 @@ export default function RootLayout({
           "mx-auto flex h-screen w-full max-w-[472px] flex-col min-[470px]:border-x min-[470px]:border-gray-200"
         )}
       >
-        <QueryProvider>
-          <SuspensionDialogProvider>
-            <Toaster />
-            <div className="flex h-screen w-full flex-col bg-white">
-              {children}
-            </div>
-            <PwaInstallPrompt />
-          </SuspensionDialogProvider>
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <SuspensionDialogProvider>
+              <Toaster />
+              <div className="flex h-screen w-full flex-col bg-white">
+                {children}
+              </div>
+              <PwaInstallPrompt />
+            </SuspensionDialogProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
