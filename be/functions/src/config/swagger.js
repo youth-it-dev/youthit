@@ -2617,6 +2617,12 @@ const options = {
               description: "리더 사용자 실명",
               example: "홍길동",
             },
+            certificationMethod: {
+              type: "string",
+              nullable: true,
+              description: "인증 방법",
+              example: "매일 인증샷을 업로드하고, 간단한 소감을 작성해주세요.",
+            },
           },
         },
         ProgramDetail: {

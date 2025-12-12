@@ -73,7 +73,8 @@ const NOTION_FIELDS = {
   NOTION_PAGE_TITLE: "상세페이지(노션)",
   LEADER_USER_ID: "리더 사용자ID",
   LEADER_USER_NICKNAME: "리더 사용자 별명",
-  LEADER_USER_REAL_NAME: "리더 사용자 실명"
+  LEADER_USER_REAL_NAME: "리더 사용자 실명",
+  CERTIFICATION_METHOD: "인증 방법"
 };
 
 const PROGRAM_TYPE_ALIASES = {
@@ -567,6 +568,7 @@ class ProgramService {
       shareMeetingDate: getDateValue(props[NOTION_FIELDS.SHARE_MEETING_DATE]),
       leaderNickname: leaderNickname,
       leaderRealName: leaderRealName,
+      certificationMethod: getTextContent(props[NOTION_FIELDS.CERTIFICATION_METHOD]),
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])
