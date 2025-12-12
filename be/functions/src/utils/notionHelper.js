@@ -27,6 +27,11 @@ const getTextContent = (property) => {
   return property.rich_text.map(text => text.plain_text).join('');
 };
 
+const getRichTextValue = (property) => {
+  if (!property || !property.rich_text) return [];
+  return property.rich_text;
+};
+
 const getTitleValue = (property) => {
   if (!property || !property.title) return '';
   return property.title.map(text => text.plain_text).join('');
@@ -475,6 +480,7 @@ module.exports = {
   nowKstIso,
   // Notion 속성 값 추출 함수들
   getTextContent,
+  getRichTextValue,
   getTitleValue,
   getSelectValue,
   getMultiSelectNames,
