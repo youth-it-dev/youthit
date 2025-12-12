@@ -624,6 +624,23 @@ export interface Program {
   notionPageTitle?: string;
   leaderNickname?: string;
   leaderRealName?: string;
+  certificationMethod?: {
+    type?: string;
+    text?: {
+      content?: string;
+      link?: Record<string, any>;
+    };
+    annotations?: {
+      bold?: boolean;
+      italic?: boolean;
+      strikethrough?: boolean;
+      underline?: boolean;
+      code?: boolean;
+      color?: string;
+    };
+    plain_text?: string;
+    href?: string;
+  }[];
 }
 
 export interface ProgramDetail extends Schema.Program {
