@@ -259,7 +259,7 @@ const WritePageContent = () => {
       );
       if (imagesWithClientId.length > 0) {
         openImageUrlReplaceFailedModal();
-        throw new Error("IMAGE_URL_REPLACE_FAILED");
+        throw new Error(ERROR_MESSAGES.IMAGE_URL_REPLACE_FAILED);
       }
     }
 
@@ -400,7 +400,8 @@ const WritePageContent = () => {
       // 3. 파일 업로드 및 URL 교체
       const fileUploadResult = await handleFileUpload(contentWithUrls);
       if (!fileUploadResult) {
-        // 파일 업로드 실패 시 alert는 이미 표시되었으므로 여기서 종료
+        // 파일 업로드 실패 시 로딩 오버레이 닫기
+        closeUploading();
         return;
       }
       const { filePaths, content: finalContent } = fileUploadResult;
