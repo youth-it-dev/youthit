@@ -27,6 +27,7 @@ import useToggle from "@/hooks/shared/useToggle";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
+import type { Program } from "@/types/generated/api-schema";
 import type * as CommunityTypes from "@/types/generated/communities-types";
 import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import {
@@ -137,12 +138,19 @@ const WritePageContent = () => {
   const COMMUNITY_ID = selectedCommunityId;
 
   // 프로그램 상세 정보 조회 (인증 방법 데이터 가져오기)
-  const { data: programData } = useGetProgramsById({
+  const {
+    data: programData,
+    isLoading: isProgramLoading,
+    isError: isProgramError,
+    refetch: refetchProgram,
+  } = useGetProgramsById({
     request: { programId: selectedCommunityId },
     enabled: !!selectedCommunityId && !isReview,
   });
 
-  const certificationMethod = programData?.data?.program?.certificationMethod;
+  // API 스키마에서 정의된 타입 사용
+  const certificationMethod: Program["certificationMethod"] =
+    programData?.data?.program?.certificationMethod;
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
@@ -623,19 +631,47 @@ const WritePageContent = () => {
                 )}
               </ButtonBase>
             </div>
-            {isAuthGuideOpen && certificationMethod && (
-              <div
-                id="auth-guide-content"
-                className="font-noto font-regular text-[13px] leading-[1.5] text-gray-950"
-              >
-                <p className="whitespace-pre-line">
-                  {certificationMethod
-                    .map((method) => method.plain_text)
-                    .filter(Boolean)
-                    .join("\n")}
-                </p>
+            {isAuthGuideOpen && isProgramLoading && (
+              <div className="font-noto font-regular text-[13px] leading-normal text-gray-500">
+                <p>인증 가이드를 불러오는 중...</p>
               </div>
             )}
+            {isAuthGuideOpen && isProgramError && (
+              <div className="font-noto font-regular text-[13px] leading-normal text-red-500">
+                <p>인증 가이드를 불러오지 못했습니다.</p>
+                <ButtonBase
+                  onClick={() => refetchProgram()}
+                  className="mt-2 rounded-md bg-gray-200 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-300"
+                >
+                  다시 시도
+                </ButtonBase>
+              </div>
+            )}
+            {isAuthGuideOpen &&
+              !isProgramLoading &&
+              !isProgramError &&
+              certificationMethod &&
+              certificationMethod.length > 0 && (
+                <div
+                  id="auth-guide-content"
+                  className="font-noto font-regular text-[13px] leading-normal text-gray-950"
+                >
+                  <p className="whitespace-pre-line">
+                    {certificationMethod
+                      .map((method) => method.plain_text)
+                      .filter(Boolean)
+                      .join("\n")}
+                  </p>
+                </div>
+              )}
+            {isAuthGuideOpen &&
+              !isProgramLoading &&
+              !isProgramError &&
+              (!certificationMethod || certificationMethod.length === 0) && (
+                <div className="font-noto font-regular text-[13px] leading-normal text-gray-500">
+                  <p>등록된 인증 가이드가 없습니다.</p>
+                </div>
+              )}
           </div>
         )}
         {/* 현재 완료된 인증 - 인증글일 때만 표시 */}
