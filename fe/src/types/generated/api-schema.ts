@@ -65,6 +65,7 @@ export interface Mission {
   id?: string;
   title?: string;
   missionIntroduction?: string;
+  coverImage?: string;
   isRecruiting?: boolean;
   isUnlimited?: boolean;
   applicationDeadline?: string;
@@ -74,7 +75,6 @@ export interface Mission {
   targetAudience?: string;
   notes?: string;
   certificationMethod?: string[];
-  reactionCount?: number;
   likesCount?: number;
   isLiked?: boolean;
   faqRelation?: {
@@ -83,10 +83,8 @@ export interface Mission {
     }[];
     has_more?: boolean;
   };
-  isReviewRegistered?: boolean;
   createdAt?: string;
   updatedAt?: string;
-  coverImage?: string;
   pageContent?: Record<string, any>[];
 }
 
@@ -767,7 +765,6 @@ export interface ProductListItem {
   }[];
   requiredPoints?: number;
   onSale?: boolean;
-  requiresDelivery?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -783,7 +780,6 @@ export interface Product {
   }[];
   requiredPoints?: number;
   onSale?: boolean;
-  requiresDelivery?: boolean;
   createdAt?: string;
   updatedAt?: string;
   pageContent?: {
@@ -819,10 +815,7 @@ export interface StorePurchase {
   productId?: string;
   quantity?: number;
   requiredPoints?: number;
-  requiresDelivery?: boolean;
   recipientName?: string;
-  recipientAddress?: string;
-  recipientDetailAddress?: string;
   recipientPhone?: string;
   deliveryCompleted?: boolean;
   orderDate?: string;

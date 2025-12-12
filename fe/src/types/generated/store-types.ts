@@ -45,10 +45,7 @@ export type TGETStorePurchasesRes = {
     productId?: string;
     quantity?: number;
     requiredPoints?: number;
-    requiresDelivery?: boolean;
     recipientName?: string;
-    recipientAddress?: string;
-    recipientDetailAddress?: string;
     recipientPhone?: string;
     deliveryCompleted?: boolean;
     orderDate?: string;
@@ -66,8 +63,6 @@ export interface TPOSTStorePurchasesReq {
     productId: string;
     quantity?: number;
     recipientName?: string;
-    recipientAddress?: string;
-    recipientDetailAddress?: string;
     recipientPhone?: string;
   };
 }
@@ -80,10 +75,7 @@ export type TPOSTStorePurchasesRes = {
   productId?: string;
   quantity?: number;
   requiredPoints?: number;
-  requiresDelivery?: boolean;
   recipientName?: string;
-  recipientAddress?: string;
-  recipientDetailAddress?: string;
   recipientPhone?: string;
   orderDate?: string;
   deliveryCompleted?: boolean;

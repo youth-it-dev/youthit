@@ -17,7 +17,6 @@ import type * as homeTypes from "@/types/generated/home-types";
 import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
-import type * as notionmissionsTypes from "@/types/generated/notionmissions-types";
 import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
@@ -231,14 +230,6 @@ export const notificationsKeys = {
   ),
 } as const;
 
-// NotionMissions Query Keys
-export const notionmissionsKeys = {
-  getNotionmissionsReactionsSync: __buildKey(
-    "notionmissions",
-    "getNotionmissionsReactionsSync"
-  ),
-} as const;
-
 // NotionRewardHistory Query Keys
 export const notionrewardhistoryKeys = {
   getNotionrewardhistorySync: __buildKey(
@@ -379,7 +370,7 @@ export const usersKeys = {
   ) =>
     __buildKey("users", "getUsersMeCommentedPosts", {
       path: {},
-      query: { page: request.page, size: request.size },
+      query: { page: request.page, size: request.size, type: request.type },
     }),
   getUsersMeCompletedCommunities: __buildKey(
     "users",
@@ -388,7 +379,7 @@ export const usersKeys = {
   getUsersMeLikedPosts: (request: usersTypes.TGETUsersMeLikedPostsReq) =>
     __buildKey("users", "getUsersMeLikedPosts", {
       path: {},
-      query: { page: request.page, size: request.size },
+      query: { page: request.page, size: request.size, type: request.type },
     }),
   getUsersMeMyPage: __buildKey("users", "getUsersMeMyPage"),
   getUsersMeParticipatingCommunities: __buildKey(
@@ -398,12 +389,12 @@ export const usersKeys = {
   getUsersMePosts: (request: usersTypes.TGETUsersMePostsReq) =>
     __buildKey("users", "getUsersMePosts", {
       path: {},
-      query: { page: request.page, size: request.size },
+      query: { page: request.page, size: request.size, type: request.type },
     }),
   getUsersMeRewardsEarned: (request: usersTypes.TGETUsersMeRewardsEarnedReq) =>
     __buildKey("users", "getUsersMeRewardsEarned", {
       path: {},
-      query: { page: request.page, size: request.size },
+      query: { page: request.page, size: request.size, filter: request.filter },
     }),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq

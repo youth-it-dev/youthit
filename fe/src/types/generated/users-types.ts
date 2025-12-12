@@ -53,18 +53,22 @@ export type TGETUsersMeRes = { user?: Schema.User };
 export interface TGETUsersMeCommentedPostsReq {
   page?: number;
   size?: number;
+  type?: "all" | "program" | "mission";
 }
 
 export type TGETUsersMeCommentedPostsRes = {
   posts?: {
     id?: string;
     author?: string;
+    profileImageUrl?: string;
     title?: string;
     type?: string;
+    programType?: "ROUTINE" | "GATHERING" | "TMI";
+    isReview?: boolean;
     channel?: string;
     category?: string;
     scheduledDate?: string;
-    visibility?: string;
+    isPublic?: boolean;
     isLocked?: boolean;
     rewardGiven?: boolean;
     likesCount?: number;
@@ -131,18 +135,22 @@ export type TGETUsersMeCompletedCommunitiesRes = {
 export interface TGETUsersMeLikedPostsReq {
   page?: number;
   size?: number;
+  type?: "all" | "program" | "mission";
 }
 
 export type TGETUsersMeLikedPostsRes = {
   posts?: {
     id?: string;
     author?: string;
+    profileImageUrl?: string;
     title?: string;
     type?: string;
+    programType?: "ROUTINE" | "GATHERING" | "TMI";
+    isReview?: boolean;
     channel?: string;
     category?: string;
     scheduledDate?: string;
-    visibility?: string;
+    isPublic?: boolean;
     isLocked?: boolean;
     rewardGiven?: boolean;
     likesCount?: number;
@@ -243,18 +251,22 @@ export type TGETUsersMeParticipatingCommunitiesRes = {
 export interface TGETUsersMePostsReq {
   page?: number;
   size?: number;
+  type?: "all" | "program" | "mission";
 }
 
 export type TGETUsersMePostsRes = {
   posts?: {
     id?: string;
     author?: string;
+    profileImageUrl?: string;
     title?: string;
     type?: string;
+    programType?: "ROUTINE" | "GATHERING" | "TMI";
+    isReview?: boolean;
     channel?: string;
     category?: string;
     scheduledDate?: string;
-    visibility?: string;
+    isPublic?: boolean;
     isLocked?: boolean;
     rewardGiven?: boolean;
     likesCount?: number;
@@ -298,9 +310,12 @@ export type TPOSTUsersMePushNotificationToggleRes = {
 export interface TGETUsersMeRewardsEarnedReq {
   page?: number;
   size?: number;
+  filter?: "all" | "earned" | "used" | "expired";
 }
 
 export type TGETUsersMeRewardsEarnedRes = {
+  availableRewards?: number;
+  expiringThisMonth?: number;
   history?: {
     id?: string;
     amount?: number;
