@@ -1,6 +1,7 @@
 const { Client } = require('@notionhq/client');
 const { 
   getTextContent,
+  getRichTextValue,
   getTitleValue,
   getSelectValue,
   getDateValue,
@@ -568,7 +569,7 @@ class ProgramService {
       shareMeetingDate: getDateValue(props[NOTION_FIELDS.SHARE_MEETING_DATE]),
       leaderNickname: leaderNickname,
       leaderRealName: leaderRealName,
-      certificationMethod: getTextContent(props[NOTION_FIELDS.CERTIFICATION_METHOD]),
+      certificationMethod: getRichTextValue(props[NOTION_FIELDS.CERTIFICATION_METHOD]),
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])

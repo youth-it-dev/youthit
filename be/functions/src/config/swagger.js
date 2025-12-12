@@ -2618,10 +2618,89 @@ const options = {
               example: "홍길동",
             },
             certificationMethod: {
-              type: "string",
-              nullable: true,
-              description: "인증 방법",
-              example: "매일 인증샷을 업로드하고, 간단한 소감을 작성해주세요.",
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: {
+                    type: "string",
+                    description: "텍스트 타입",
+                    example: "text",
+                  },
+                  text: {
+                    type: "object",
+                    properties: {
+                      content: {
+                        type: "string",
+                        description: "텍스트 내용",
+                      },
+                      link: {
+                        type: "object",
+                        nullable: true,
+                        description: "링크 정보",
+                      },
+                    },
+                  },
+                  annotations: {
+                    type: "object",
+                    properties: {
+                      bold: {
+                        type: "boolean",
+                        description: "굵게 여부",
+                      },
+                      italic: {
+                        type: "boolean",
+                        description: "기울임 여부",
+                      },
+                      strikethrough: {
+                        type: "boolean",
+                        description: "취소선 여부",
+                      },
+                      underline: {
+                        type: "boolean",
+                        description: "밑줄 여부",
+                      },
+                      code: {
+                        type: "boolean",
+                        description: "코드 여부",
+                      },
+                      color: {
+                        type: "string",
+                        description: "텍스트 색상",
+                      },
+                    },
+                  },
+                  plain_text: {
+                    type: "string",
+                    description: "순수 텍스트",
+                  },
+                  href: {
+                    type: "string",
+                    nullable: true,
+                    description: "하이퍼링크 URL",
+                  },
+                },
+              },
+              description: "인증 방법 (Notion Rich Text 형식)",
+              example: [
+                {
+                  type: "text",
+                  text: {
+                    content: "매일 인증샷을 업로드하고, 간단한 소감을 작성해주세요.",
+                    link: null,
+                  },
+                  annotations: {
+                    bold: false,
+                    italic: false,
+                    strikethrough: false,
+                    underline: false,
+                    code: false,
+                    color: "default",
+                  },
+                  plain_text: "매일 인증샷을 업로드하고, 간단한 소감을 작성해주세요.",
+                  href: null,
+                },
+              ],
             },
           },
         },
