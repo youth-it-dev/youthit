@@ -632,7 +632,7 @@ const MissionPageContent = () => {
                   key={mission.id}
                   title={mission.title || ""}
                   tagName={mission.categories?.[0] || ""}
-                  likeCount={mission.reactionCount || 0}
+                  likeCount={0}
                   onClick={() => {
                     if (mission.id) {
                       router.push(`${LINK_URL.MISSION}/${mission.id}`);
