@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
@@ -12,15 +12,11 @@ import Icon from "@/components/shared/ui/icon";
 import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-import {
-  useGetStoreProductsById,
-  usePostStorePurchases,
-} from "@/hooks/generated/store-hooks";
+import { useGetStoreProductsById } from "@/hooks/generated/store-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
-import { getErrorMessage } from "@/utils/shared/error";
 import { getNotionCoverImage } from "@/utils/shared/getNotionCoverImage";
 import { shareContent } from "@/utils/shared/share";
 
@@ -230,29 +226,15 @@ const QuantitySelectorPopup = ({
  */
 const StoreProductDetailPage = () => {
   const params = useParams();
+  const router = useRouter();
   const productId = params.id as string;
 
   const [shouldLoadNotion, setShouldLoadNotion] = useState(false);
   const [activeTab, setActiveTab] = useState<"detail" | "inquiry">("detail");
   const [isQuantityPopupOpen, setIsQuantityPopupOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>("");
   const tabRef = useRef<HTMLDivElement>(null);
   const detailSectionRef = useRef<HTMLDivElement>(null);
   const inquirySectionRef = useRef<HTMLDivElement>(null);
-
-  // 성공 모달 상태
-  const {
-    isOpen: isSuccessModalOpen,
-    open: openSuccessModal,
-    close: closeSuccessModal,
-  } = useToggle();
-
-  // 에러 모달 상태
-  const {
-    isOpen: isErrorModalOpen,
-    open: openErrorModal,
-    close: closeErrorModal,
-  } = useToggle();
 
   // TopBar 제어
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
@@ -277,19 +259,6 @@ const StoreProductDetailPage = () => {
   const { data: userData } = useGetUsersMe({
     select: (data) => {
       return data?.user;
-    },
-  });
-
-  // 구매 mutation
-  const purchaseMutation = usePostStorePurchases({
-    onSuccess: () => {
-      setIsQuantityPopupOpen(false);
-      openSuccessModal();
-    },
-    onError: (error: unknown) => {
-      const message = getErrorMessage(error, "신청 중 오류가 발생했습니다.");
-      setErrorMessage(message);
-      openErrorModal();
     },
   });
 
@@ -408,19 +377,14 @@ const StoreProductDetailPage = () => {
     [scrollToTabSection]
   );
 
-  // 수량 선택 팝업에서 신청하기 클릭
+  // 수량 선택 팝업에서 신청하기 클릭 - 구매 페이지로 이동
   const handlePurchaseConfirm = useCallback(
     (quantity: number) => {
       if (!productData?.id) return;
-
-      purchaseMutation.mutate({
-        data: {
-          productId: productData.id,
-          quantity,
-        },
-      });
+      // 선택한 수량과 함께 구매 페이지로 이동
+      router.push(`/store/${productId}/purchase?quantity=${quantity}`);
     },
-    [productData, purchaseMutation]
+    [router, productId, productData]
   );
 
   if (error) {
@@ -602,28 +566,6 @@ const StoreProductDetailPage = () => {
         isOpen={isQuantityPopupOpen}
         onClose={() => setIsQuantityPopupOpen(false)}
         onConfirm={handlePurchaseConfirm}
-      />
-
-      {/* 성공 모달 */}
-      <Modal
-        isOpen={isSuccessModalOpen}
-        title="신청이 완료되었어요"
-        description="신청이 완료되었습니다."
-        confirmText="확인"
-        onConfirm={closeSuccessModal}
-        onClose={closeSuccessModal}
-        variant="primary"
-      />
-
-      {/* 에러 모달 */}
-      <Modal
-        isOpen={isErrorModalOpen}
-        title="오류가 발생했어요"
-        description={errorMessage || "신청 중 오류가 발생했습니다."}
-        confirmText="확인"
-        onConfirm={closeErrorModal}
-        onClose={closeErrorModal}
-        variant="primary"
       />
     </div>
   );
