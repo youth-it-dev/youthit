@@ -21,11 +21,7 @@ import { getErrorMessage } from "@/utils/shared/error";
 /**
  * @description 구매 단계 타입
  */
-type PurchaseStep =
-  | "recipient-name"
-  | "recipient-phone"
-  | "review"
-  | "complete";
+type PurchaseStep = "recipient-info" | "review" | "complete";
 
 /**
  * @description 구매 폼 데이터 타입
@@ -92,7 +88,7 @@ const StorePurchasePage = () => {
 
   // 현재 단계
   const [currentStep, setCurrentStep] =
-    useState<PurchaseStep>("recipient-name");
+    useState<PurchaseStep>("recipient-info");
 
   // localStorage 키
   const STORAGE_KEY = `purchase-form-${productId}`;
@@ -211,7 +207,7 @@ const StorePurchasePage = () => {
     }));
   }, []);
 
-  // 수령인 전화번호 입력 핸들러 (자동 다음 단계 이동)
+  // 수령인 전화번호 입력 핸들러
   const handleRecipientPhoneChange = useCallback(
     (value: string) => {
       const numbersOnly = value.replace(/[^0-9]/g, "");
@@ -220,28 +216,18 @@ const StorePurchasePage = () => {
       if (fieldErrors.recipientPhone) {
         setFieldErrors((prev) => ({ ...prev, recipientPhone: undefined }));
       }
-
-      // 11자리 입력 시 자동 다음 단계 이동
-      if (numbersOnly.length === 11) {
-        setCurrentStep("review");
-      }
     },
     [fieldErrors.recipientPhone]
   );
 
   // 이전 단계로 이동
   const goToPreviousStep = useCallback(() => {
-    if (currentStep === "recipient-name") {
+    if (currentStep === "recipient-info") {
       router.back();
       return;
     }
 
-    const stepOrder: PurchaseStep[] = [
-      "recipient-name",
-      "recipient-phone",
-      "review",
-      "complete",
-    ];
+    const stepOrder: PurchaseStep[] = ["recipient-info", "review", "complete"];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -280,15 +266,28 @@ const StorePurchasePage = () => {
     };
   }, [setTitle, setLeftSlot, resetTopBar, goToPreviousStep]);
 
-  // 수령인 이름 다음 버튼
-  const handleRecipientNameNext = useCallback(() => {
-    const validation = validateRecipientName(formData.recipientName);
-    if (!validation.isValid) {
-      setFieldErrors((prev) => ({ ...prev, recipientName: validation.error }));
+  // 수령인 정보 다음 버튼
+  const handleRecipientInfoNext = useCallback(() => {
+    const nameValidation = validateRecipientName(formData.recipientName);
+    const isPhoneValid = formData.recipientPhone.length === 11;
+
+    const errors: { recipientName?: string; recipientPhone?: string } = {};
+
+    if (!nameValidation.isValid) {
+      errors.recipientName = nameValidation.error;
+    }
+
+    if (!isPhoneValid) {
+      errors.recipientPhone = "전화번호 11자리를 입력해주세요.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
       return;
     }
-    setCurrentStep("recipient-phone");
-  }, [formData.recipientName]);
+
+    setCurrentStep("review");
+  }, [formData.recipientName, formData.recipientPhone]);
 
   // 주문하기 버튼
   const handlePurchase = useCallback(() => {
@@ -319,28 +318,16 @@ const StorePurchasePage = () => {
       "w-full rounded-lg bg-main-600 px-4 py-3 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
 
     switch (currentStep) {
-      case "recipient-name":
+      case "recipient-info":
         const isNameValid = validateRecipientName(
           formData.recipientName
         ).isValid;
-        return (
-          <button
-            onClick={handleRecipientNameNext}
-            disabled={!isNameValid}
-            className={buttonBaseClass}
-          >
-            <Typography font="noto" variant="body3R" className="text-white">
-              다음
-            </Typography>
-          </button>
-        );
-
-      case "recipient-phone":
         const isPhoneValid = formData.recipientPhone.length === 11;
+        const isRecipientInfoValid = isNameValid && isPhoneValid;
         return (
           <button
-            onClick={() => isPhoneValid && setCurrentStep("review")}
-            disabled={!isPhoneValid}
+            onClick={handleRecipientInfoNext}
+            disabled={!isRecipientInfoValid}
             className={buttonBaseClass}
           >
             <Typography font="noto" variant="body3R" className="text-white">
@@ -382,7 +369,7 @@ const StorePurchasePage = () => {
   }, [
     currentStep,
     formData,
-    handleRecipientNameNext,
+    handleRecipientInfoNext,
     handlePurchase,
     handleComplete,
     purchaseMutation.isPending,
@@ -441,8 +428,8 @@ const StorePurchasePage = () => {
   return (
     <div className="min-h-screen bg-white pt-12">
       <div className="mx-auto max-w-[470px] pb-24">
-        {/* 수령인 이름 입력 단계 */}
-        {currentStep === "recipient-name" && (
+        {/* 수령인 정보 입력 단계 */}
+        {currentStep === "recipient-info" && (
           <div className="p-5">
             <Typography
               as="h2"
@@ -450,129 +437,128 @@ const StorePurchasePage = () => {
               variant="heading2B"
               className="mb-3"
             >
-              수령인 이름을 알려주세요
+              수령인 정보를 알려주세요
             </Typography>
             <Typography
               font="noto"
               variant="body2R"
               className="mb-6 text-gray-600"
             >
-              상품을 받으실 분의 이름을 입력해주세요.
+              상품을 받으실 분의 이름과 전화번호를 입력해주세요.
             </Typography>
 
-            <div className="relative">
-              <Input
-                type="text"
-                value={formData.recipientName}
-                onChange={(e) => handleRecipientNameChange(e.target.value)}
-                placeholder="수령인 이름 (2-20자)"
-                maxLength={20}
-                className={cn(
-                  "pr-10",
-                  fieldErrors.recipientName && "border-red-500"
-                )}
-              />
-              {formData.recipientName && (
-                <button
-                  onClick={() => handleRecipientNameChange("")}
-                  className="absolute top-1/2 right-3 -translate-y-1/2"
-                >
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            {/* 수령인 이름 */}
+            <div className="mb-4">
+              <Typography
+                font="noto"
+                variant="label1B"
+                className="mb-2 text-gray-700"
+              >
+                수령인 이름
+              </Typography>
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={formData.recipientName}
+                  onChange={(e) => handleRecipientNameChange(e.target.value)}
+                  placeholder="수령인 이름 (2-20자)"
+                  maxLength={20}
+                  className={cn(
+                    "pr-10",
+                    fieldErrors.recipientName && "border-red-500"
+                  )}
+                />
+                {formData.recipientName && (
+                  <button
+                    onClick={() => handleRecipientNameChange("")}
+                    className="absolute top-1/2 right-3 -translate-y-1/2"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {fieldErrors.recipientName && (
+                <Typography
+                  font="noto"
+                  variant="caption1R"
+                  className="mt-1 text-red-500"
+                >
+                  {fieldErrors.recipientName}
+                </Typography>
               )}
             </div>
-            {fieldErrors.recipientName && (
+
+            {/* 수령인 전화번호 */}
+            <div>
+              <Typography
+                font="noto"
+                variant="label1B"
+                className="mb-2 text-gray-700"
+              >
+                수령인 전화번호
+              </Typography>
+              <div className="relative">
+                <Input
+                  type="tel"
+                  value={formData.recipientPhone}
+                  onChange={(e) => handleRecipientPhoneChange(e.target.value)}
+                  placeholder="01012345678"
+                  maxLength={11}
+                  className={cn(
+                    "pr-10",
+                    fieldErrors.recipientPhone && "border-red-500"
+                  )}
+                />
+                {formData.recipientPhone && (
+                  <button
+                    onClick={() => handleRecipientPhoneChange("")}
+                    className="absolute top-1/2 right-3 -translate-y-1/2"
+                  >
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {fieldErrors.recipientPhone && (
+                <Typography
+                  font="noto"
+                  variant="caption1R"
+                  className="mt-1 text-red-500"
+                >
+                  {fieldErrors.recipientPhone}
+                </Typography>
+              )}
               <Typography
                 font="noto"
                 variant="caption1R"
-                className="mt-1 text-red-500"
+                className="mt-1 text-gray-400"
               >
-                {fieldErrors.recipientName}
+                {formData.recipientPhone.length}/11
               </Typography>
-            )}
-          </div>
-        )}
-
-        {/* 수령인 전화번호 입력 단계 */}
-        {currentStep === "recipient-phone" && (
-          <div className="p-5">
-            <Typography
-              as="h2"
-              font="noto"
-              variant="heading2B"
-              className="mb-3"
-            >
-              수령인 전화번호를 알려주세요
-            </Typography>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="mb-6 text-gray-600"
-            >
-              상품 배송 시 연락받으실 전화번호를 입력해주세요.
-            </Typography>
-
-            <div className="relative">
-              <Input
-                type="tel"
-                value={formData.recipientPhone}
-                onChange={(e) => handleRecipientPhoneChange(e.target.value)}
-                placeholder="01012345678"
-                maxLength={11}
-                className={cn(
-                  "pr-10",
-                  fieldErrors.recipientPhone && "border-red-500"
-                )}
-              />
-              {formData.recipientPhone && (
-                <button
-                  onClick={() => handleRecipientPhoneChange("")}
-                  className="absolute top-1/2 right-3 -translate-y-1/2"
-                >
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
             </div>
-            {fieldErrors.recipientPhone && (
-              <Typography
-                font="noto"
-                variant="caption1R"
-                className="mt-1 text-red-500"
-              >
-                {fieldErrors.recipientPhone}
-              </Typography>
-            )}
-            <Typography
-              font="noto"
-              variant="caption1R"
-              className="mt-1 text-gray-400"
-            >
-              {formData.recipientPhone.length}/11
-            </Typography>
           </div>
         )}
 
@@ -625,49 +611,35 @@ const StorePurchasePage = () => {
                 </div>
               </div>
 
-              {/* 수령인 이름 */}
+              {/* 수령인 정보 */}
               <div>
                 <Typography
                   font="noto"
                   variant="label1B"
                   className="text-gray-700"
                 >
-                  수령인 이름
+                  수령인 정보
                 </Typography>
                 <button
-                  onClick={() => setCurrentStep("recipient-name")}
+                  onClick={() => setCurrentStep("recipient-info")}
                   className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
                 >
-                  <Typography
-                    font="noto"
-                    variant="body2R"
-                    className="text-gray-900"
-                  >
-                    {formData.recipientName}
-                  </Typography>
-                </button>
-              </div>
-
-              {/* 수령인 전화번호 */}
-              <div>
-                <Typography
-                  font="noto"
-                  variant="label1B"
-                  className="text-gray-700"
-                >
-                  수령인 전화번호
-                </Typography>
-                <button
-                  onClick={() => setCurrentStep("recipient-phone")}
-                  className="mt-3 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-left"
-                >
-                  <Typography
-                    font="noto"
-                    variant="body2R"
-                    className="text-gray-900"
-                  >
-                    {formatPhoneNumber(formData.recipientPhone)}
-                  </Typography>
+                  <div className="space-y-1">
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className="text-gray-900"
+                    >
+                      이름: {formData.recipientName}
+                    </Typography>
+                    <Typography
+                      font="noto"
+                      variant="body2R"
+                      className="text-gray-900"
+                    >
+                      전화번호: {formatPhoneNumber(formData.recipientPhone)}
+                    </Typography>
+                  </div>
                 </button>
               </div>
 
