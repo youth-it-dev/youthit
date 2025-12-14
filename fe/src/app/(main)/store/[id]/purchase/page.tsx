@@ -238,33 +238,38 @@ const StorePurchasePage = () => {
   useEffect(() => {
     setTitle("주문하기");
 
-    const customLeftSlot = (
-      <button
-        onClick={goToPreviousStep}
-        className="hover:cursor-pointer"
-        aria-label="이전 단계"
-      >
-        <svg
-          className="h-6 w-6 text-gray-900"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    // 완료 단계에서는 뒤로가기 버튼 숨김
+    if (currentStep !== "complete") {
+      const customLeftSlot = (
+        <button
+          onClick={goToPreviousStep}
+          className="hover:cursor-pointer"
+          aria-label="이전 단계"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-      </button>
-    );
-    setLeftSlot(customLeftSlot);
+          <svg
+            className="h-6 w-6 text-gray-900"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+      );
+      setLeftSlot(customLeftSlot);
+    } else {
+      setLeftSlot(null);
+    }
 
     return () => {
       resetTopBar();
     };
-  }, [setTitle, setLeftSlot, resetTopBar, goToPreviousStep]);
+  }, [setTitle, setLeftSlot, resetTopBar, goToPreviousStep, currentStep]);
 
   // 수령인 정보 다음 버튼
   const handleRecipientInfoNext = useCallback(() => {
