@@ -135,7 +135,7 @@ const CommunityPageContent = () => {
 
   // 프로그램 목록 조회 (추천 섹션용)
   const { data: programsData } = useGetPrograms({
-    request: { pageSize: 20 },
+    request: { pageSize: 20, recruitmentStatus: "ongoing" },
     select: (data) => {
       if (!data || typeof data !== "object") {
         return [];
