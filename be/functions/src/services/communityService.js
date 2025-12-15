@@ -1803,6 +1803,10 @@ class CommunityService {
         await Promise.all(deletePromises);
       }
 
+      await this._deleteCommentsByPost(communityId, postId);
+
+      await this._deleteLikesByPost(postId);
+
       // 리워드 차감 + 게시글 삭제를 하나의 트랜잭션으로 처리
       await this.firestoreService.runTransaction(async (transaction) => {
         // 리워드 차감 처리
@@ -1850,6 +1854,103 @@ class CommunityService {
         throw error;
       }
       throw new Error("게시글 삭제에 실패했습니다");
+    }
+  }
+
+  /**
+   * 게시글에 속한 댓글/대댓글 모두 하드 삭제
+   * @private
+   */
+  async _deleteCommentsByPost(communityId, postId) {
+    const commentsRef = this.firestoreService.db.collection("comments");
+    let cursor = null;
+    let totalDeleted = 0;
+
+    try {
+      while (true) {
+        let query = commentsRef
+          .where("communityId", "==", communityId)
+          .where("postId", "==", postId)
+          .orderBy("__name__")
+          .limit(300);
+
+        if (cursor) {
+          query = query.startAfter(cursor);
+        }
+
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
+
+        const batch = this.firestoreService.db.batch();
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+
+        totalDeleted += snapshot.size;
+        cursor = snapshot.docs[snapshot.docs.length - 1];
+      }
+
+      if (totalDeleted > 0) {
+        console.log(`[COMMUNITY] 게시글 댓글 삭제 완료: communityId=${communityId}, postId=${postId}, deleted=${totalDeleted}`);
+      }
+    } catch (error) {
+      console.error("[COMMUNITY] 게시글 댓글 삭제 실패:", error.message);
+      // 댓글 삭제 실패는 게시글 삭제를 막지 않음
+    }
+  }
+
+  /**
+   * 게시글 좋아요 및 사용자 likedPosts 집계 삭제
+   * @private
+   */
+  async _deleteLikesByPost(postId) {
+    const db = this.firestoreService.db;
+    let cursor = null;
+    let totalDeleted = 0;
+
+    try {
+      // likes 컬렉션에서 POST 타입 삭제
+      while (true) {
+        let query = db
+          .collection("likes")
+          .where("type", "==", "POST")
+          .where("targetId", "==", postId)
+          .orderBy("__name__")
+          .limit(300);
+
+        if (cursor) {
+          query = query.startAfter(cursor);
+        }
+
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
+
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+
+        totalDeleted += snapshot.size;
+        cursor = snapshot.docs[snapshot.docs.length - 1];
+      }
+
+      // users/{userId}/likedPosts 서브컬렉션에서도 제거
+      const likedPostsSnap = await db
+        .collectionGroup("likedPosts")
+        .where("postId", "==", postId)
+        .get();
+
+      if (!likedPostsSnap.empty) {
+        const batch = db.batch();
+        likedPostsSnap.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        totalDeleted += likedPostsSnap.size;
+      }
+
+      if (totalDeleted > 0) {
+        console.log(`[COMMUNITY] 게시글 좋아요 삭제 완료: postId=${postId}, deleted=${totalDeleted}`);
+      }
+    } catch (error) {
+      console.error("[COMMUNITY] 게시글 좋아요 삭제 실패:", error.message);
+      // 좋아요 삭제 실패는 게시글 삭제를 막지 않음
     }
   }
 
