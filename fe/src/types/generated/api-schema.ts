@@ -595,7 +595,6 @@ export interface Program {
   recruitmentEndDate?: string;
   startDate?: string;
   endDate?: string;
-  displayStartDate?: string;
   orientationDate?: string;
   shareMeetingDate?: string;
   targetAudience?: string;

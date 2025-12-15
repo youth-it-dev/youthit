@@ -58,7 +58,6 @@ const NOTION_FIELDS = {
   PROGRAM_TYPE: "프로그램 종류",
   RECRUITMENT_PERIOD: "모집 기간",
   ACTIVITY_PERIOD: "활동 기간",
-  DISPLAY_START_DATE: "표시 시작일자",
   ORIENTATION_DATE: "오티 날짜",
   SHARE_MEETING_DATE: "공유회 날짜",
   TARGET_AUDIENCE: "참여 대상",
@@ -250,9 +249,6 @@ class ProgramService {
    */
   async getPrograms(filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
-      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
-      const todayISO = nowKstIso().split('T')[0];
-
       // 필터링으로 인한 데이터 부족을 방지하기 위해 더 많이 가져오기
       const fetchSize = Math.min(normalizePageSize(pageSize) * 3, MAX_PAGE_SIZE);
 
@@ -266,34 +262,14 @@ class ProgramService {
         ]
       };
 
-      // 기본 필터 조건 (표시 시작일자만)
-      queryBody.filter = {
-        and: [
-          // 표시 시작일자가 설정되어 있어야 함
-          {
-            property: NOTION_FIELDS.DISPLAY_START_DATE,
-            date: {
-              is_not_empty: true
-            }
-          },
-          // 표시 시작일자가 현재 날짜 이하여야 함
-          {
-            property: NOTION_FIELDS.DISPLAY_START_DATE,
-            date: {
-              on_or_before: todayISO
-            }
-          }
-        ]
-      };
-
       // 프로그램 종류 필터 (Notion API에서 정확하게 처리 가능)
       if (filters.programType) {
-        queryBody.filter.and.push({
+        queryBody.filter = {
           property: NOTION_FIELDS.PROGRAM_TYPE,
           select: {
             equals: filters.programType
           }
-        });
+        };
       }
 
       if (startCursor) {
@@ -310,8 +286,12 @@ class ProgramService {
       let programs = data.results.map(page => this.formatProgramData(page));
       
       // 백엔드에서 상태 필터링 (정확한 날짜 기반 필터링)
+      // recruitmentStatus 필터가 명시적으로 제공되지 않으면 기본적으로 '모집 중'만 표시
       if (filters.recruitmentStatus) {
         programs = programs.filter(p => p.recruitmentStatus === filters.recruitmentStatus);
+      } else {
+        // 기본값: 모집 중인 프로그램만 표시
+        programs = programs.filter(p => p.recruitmentStatus === '모집 중');
       }
       
       if (filters.programStatus) {
@@ -555,7 +535,6 @@ class ProgramService {
       recruitmentEndDate: recruitmentPeriod?.end || null,
       startDate: activityPeriod?.start || null,
       endDate: activityPeriod?.end || null,
-      displayStartDate: getDateValue(props[NOTION_FIELDS.DISPLAY_START_DATE]),
       targetAudience: getTextContent(props[NOTION_FIELDS.TARGET_AUDIENCE]),
       thumbnail: getFileUrls(props[NOTION_FIELDS.THUMBNAIL]),
       coverImage: getCoverImageUrl(page),
@@ -591,9 +570,6 @@ class ProgramService {
    */
   async searchPrograms(searchTerm, filters = {}, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
-      // 오늘 날짜를 KST 기준 ISO 형식으로 변환 (YYYY-MM-DD)
-      const todayISO = nowKstIso().split('T')[0];
-
       // 필터링으로 인한 데이터 부족을 방지하기 위해 더 많이 가져오기
       const fetchSize = Math.min(normalizePageSize(pageSize) * 3, MAX_PAGE_SIZE);
 
@@ -621,7 +597,7 @@ class ProgramService {
         ]
       };
 
-      // 항상 표시 시작일자 필터 적용 + 검색 필터
+      // 검색 필터 적용
       const queryBody = {
         page_size: fetchSize,
         sorts: [
@@ -630,25 +606,7 @@ class ProgramService {
             direction: "descending"
           }
         ],
-        filter: {
-          and: [
-            searchFilter,
-            // 표시 시작일자가 설정되어 있어야 함
-            {
-              property: NOTION_FIELDS.DISPLAY_START_DATE,
-              date: {
-                is_not_empty: true
-              }
-            },
-            // 표시 시작일자가 현재 날짜 이하여야 함
-            {
-              property: NOTION_FIELDS.DISPLAY_START_DATE,
-              date: {
-                on_or_before: todayISO
-              }
-            }
-          ]
-        }
+        filter: searchFilter
       };
 
       if (startCursor) {
@@ -657,12 +615,17 @@ class ProgramService {
 
       // 프로그램 종류 필터 (Notion API에서 정확하게 처리 가능)
       if (filters.programType) {
-        queryBody.filter.and.push({
-          property: NOTION_FIELDS.PROGRAM_TYPE,
-          select: {
-            equals: filters.programType
-          }
-        });
+        queryBody.filter = {
+          and: [
+            searchFilter,
+            {
+              property: NOTION_FIELDS.PROGRAM_TYPE,
+              select: {
+                equals: filters.programType
+              }
+            }
+          ]
+        };
       }
 
       // v5.3.0에서 databases.query가 제거되어 dataSources.query 사용
@@ -675,8 +638,12 @@ class ProgramService {
       let programs = data.results.map(page => this.formatProgramData(page));
       
       // 백엔드에서 상태 필터링 (정확한 날짜 기반 필터링)
+      // recruitmentStatus 필터가 명시적으로 제공되지 않으면 기본적으로 '모집 중'만 표시
       if (filters.recruitmentStatus) {
         programs = programs.filter(p => p.recruitmentStatus === filters.recruitmentStatus);
+      } else {
+        // 기본값: 모집 중인 프로그램만 표시
+        programs = programs.filter(p => p.recruitmentStatus === '모집 중');
       }
       
       if (filters.programStatus) {
