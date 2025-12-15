@@ -11,9 +11,9 @@ const programController = require('../controllers/programController');
  *     description: |
  *       모집상태 및 프로그램진행여부로 필터링된 프로그램 목록을 조회합니다.
  *       
- *       **자동 필터링:**
- *       - 표시 시작일자가 설정된 프로그램만 조회됩니다.
- *       - 표시 시작일자가 오늘 이전이거나 오늘인 프로그램만 조회됩니다.
+ *       **기본 동작:**
+ *       - recruitmentStatus 파라미터가 없으면 '모집 중'인 프로그램만 조회됩니다.
+ *       - recruitmentStatus 파라미터를 명시하면 해당 상태의 프로그램을 조회합니다.
  *     tags: [Programs]
  *     parameters:
  *       - in: query
@@ -77,9 +77,9 @@ router.get('/', programController.getPrograms);
  *     description: |
  *       제목, 설명을 기반으로 프로그램을 검색합니다.
  *       
- *       **자동 필터링:**
- *       - 표시 시작일자가 설정된 프로그램만 검색됩니다.
- *       - 표시 시작일자가 오늘 이전이거나 오늘인 프로그램만 검색됩니다.
+ *       **기본 동작:**
+ *       - recruitmentStatus 파라미터가 없으면 '모집 중'인 프로그램만 검색됩니다.
+ *       - recruitmentStatus 파라미터를 명시하면 해당 상태의 프로그램을 검색합니다.
  *     tags: [Programs]
  *     parameters:
  *       - in: query
