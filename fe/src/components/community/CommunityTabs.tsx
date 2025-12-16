@@ -27,26 +27,26 @@ export const CommunityTabs = ({ activeTab }: CommunityTabsProps) => {
     router.push(LINK_URL.COMMUNITY);
   };
 
-  const handleMissionClick = () => {
-    router.push(LINK_URL.COMMUNITY_MISSION);
-  };
+  // const handleMissionClick = () => {
+  //   router.push(LINK_URL.COMMUNITY_MISSION);
+  // };
 
   const isProgramActive = activeTab === COMMUNITY_TAB_VALUES.PROGRAM;
-  const isMissionActive = activeTab === COMMUNITY_TAB_VALUES.MISSION;
+  // const isMissionActive = activeTab === COMMUNITY_TAB_VALUES.MISSION;
 
   return (
     <div className="flex h-12 items-center justify-between bg-white">
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className={isProgramActive ? "pb-1 text-black" : "pb-1 text-gray-400"}
+          className={isProgramActive ? "py-1 text-black" : "py-1 text-gray-400"}
           onClick={handleProgramClick}
         >
           <Typography font="noto" variant="title4">
             {COMMUNITY_TAB_LABELS[COMMUNITY_TAB_VALUES.PROGRAM]}
           </Typography>
         </button>
-        <button
+        {/* <button
           type="button"
           className={isMissionActive ? "pb-1 text-black" : "pb-1 text-gray-400"}
           onClick={handleMissionClick}
@@ -54,7 +54,7 @@ export const CommunityTabs = ({ activeTab }: CommunityTabsProps) => {
           <Typography font="noto" variant="title4">
             {COMMUNITY_TAB_LABELS[COMMUNITY_TAB_VALUES.MISSION]}
           </Typography>
-        </button>
+        </button> */}
       </div>
       <AlarmButton />
     </div>

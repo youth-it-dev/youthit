@@ -14,12 +14,12 @@ export const BOTTOM_NAV_TABS = [
     href: LINK_URL.COMMUNITY,
     icon: IMAGE_URL.ICON.community.url,
   },
-  {
-    key: "mission" as const,
-    label: "미션",
-    href: LINK_URL.MISSION,
-    icon: IMAGE_URL.ICON.mission.url,
-  },
+  // {
+  //   key: "mission" as const,
+  //   label: "미션",
+  //   href: LINK_URL.MISSION,
+  //   icon: IMAGE_URL.ICON.mission.url,
+  // },
   {
     key: "myPage" as const,
     label: "마이",
