@@ -22,16 +22,12 @@ export type ShareOptions = {
  * @returns 공유 성공 여부
  */
 export const shareContent = async (options: ShareOptions): Promise<void> => {
-  const { title, text, url } = options;
+  const { url } = options;
 
   // Web Share API 지원 확인
   if (typeof navigator !== "undefined" && navigator.share) {
     try {
-      await navigator.share({
-        title,
-        text: text || title,
-        url,
-      });
+      await navigator.share({ url });
       return;
     } catch (shareError) {
       // 사용자가 공유를 취소한 경우(AbortError)는 무시
