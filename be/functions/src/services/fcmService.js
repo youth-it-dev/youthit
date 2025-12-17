@@ -298,24 +298,6 @@ class FCMService {
 
       const successfulUserIds = Array.from(successfulUserIdsSet);
 
-      if (approvedUserIds.length > 0) {
-        const savePromises = approvedUserIds.map(userId =>
-          this.notificationService.saveNotification(userId, {
-            title: notification.title,
-            message: notification.message,
-            type: notification.type || "general",
-            postId: notification.postId || undefined,
-            communityId: notification.communityId || undefined,
-            commentId: notification.commentId && notification.commentId !== "" ? notification.commentId : undefined,
-          }).catch(err => {
-            console.error(`알림 저장 실패 (userId: ${userId}):`, err);
-          })
-        );
-        Promise.all(savePromises).catch(err => {
-          console.error("다중 사용자 알림 저장 중 오류:", err);
-        });
-      }
-
       return {
         sentCount: result.successCount,
         failedCount: result.failureCount,
