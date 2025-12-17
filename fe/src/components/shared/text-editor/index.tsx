@@ -465,15 +465,17 @@ const TextEditor = ({
   };
 
   /**
-   * 선택 영역 위치 기준 팝오버 좌표 계산
+   * 툴바 기준 팝오버 좌표 계산 (모바일에서 잘리지 않도록 상단 고정)
    */
   const updateLinkPopoverPosition = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    const top = (rect.bottom || rect.top) + window.scrollY + 8;
-    const left = (rect.left || rect.right) + window.scrollX;
-    setLinkPopoverPosition({ top, left });
+    const toolbar = containerRef.current?.querySelector('[class*="sticky"]');
+    if (toolbar) {
+      const rect = toolbar.getBoundingClientRect();
+      setLinkPopoverPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX + 10,
+      });
+    }
   };
 
   /**
