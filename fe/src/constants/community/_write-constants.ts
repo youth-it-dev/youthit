@@ -4,6 +4,51 @@
 export const MAX_FILES = 5;
 
 /**
+ * @description 허용되는 이미지 확장자
+ * jpg, jpeg, png, gif, webp, svg, heic, heif, heix, avif, bmp, tiff, tif, ico
+ */
+export const ALLOWED_IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".heic",
+  ".heif",
+  ".heix",
+  ".avif",
+  ".bmp",
+  ".tiff",
+  ".tif",
+  ".ico",
+] as const;
+
+/**
+ * @description 허용되는 문서 확장자
+ * pdf
+ */
+export const ALLOWED_DOCUMENT_EXTENSIONS = [".pdf"] as const;
+
+/**
+ * @description 허용되는 모든 파일 확장자 (이미지 + 문서)
+ */
+export const ALLOWED_FILE_EXTENSIONS = [
+  ...ALLOWED_IMAGE_EXTENSIONS,
+  ...ALLOWED_DOCUMENT_EXTENSIONS,
+] as const;
+
+/**
+ * @description input accept 속성용 이미지 확장자 문자열
+ */
+export const ACCEPT_IMAGE_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS.join(",");
+
+/**
+ * @description input accept 속성용 전체 파일 확장자 문자열
+ */
+export const ACCEPT_FILE_EXTENSIONS = ALLOWED_FILE_EXTENSIONS.join(",");
+
+/**
  * @description 커뮤니티 글 작성 페이지 에러 메시지
  */
 export const WRITE_MESSAGES = {
