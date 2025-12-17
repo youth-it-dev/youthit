@@ -1382,6 +1382,11 @@ class CommunityService {
         postId,
       });
 
+      this._notifyCommunityMembersAboutNewPost(communityId, userId, postId, title, community.name, author)
+        .catch((error) => {
+          console.error("[COMMUNITY][createPost] 멤버 알림 전송 실패 (게시글 생성은 성공):", error.message);
+        });
+
       const {authorId, createdAt: _createdAt, updatedAt: _updatedAt, preview: _preview, ...restNewPost} = newPost;
       
       return {
@@ -1404,6 +1409,61 @@ class CommunityService {
         throw error;
       }
       throw new Error("게시글 생성에 실패했습니다");
+    }
+  }
+
+  /**
+   * 커뮤니티 멤버들에게 새 게시글 작성 알림 전송
+   * @param {string} communityId - 커뮤니티 ID
+   * @param {string} authorId - 작성자 ID
+   * @param {string} postId - 게시글 ID
+   * @param {string} postTitle - 게시글 제목
+   * @param {string} communityName - 커뮤니티 이름
+   * @param {string} authorName - 작성자 이름
+   * @private
+   */
+  async _notifyCommunityMembersAboutNewPost(communityId, authorId, postId, postTitle, communityName, authorName) {
+    try {
+      const members = await this.firestoreService.getCollectionWhere(
+        `communities/${communityId}/members`,
+        "status",
+        "==",
+        "approved"
+      );
+
+      if (!members || members.length === 0) {
+        console.log(`[COMMUNITY][_notifyCommunityMembersAboutNewPost] 멤버 없음: communityId=${communityId}`);
+        return;
+      }
+
+      const memberUserIds = members
+        .filter((member) => member.userId && member.userId !== authorId)
+        .map((member) => member.userId);
+
+      if (memberUserIds.length === 0) {
+        console.log(`[COMMUNITY][_notifyCommunityMembersAboutNewPost] 알림 대상 없음 (작성자만 존재): communityId=${communityId}`);
+        return;
+      }
+
+      const link = NOTIFICATION_LINKS.POST(postId, communityId);
+      
+      const notificationTitle = "새 게시글이 올라왔어요";
+      const notificationMessage = communityName ? `${communityName} 프로그램에 새로운 게시글이 올라왔어요` : "새로운 게시글이 올라왔어요";
+
+      await fcmHelper.sendNotificationToUsers(
+        memberUserIds,
+        notificationTitle,
+        notificationMessage,
+        "ACTIVITY",
+        postId,
+        communityId,
+        link
+      );
+
+      console.log(`[COMMUNITY][_notifyCommunityMembersAboutNewPost] 알림 전송 완료: communityId=${communityId}, postId=${postId}, 대상=${memberUserIds.length}명`);
+    } catch (error) {
+      console.error("[COMMUNITY][_notifyCommunityMembersAboutNewPost] 알림 전송 실패:", error);
+      throw error;
     }
   }
 
