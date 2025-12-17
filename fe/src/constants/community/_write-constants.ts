@@ -5,7 +5,7 @@ export const MAX_FILES = 5;
 
 /**
  * @description 허용되는 이미지 확장자
- * jpg, jpeg, png, gif, webp, svg, heic, heif, heix, avif, bmp, tiff, tif, ico
+ * jpg, jpeg, png, gif, webp, svg, heic, heif, avif, bmp, tiff, tif, ico
  */
 export const ALLOWED_IMAGE_EXTENSIONS = [
   ".jpg",
@@ -16,7 +16,6 @@ export const ALLOWED_IMAGE_EXTENSIONS = [
   ".svg",
   ".heic",
   ".heif",
-  ".heix",
   ".avif",
   ".bmp",
   ".tiff",
