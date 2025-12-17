@@ -5,10 +5,10 @@ const fileTypeFromBufferPromise = import("file-type").then((module) => module.fi
 
 // 파일 형식 검증 관련 상수
 const ALLOWED_EXTENSIONS = [
-  "jpg", "jpeg", "png", "gif", "webp", "svg", "pdf"
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "heic", "heif", "heix", "avif", "bmp", "tiff", "tif", "ico", "docx", "xlsx", "pptx", "zip"
 ];
 const ALLOWED_MIME_TYPES = [
-  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "application/pdf"
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "application/pdf", "image/heic", "image/heif", "image/heix", "image/avif", "image/bmp", "image/tiff", "image/x-icon", "image/vnd.microsoft.icon", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/zip"
 ];
 
 const EXPECTED_EXTENSIONS_BY_MIME = {
@@ -18,6 +18,18 @@ const EXPECTED_EXTENSIONS_BY_MIME = {
   "image/webp": ["webp"],
   "image/svg+xml": ["svg"],
   "application/pdf": ["pdf"],
+  "image/heic": ["heic", "heif", "heix", "avif"],
+  "image/heif": ["heic", "heif", "heix", "avif"],
+  "image/heix": ["heic", "heif", "heix", "avif"],
+  "image/avif": ["avif"],
+  "image/bmp": ["bmp"],
+  "image/tiff": ["tiff", "tif"],
+  "image/x-icon": ["ico"],
+  "image/vnd.microsoft.icon": ["ico"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": ["pptx"],
+  "application/zip": ["zip"],
 };
 
 class FileService {
@@ -130,7 +142,13 @@ class FileService {
 
       if (clientMimeType) {
         const normalizedClientMime = clientMimeType.toLowerCase();
-        if (normalizedClientMime !== normalizedDetectedMime) {
+        const icoMimeTypes = ["image/vnd.microsoft.icon", "image/x-icon"];
+        const isIcoFile = icoMimeTypes.includes(normalizedClientMime) && icoMimeTypes.includes(normalizedDetectedMime);
+        
+        const heifMimeTypes = ["image/heic", "image/heif", "image/heix", "image/avif"];
+        const isHeifFile = heifMimeTypes.includes(normalizedClientMime) && heifMimeTypes.includes(normalizedDetectedMime);
+        
+        if (!isIcoFile && !isHeifFile && normalizedClientMime !== normalizedDetectedMime) {
           return {
             isValid: false,
             detectedMimeType,
