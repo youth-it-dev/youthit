@@ -57,6 +57,7 @@ const TextEditor = ({
   const titleRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const savedSelectionRef = useRef<Range | null>(null);
@@ -101,6 +102,98 @@ const TextEditor = ({
   const [linkError, setLinkError] = useState<string>("");
   const linkPopoverRef = useRef<HTMLDivElement>(null);
   const [showDatePrefix, setShowDatePrefix] = useState(false);
+
+  // 팝오버 뷰포트 경계 제한 상수
+  const POPOVER_WIDTH = 280;
+  const VIEWPORT_MARGIN = 8;
+
+  /**
+   * 팝오버 위치를 뷰포트 경계 내로 클램핑
+   * @param position - 원본 위치 (top, left) - scrollX/scrollY가 포함된 절대 좌표
+   * @param popoverWidth - 팝오버 너비 (기본값: POPOVER_WIDTH)
+   * @returns 클램핑된 위치
+   */
+  const clampPopoverPosition = (
+    position: ColorPickerPosition,
+    popoverWidth: number = POPOVER_WIDTH
+  ): ColorPickerPosition => {
+    // 스크롤 오프셋을 고려한 viewport 경계 계산
+    // (position 값이 이미 scrollX/scrollY를 포함하므로 경계도 동일하게 포함해야 함)
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    const minLeft = scrollX + VIEWPORT_MARGIN;
+    const maxLeft =
+      scrollX + window.innerWidth - popoverWidth - VIEWPORT_MARGIN;
+
+    const minTop = scrollY + VIEWPORT_MARGIN;
+    // 팝오버 높이는 대략 150px로 가정 (링크 팝오버 기준)
+    const estimatedPopoverHeight = 150;
+    const maxTop =
+      scrollY + window.innerHeight - estimatedPopoverHeight - VIEWPORT_MARGIN;
+
+    return {
+      top: Math.max(minTop, Math.min(position.top, maxTop)),
+      left: Math.max(minLeft, Math.min(position.left, maxLeft)),
+    };
+  };
+
+  /**
+   * 툴바 요소를 가져오거나 폴백 위치 반환
+   * @returns 툴바 rect 또는 null (폴백 필요 시)
+   */
+  const getToolbarRect = (): DOMRect | null => {
+    // 1순위: toolbarRef 사용
+    if (toolbarRef.current) {
+      return toolbarRef.current.getBoundingClientRect();
+    }
+
+    // 2순위: data-toolbar 속성으로 찾기 (폴백)
+    const toolbarByAttr = containerRef.current?.querySelector(
+      '[data-toolbar="editor"]'
+    );
+    if (toolbarByAttr) {
+      return toolbarByAttr.getBoundingClientRect();
+    }
+
+    // 툴바를 찾지 못함 - 경고 로그
+    debug.warn(
+      "TextEditor: 툴바 요소를 찾을 수 없습니다. toolbarRef 또는 data-toolbar 속성을 확인하세요."
+    );
+    return null;
+  };
+
+  /**
+   * 툴바 기반 폴백 위치 계산 (툴바를 찾지 못했을 때)
+   * 에디터 컨테이너 상단 중앙에 위치
+   * @returns scrollX/scrollY가 포함된 절대 좌표
+   */
+  const getFallbackPopoverPosition = (): ColorPickerPosition => {
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      return {
+        top: containerRect.top + scrollY + 50,
+        left: Math.max(
+          scrollX + VIEWPORT_MARGIN,
+          containerRect.left +
+            containerRect.width / 2 -
+            POPOVER_WIDTH / 2 +
+            scrollX
+        ),
+      };
+    }
+    // 최후의 폴백: 화면 중앙
+    return {
+      top: 100 + scrollY,
+      left: Math.max(
+        scrollX + VIEWPORT_MARGIN,
+        scrollX + window.innerWidth / 2 - POPOVER_WIDTH / 2
+      ),
+    };
+  };
 
   /**
    * 현재 선택 영역을 저장
@@ -466,15 +559,22 @@ const TextEditor = ({
 
   /**
    * 툴바 기준 팝오버 좌표 계산 (모바일에서 잘리지 않도록 상단 고정)
+   * - toolbarRef를 우선 사용하고, 없으면 data-toolbar 속성으로 폴백
+   * - 뷰포트 경계 내로 위치 클램핑
    */
   const updateLinkPopoverPosition = () => {
-    const toolbar = containerRef.current?.querySelector('[class*="sticky"]');
-    if (toolbar) {
-      const rect = toolbar.getBoundingClientRect();
-      setLinkPopoverPosition({
+    const rect = getToolbarRect();
+    if (rect) {
+      const rawPosition = {
         top: rect.bottom + window.scrollY + 4,
         left: rect.left + window.scrollX + 10,
-      });
+      };
+      setLinkPopoverPosition(clampPopoverPosition(rawPosition, POPOVER_WIDTH));
+    } else {
+      // 폴백 위치 사용
+      setLinkPopoverPosition(
+        clampPopoverPosition(getFallbackPopoverPosition(), POPOVER_WIDTH)
+      );
     }
   };
 
@@ -711,31 +811,53 @@ const TextEditor = ({
   /**
    * 컬러 피커 토글
    * 컬러 피커 표시/숨김을 제어하고 위치를 계산
+   * - toolbarRef를 우선 사용하고, 없으면 data-toolbar 속성으로 폴백
+   * - 뷰포트 경계 내로 위치 클램핑
    */
   const handleColorPickerToggle = () => {
     if (!showColorPicker) {
-      const toolbar = containerRef.current?.querySelector('[class*="sticky"]');
-      if (toolbar) {
-        const rect = toolbar.getBoundingClientRect();
-        setColorPickerPosition({
+      const COLOR_PICKER_WIDTH = 200; // 컬러 피커 예상 너비
+      const rect = getToolbarRect();
+      if (rect) {
+        const rawPosition = {
           top: rect.bottom + window.scrollY + 4,
           left: rect.left + window.scrollX + 80,
-        });
+        };
+        setColorPickerPosition(
+          clampPopoverPosition(rawPosition, COLOR_PICKER_WIDTH)
+        );
+      } else {
+        // 폴백 위치 사용
+        setColorPickerPosition(
+          clampPopoverPosition(getFallbackPopoverPosition(), COLOR_PICKER_WIDTH)
+        );
       }
     }
     setShowColorPicker(!showColorPicker);
   };
 
-  // Heading 메뉴 관리
+  /**
+   * Heading 메뉴 토글
+   * - toolbarRef를 우선 사용하고, 없으면 data-toolbar 속성으로 폴백
+   * - 뷰포트 경계 내로 위치 클램핑
+   */
   const handleHeadingMenuToggle = () => {
     if (!showHeadingMenu) {
-      const toolbar = containerRef.current?.querySelector('[class*="sticky"]');
-      if (toolbar) {
-        const rect = toolbar.getBoundingClientRect();
-        setHeadingMenuPosition({
+      const HEADING_MENU_WIDTH = 144; // w-36 = 9rem = 144px
+      const rect = getToolbarRect();
+      if (rect) {
+        const rawPosition = {
           top: rect.bottom + window.scrollY + 4,
           left: rect.left + window.scrollX + 10,
-        });
+        };
+        setHeadingMenuPosition(
+          clampPopoverPosition(rawPosition, HEADING_MENU_WIDTH)
+        );
+      } else {
+        // 폴백 위치 사용
+        setHeadingMenuPosition(
+          clampPopoverPosition(getFallbackPopoverPosition(), HEADING_MENU_WIDTH)
+        );
       }
     }
     setShowHeadingMenu(!showHeadingMenu);
@@ -1317,7 +1439,11 @@ const TextEditor = ({
       )}
     >
       {/* Sticky Toolbar */}
-      <div className="sticky top-0 z-40 flex w-full touch-manipulation items-center gap-2 overflow-x-auto border-b border-gray-300 bg-white px-5 pt-2 pb-2">
+      <div
+        ref={toolbarRef}
+        data-toolbar="editor"
+        className="sticky top-0 z-40 flex w-full touch-manipulation items-center gap-2 overflow-x-auto border-b border-gray-300 bg-white px-5 pt-2 pb-2"
+      >
         {/* Heading (H1~H3) - Toolbar 가장 왼쪽 */}
         <div className="relative flex items-center justify-center">
           <Button
