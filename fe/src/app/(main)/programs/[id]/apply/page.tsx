@@ -437,7 +437,7 @@ const ProgramApplyPageContent = () => {
       currentStep === "schedule-confirm" ||
       currentStep === "complete"
     ) {
-      router.push(`/programs/${programId}`);
+      router.replace(`${LINK_URL.PROGRAMS}/${programId}`);
       return;
     }
 
