@@ -40,6 +40,7 @@ import {
   isHandledError,
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
+import { getCurrentDateTime } from "@/utils/shared/date";
 import {
   extractTextFromHtml,
   checkPostTextLength,
@@ -98,6 +99,20 @@ const WritePageContent = () => {
   } = useToggle();
   const [imageUploadPartialMessage, setImageUploadPartialMessage] =
     useState<string>("");
+
+  // 실시간 작성 시간 표시
+  const [currentDateTime, setCurrentDateTime] = useState(() =>
+    getCurrentDateTime(" 작성 중")
+  );
+
+  // 매 분마다 시간 업데이트
+  useEffect(() => {
+    const UPDATE_INTERVAL_MS = 60 * 1000;
+    const intervalId = setInterval(() => {
+      setCurrentDateTime(getCurrentDateTime(" 작성 중"));
+    }, UPDATE_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // 이미지 업로드 실패 모달
   const {
@@ -574,6 +589,13 @@ const WritePageContent = () => {
                   {selectedCommunityName}
                 </Typography>
               </div>
+              <Typography
+                font="noto"
+                variant="label1M"
+                className="text-gray-400"
+              >
+                {currentDateTime}
+              </Typography>
             </div>
             {/* 공개 범위 */}
             <div className="flex w-full items-center justify-between border-t border-t-gray-300 p-4">
