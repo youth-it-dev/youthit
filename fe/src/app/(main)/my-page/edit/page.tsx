@@ -15,6 +15,7 @@ import Textarea from "@/components/shared/textarea";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
 import ProfileImage from "@/components/shared/ui/profile-image";
+import { ACCEPT_IMAGE_EXTENSIONS } from "@/constants/community/_write-constants";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   MAX_PROFILE_IMAGE_SIZE_BYTES,
@@ -865,7 +866,7 @@ const ProfileEditPage = () => {
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGE_EXTENSIONS}
         capture="environment"
         onChange={handleFileSelect}
         className="hidden"
@@ -874,7 +875,7 @@ const ProfileEditPage = () => {
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGE_EXTENSIONS}
         onChange={handleFileSelect}
         className="hidden"
         aria-label="갤러리에서 사진 선택"

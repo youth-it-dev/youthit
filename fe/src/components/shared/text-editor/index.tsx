@@ -14,6 +14,10 @@ import {
   Link,
 } from "lucide-react";
 import { createPortal } from "react-dom";
+import {
+  ACCEPT_FILE_EXTENSIONS,
+  ACCEPT_IMAGE_EXTENSIONS,
+} from "@/constants/community/_write-constants";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { TEXT_EDITOR, getTodayPrefix } from "@/constants/shared/_text-editor";
 import { useGlobalClickOutside } from "@/hooks/shared/useGlobalClickOutside";
@@ -1807,7 +1811,7 @@ const TextEditor = ({
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGE_EXTENSIONS}
         className="hidden"
         onChange={handleImageChange}
         aria-label="이미지 업로드"
@@ -1815,6 +1819,7 @@ const TextEditor = ({
       <input
         ref={fileInputRef}
         type="file"
+        accept={ACCEPT_FILE_EXTENSIONS}
         className="hidden"
         onChange={handleFileChange}
         aria-label="파일 업로드"
