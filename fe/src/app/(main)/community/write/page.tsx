@@ -150,7 +150,7 @@ const WritePageContent = () => {
 
   // API 스키마에서 정의된 타입 사용
   const certificationMethod: Program["certificationMethod"] =
-    programData?.data?.program?.certificationMethod;
+    programData?.program?.certificationMethod;
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
