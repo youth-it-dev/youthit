@@ -149,16 +149,10 @@ export const fcmKeys = {
   getFcmTokens: __buildKey("fcm", "getFcmTokens"),
 } as const;
 
-// Files Query Keys
-export const filesKeys = {} as const;
-
 // Home Query Keys
 export const homeKeys = {
   getHome: __buildKey("home", "getHome"),
 } as const;
-
-// Images Query Keys
-export const imagesKeys = {} as const;
 
 // Missions Query Keys
 export const missionsKeys = {

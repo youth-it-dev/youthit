@@ -4,7 +4,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { get, post, put, patch, del } from "@/lib/axios";
+import { post, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/files-types";
 
 export const deleteFilesById = (request: Types.TDELETEFilesByIdReq) => {

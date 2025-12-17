@@ -3,14 +3,8 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import {
-  useQuery,
-  useMutation,
-  type UseQueryOptions,
-  type UseMutationOptions,
-} from "@tanstack/react-query";
+import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/files-api";
-import { filesKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/files-types";
 
 export const useDeleteFilesById = <

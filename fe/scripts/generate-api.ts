@@ -690,6 +690,9 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
       );
     }
 
+    // 사용되지 않는 import 제거
+    fileContent = removeUnusedImports(fileContent);
+
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
@@ -896,6 +899,9 @@ import type * as Schema from "./api-schema";
       );
     }
 
+    // 사용되지 않는 import 제거
+    fileContent = removeUnusedImports(fileContent);
+
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
@@ -958,6 +964,17 @@ function generateQueryKeys(endpoints: ApiEndpoint[]): string {
   sortedTags.forEach((tag) => {
     const tagName = tag.toLowerCase();
     const tagEndpoints = groupedEndpoints[tag];
+
+    // GET 요청이 있는지 확인
+    const hasGetRequest = tagEndpoints.some(
+      (endpoint) => endpoint.method.toLowerCase() === "get"
+    );
+
+    // GET 요청이 없으면 키 생성하지 않음
+    if (!hasGetRequest) {
+      return;
+    }
+
     queryKeys += `// ${tag} Query Keys\nexport const ${tagName}Keys = {\n`;
 
     // 엔드포인트를 path와 method로 정렬하여 일관된 순서 보장
@@ -1079,6 +1096,11 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
     const fileName = `${tag.toLowerCase()}-hooks.ts`;
     const filePath = path.join(HOOKS_DIR, fileName);
 
+    // GET 요청이 있는지 확인 (query-keys가 생성되었는지 확인)
+    const hasGetRequest = tagEndpoints.some(
+      (endpoint) => endpoint.method.toLowerCase() === "get"
+    );
+
     let fileContent = `/**
  * @description ${tag} 관련 React Query Hooks
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -1086,8 +1108,7 @@ function generateHooks(endpoints: ApiEndpoint[]): string {
 
 import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/${tag.toLowerCase()}-api";
-import { ${tag.toLowerCase()}Keys } from "@/constants/generated/query-keys";
-import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
+${hasGetRequest ? `import { ${tag.toLowerCase()}Keys } from "@/constants/generated/query-keys";\n` : ""}import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
 
 `;
 
@@ -1135,7 +1156,11 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
           fileContent += `) => {\n`;
           fileContent += `  const { request, ...queryOptions } = options;\n`;
           fileContent += `  return useQuery<${responseType}, Error, TData>({\n`;
-          fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName}(request),\n`;
+          if (hasGetRequest) {
+            fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName}(request),\n`;
+          } else {
+            fileContent += `    queryKey: ["${tag.toLowerCase()}", "${funcName}", request],\n`;
+          }
           fileContent += `    queryFn: async () => {\n`;
           fileContent += `      const response = await Api.${funcName}(request);\n`;
           fileContent += `      return response.data;\n`;
@@ -1148,7 +1173,11 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
           fileContent += `  options?: Omit<UseQueryOptions<${responseType}, Error, TData>, "queryKey" | "queryFn">\n`;
           fileContent += `) => {\n`;
           fileContent += `  return useQuery<${responseType}, Error, TData>({\n`;
-          fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName},\n`;
+          if (hasGetRequest) {
+            fileContent += `    queryKey: ${tag.toLowerCase()}Keys.${funcName},\n`;
+          } else {
+            fileContent += `    queryKey: ["${tag.toLowerCase()}", "${funcName}"],\n`;
+          }
           fileContent += `    queryFn: async () => {\n`;
           fileContent += `      const response = await Api.${funcName}();\n`;
           fileContent += `      return response.data;\n`;
@@ -1260,12 +1289,129 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
       );
     }
 
+    // 사용되지 않는 import 제거
+    fileContent = removeUnusedImports(fileContent);
+
     fs.writeFileSync(filePath, fileContent);
     formatGeneratedFile(filePath);
     debug.log(`✅ ${fileName} 생성 완료`);
   });
 
   return "";
+}
+
+// 사용되지 않는 import 제거 함수
+function removeUnusedImports(content: string): string {
+  // import 문을 제외한 본문만 추출
+  const importSection = content.match(
+    /^[\s\S]*?(?=\n\nexport|\n\nconst|\n\nfunction|\n\ninterface|\n\ntype|\n\n\/\/)/
+  );
+  const bodyContent = importSection
+    ? content.replace(importSection[0], "")
+    : content;
+
+  // useQuery 사용 여부 확인 (import 문 제외)
+  const usesUseQuery = /useQuery\s*[<\(]/.test(bodyContent);
+  // useMutation 사용 여부 확인 (import 문 제외)
+  const usesUseMutation = /useMutation\s*[<\(]/.test(bodyContent);
+  // UseQueryOptions 사용 여부 확인 (import 문 제외)
+  const usesUseQueryOptions = /UseQueryOptions/.test(bodyContent);
+  // UseMutationOptions 사용 여부 확인 (import 문 제외)
+  const usesUseMutationOptions = /UseMutationOptions/.test(bodyContent);
+  // Api 사용 여부 확인 (import 문 제외)
+  const usesApi = /Api\.\w+/.test(bodyContent);
+  // Types 사용 여부 확인 (import 문 제외)
+  const usesTypes = /Types\.\w+/.test(bodyContent);
+  // axios 메서드 사용 여부 확인 (import 문 제외)
+  const usesGet = /\bget\s*[<\(]/.test(bodyContent);
+  const usesPost = /\bpost\s*[<\(]/.test(bodyContent);
+  const usesPut = /\bput\s*[<\(]/.test(bodyContent);
+  const usesPatch = /\bpatch\s*[<\(]/.test(bodyContent);
+  const usesDel = /\bdel\s*[<\(]/.test(bodyContent);
+
+  // react-query import 정리
+  if (
+    !usesUseQuery &&
+    !usesUseMutation &&
+    !usesUseQueryOptions &&
+    !usesUseMutationOptions
+  ) {
+    // 모두 사용되지 않으면 import 제거
+    content = content.replace(
+      /import\s*\{[^}]*\}\s*from\s*"@tanstack\/react-query";\s*\n/g,
+      ""
+    );
+  } else {
+    // 일부만 사용되는 경우 필요한 것만 남기기
+    const imports: string[] = [];
+    if (usesUseQuery) imports.push("useQuery");
+    if (usesUseMutation) imports.push("useMutation");
+    if (usesUseQueryOptions) imports.push("type UseQueryOptions");
+    if (usesUseMutationOptions) imports.push("type UseMutationOptions");
+
+    if (imports.length > 0) {
+      const newImport = `import { ${imports.join(", ")} } from "@tanstack/react-query";\n`;
+      // 기존 import를 찾아서 교체
+      const importRegex =
+        /import\s*\{[^}]*\}\s*from\s*"@tanstack\/react-query";\s*\n/g;
+      if (importRegex.test(content)) {
+        content = content.replace(importRegex, newImport);
+      }
+    }
+  }
+
+  // Api import 제거 (사용되지 않는 경우)
+  if (!usesApi) {
+    content = content.replace(
+      /import\s*\*\s*as\s+Api\s+from\s+"@\/api\/generated\/[^"]+";\s*\n/g,
+      ""
+    );
+  }
+
+  // Types import 제거 (사용되지 않는 경우)
+  if (!usesTypes) {
+    content = content.replace(
+      /import\s+type\s*\*\s*as\s+Types\s+from\s+"@\/types\/generated\/[^"]+";\s*\n/g,
+      ""
+    );
+  }
+
+  // axios 메서드 import 정리
+  const axiosImports: string[] = [];
+  if (usesGet) axiosImports.push("get");
+  if (usesPost) axiosImports.push("post");
+  if (usesPut) axiosImports.push("put");
+  if (usesPatch) axiosImports.push("patch");
+  if (usesDel) axiosImports.push("del");
+
+  if (axiosImports.length === 0) {
+    // 모두 사용되지 않으면 import 제거
+    content = content.replace(
+      /import\s*\{[^}]*\}\s*from\s+"@\/lib\/axios";\s*\n/g,
+      ""
+    );
+  } else {
+    // 필요한 것만 남기기
+    const newAxiosImport = `import { ${axiosImports.join(", ")} } from "@/lib/axios";\n`;
+    content = content.replace(
+      /import\s*\{[^}]*\}\s*from\s+"@\/lib\/axios";\s*\n/g,
+      newAxiosImport
+    );
+  }
+
+  // query-keys import 제거 (사용되지 않는 경우, import 문 제외)
+  const usesQueryKeys = /\w+Keys\.\w+/.test(bodyContent);
+  if (!usesQueryKeys) {
+    content = content.replace(
+      /import\s*\{[^}]+\}\s*from\s+"@\/constants\/generated\/query-keys";\s*\n/g,
+      ""
+    );
+  }
+
+  // 빈 줄 정리 (연속된 빈 줄을 하나로)
+  content = content.replace(/\n{3,}/g, "\n\n");
+
+  return content;
 }
 
 // Backup 및 Restore 함수
@@ -1408,6 +1554,38 @@ function generateApiCode() {
     });
 
     debug.log(`📋 ${endpoints.length}개 엔드포인트 처리 중...`);
+
+    // 실제 스웨거에 정의된 태그 목록 수집
+    const actualTags = new Set<string>();
+    endpoints.forEach((endpoint) => {
+      endpoint.tags.forEach((tag) => actualTags.add(tag.toLowerCase()));
+    });
+
+    // 스웨거에 없는 태그의 기존 파일들 삭제
+    debug.log("🗑️  스웨거에 없는 태그의 기존 파일 삭제 중...");
+    const dirsToClean = [
+      { dir: TYPES_DIR, suffix: "-types.ts" },
+      { dir: API_DIR, suffix: "-api.ts" },
+      { dir: HOOKS_DIR, suffix: "-hooks.ts" },
+    ];
+
+    dirsToClean.forEach(({ dir, suffix }) => {
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        files.forEach((file) => {
+          if (file.endsWith(suffix)) {
+            const tagName = file.replace(suffix, "");
+            if (!actualTags.has(tagName)) {
+              const filePath = path.join(dir, file);
+              fs.unlinkSync(filePath);
+              debug.log(
+                `🗑️  삭제: ${file} (태그 '${tagName}'가 스웨거에 없음)`
+              );
+            }
+          }
+        });
+      }
+    });
 
     // 1. 타입 정의 생성
     debug.log("📝 타입 정의 생성 중...");

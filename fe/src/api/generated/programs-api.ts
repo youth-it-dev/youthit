@@ -4,7 +4,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { get, post, put, patch, del } from "@/lib/axios";
+import { get, post } from "@/lib/axios";
 import type * as Types from "@/types/generated/programs-types";
 
 export const getPrograms = (request: Types.TGETProgramsReq) => {

@@ -3,12 +3,7 @@
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
  */
 
-import {
-  useQuery,
-  useMutation,
-  type UseQueryOptions,
-  type UseMutationOptions,
-} from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import * as Api from "@/api/generated/announcements-api";
 import { announcementsKeys } from "@/constants/generated/query-keys";
 import type * as Types from "@/types/generated/announcements-types";

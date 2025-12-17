@@ -4,7 +4,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { get, post, put, patch, del } from "@/lib/axios";
+import { get, post, put, del } from "@/lib/axios";
 import type * as Types from "@/types/generated/comments-types";
 
 export const deleteCommentsById = (request: Types.TDELETECommentsByIdReq) => {
