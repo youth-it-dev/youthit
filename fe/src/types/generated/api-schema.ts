@@ -171,7 +171,12 @@ export interface MediaItem {
 
 export interface StandardResponse {
   status: number;
-  data?: Record<string, any>;
+  data?:
+    | Record<string, any>
+    | Record<string, any>[]
+    | string
+    | number
+    | boolean;
 }
 
 export interface ErrorResponse {
@@ -705,7 +710,12 @@ export interface ProgramSearchResponse {
 
 export interface Success {
   status: number;
-  data?: any;
+  data?:
+    | Record<string, any>
+    | Record<string, any>[]
+    | string
+    | number
+    | boolean;
 }
 
 export interface Error {

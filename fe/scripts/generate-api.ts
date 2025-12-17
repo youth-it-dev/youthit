@@ -235,6 +235,120 @@ function getTypeScriptType(schema: any): string {
     return "any";
   }
 
+  // oneOf, anyOf 처리
+  if (schema.oneOf || schema.anyOf) {
+    const unionTypes = schema.oneOf || schema.anyOf;
+
+    // 모든 객체가 공통 필드를 가지고 있는지 확인
+    const allAreObjects = unionTypes.every(
+      (subSchema: any) =>
+        subSchema.type === "object" && subSchema.properties && !subSchema.$ref
+    );
+
+    if (allAreObjects && unionTypes.length > 0) {
+      // 공통 필드 추출
+      const firstSchema = unionTypes[0];
+      const allPropertyNames = new Set<string>();
+
+      // 모든 스키마의 프로퍼티 이름 수집
+      unionTypes.forEach((subSchema: any) => {
+        if (subSchema.properties) {
+          Object.keys(subSchema.properties).forEach((key) =>
+            allPropertyNames.add(key)
+          );
+        }
+      });
+
+      // 공통 필드와 선택적 필드 구분
+      const commonProperties: Record<string, any> = {};
+      const optionalProperties: Record<string, any> = {};
+
+      allPropertyNames.forEach((propName) => {
+        const allHaveProp = unionTypes.every(
+          (subSchema: any) => subSchema.properties?.[propName]
+        );
+        const allRequired = unionTypes.every((subSchema: any) =>
+          subSchema.required?.includes(propName)
+        );
+
+        if (allHaveProp) {
+          // 모든 스키마에 있는 필드는 공통 필드
+          const firstPropSchema = unionTypes.find(
+            (s: any) => s.properties?.[propName]
+          )?.properties[propName];
+
+          if (allRequired) {
+            // 모든 스키마에서 필수인 경우
+            commonProperties[propName] = firstPropSchema;
+          } else {
+            // 일부에서만 필수인 경우 선택적
+            optionalProperties[propName] = firstPropSchema;
+          }
+        } else {
+          // 일부 스키마에만 있는 필드는 선택적
+          const firstPropSchema = unionTypes.find(
+            (s: any) => s.properties?.[propName]
+          )?.properties[propName];
+          if (firstPropSchema) {
+            optionalProperties[propName] = firstPropSchema;
+          }
+        }
+      });
+
+      // enum 필드 병합 (예: targetType: "post" | "comment")
+      Object.keys(commonProperties).forEach((propName) => {
+        const propSchemas = unionTypes
+          .map((s: any) => s.properties?.[propName])
+          .filter(Boolean);
+
+        if (propSchemas.length > 0) {
+          const allHaveEnum = propSchemas.every((p: any) => p.enum);
+          if (allHaveEnum) {
+            // 모든 enum 값 병합
+            const allEnumValues = new Set<string>();
+            propSchemas.forEach((p: any) => {
+              if (p.enum) {
+                p.enum.forEach((v: string) => allEnumValues.add(v));
+              }
+            });
+            commonProperties[propName] = {
+              ...propSchemas[0],
+              enum: Array.from(allEnumValues),
+            };
+          }
+        }
+      });
+
+      // 단일 객체 타입으로 생성
+      let objType = "{\n";
+
+      // 공통 필수 필드
+      Object.entries(commonProperties).forEach(([propName, propSchema]) => {
+        const type = getTypeScriptType(propSchema);
+        objType += `    ${propName}: ${type};\n`;
+      });
+
+      // 선택적 필드
+      Object.entries(optionalProperties).forEach(([propName, propSchema]) => {
+        const type = getTypeScriptType(propSchema);
+        objType += `    ${propName}?: ${type};\n`;
+      });
+
+      objType += "  }";
+      return objType;
+    }
+
+    // 객체가 아니거나 $ref가 있는 경우 유니온 타입으로 처리
+    const unionTypeStrings = unionTypes.map((subSchema: any) => {
+      if (subSchema.$ref) {
+        const refName = subSchema.$ref.split("/").pop();
+        return refName ? `Schema.${refName}` : "any";
+      }
+      return getTypeScriptType(subSchema);
+    });
+    return unionTypeStrings.join(" | ");
+  }
+
   if (schema.type === "string") {
     if (schema.enum) {
       return schema.enum.map((v: string) => `"${v}"`).join(" | ");
@@ -585,7 +699,7 @@ import type * as Types from "@/types/generated/${tag.toLowerCase()}-types";
 }
 
 // 타입 파일 생성
-function generateTypeFiles(endpoints: ApiEndpoint[]): void {
+function generateTypeFiles(endpoints: ApiEndpoint[], spec: SwaggerSpec): void {
   // 태그별로 그룹화
   const groupedEndpoints = endpoints.reduce(
     (acc, endpoint) => {
@@ -688,7 +802,15 @@ import type * as Schema from "./api-schema";
         if (responseSchema.$ref) {
           const refName = responseSchema.$ref.split("/").pop();
           if (refName && availableSchemaNames.has(refName)) {
-            fileContent += `Schema.${refName};\n\n`;
+            // $ref로 참조된 스키마를 실제 스키마로 해결
+            const resolvedSchema = spec.components?.schemas?.[refName];
+            if (resolvedSchema && resolvedSchema.properties?.data) {
+              // data 필드가 있으면 Schema.XXX["data"] 형태로 타입 추출 (axios interceptor가 data만 반환)
+              fileContent += `Schema.${refName}["data"];\n\n`;
+            } else {
+              // data 필드가 없으면 전체 스키마 사용
+              fileContent += `Schema.${refName};\n\n`;
+            }
           } else {
             fileContent += `any;\n\n`;
           }
@@ -761,6 +883,15 @@ import type * as Schema from "./api-schema";
       // any 사용하지 않을 때 주석이 있으면 제거
       fileContent = fileContent.replace(
         /^\/\* eslint-disable @typescript-eslint\/no-explicit-any \*\/\s*\n/im,
+        ""
+      );
+    }
+
+    // Schema import가 실제로 사용되는지 확인하고, 사용되지 않으면 제거
+    const hasSchemaUsage = /Schema\.\w+/.test(fileContent);
+    if (!hasSchemaUsage) {
+      fileContent = fileContent.replace(
+        /^import type \* as Schema from "\.\/api-schema";\s*\n\n?/m,
         ""
       );
     }
@@ -1288,7 +1419,7 @@ function generateApiCode() {
 
     // 2. 개별 타입 파일들 생성
     debug.log("📝 개별 타입 파일들 생성 중...");
-    generateTypeFiles(endpoints);
+    generateTypeFiles(endpoints, swaggerSpec);
 
     // 3. API 함수들 생성
     debug.log("🔧 API 함수들 생성 중...");

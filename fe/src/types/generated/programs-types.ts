@@ -13,13 +13,13 @@ export interface TGETProgramsReq {
   cursor?: string;
 }
 
-export type TGETProgramsRes = Schema.ProgramListResponse;
+export type TGETProgramsRes = Schema.ProgramListResponse["data"];
 
 export interface TGETProgramsByIdReq {
   programId: string;
 }
 
-export type TGETProgramsByIdRes = Schema.ProgramDetailResponse;
+export type TGETProgramsByIdRes = Schema.ProgramDetailResponse["data"];
 
 export interface TGETProgramsApplicationsApproveByTwoIdsReq {
   programId: string;
@@ -47,4 +47,4 @@ export interface TGETProgramsSearchReq {
   cursor?: string;
 }
 
-export type TGETProgramsSearchRes = Schema.ProgramSearchResponse;
+export type TGETProgramsSearchRes = Schema.ProgramSearchResponse["data"];

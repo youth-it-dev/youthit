@@ -9,4 +9,4 @@ export interface TDELETEFilesByIdReq {
   filePath: string;
 }
 
-export type TPOSTFilesUploadMultipleRes = Schema.FileUploadResponse;
+export type TPOSTFilesUploadMultipleRes = Schema.FileUploadResponse["data"];
