@@ -10,6 +10,7 @@ const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
 const CommunityService = require("./communityService");
+const { nowKstIso } = require("../utils/notionHelper");
 
 // 기본 프로필 아바타 이미지 URL (공용 이미지)
 const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/J_jxAZxz1mqa/Profile_Default_HKbv3z1iVz8v.png";
@@ -1444,43 +1445,42 @@ class UserService {
           TMI: {key: "tmi", label: "TMI"},
         };
 
-        const toDate = (value) => {
+        const toDateString = (value) => {
           if (!value) return null;
           if (typeof value.toDate === "function") {
             try {
-              return value.toDate();
+              return value.toDate().toISOString().split('T')[0];
             } catch (_) {
               return null;
             }
           }
           if (value instanceof Date) {
-            return value;
+            return value.toISOString().split('T')[0];
           }
-          try {
-            return new Date(value);
-          } catch (_) {
-            return null;
+          if (typeof value === 'string' && value.includes('-')) {
+            return value.split('T')[0];
           }
+          return null;
         };
 
         const resolveProgramState = (community) => {
           if (!community) return null;
-          const startDate = toDate(community.startDate);
-          const endDate = toDate(community.endDate);
-          const now = new Date();
+          const startDateStr = toDateString(community.startDate);
+          const endDateStr = toDateString(community.endDate);
+          const today = nowKstIso().split('T')[0];
 
-          if (startDate && endDate) {
-            if (now < startDate) {
+          if (startDateStr && endDateStr) {
+            if (today < startDateStr) {
               return "ongoing"; // 시작 전이지만 "ongoing"으로 표시
-            } else if (now >= startDate && now <= endDate) {
-              return "ongoing";
+            } else if (today >= startDateStr && today <= endDateStr) {
+              return "ongoing"; // 활동 기간
             } else {
-              return "finished";
+              return "finished"; // 종료 (today > endDateStr)
             }
-          } else if (startDate) {
-            return now >= startDate ? "ongoing" : "ongoing";
-          } else if (endDate) {
-            return now <= endDate ? "ongoing" : "finished";
+          } else if (startDateStr) {
+            return today >= startDateStr ? "ongoing" : "ongoing";
+          } else if (endDateStr) {
+            return today > endDateStr ? "finished" : "ongoing";
           }
           return "ongoing";
         };
@@ -1497,10 +1497,10 @@ class UserService {
           
           // status가 null이면 시작 전인 것은 제외
           if (status === null || status === undefined) {
-            const startDate = toDate(community.startDate);
-            const now = new Date();
+            const startDateStr = toDateString(community.startDate);
+            const today = nowKstIso().split('T')[0];
             // 시작 전인 것은 제외
-            if (startDate && startDate > now) {
+            if (startDateStr && startDateStr > today) {
               return;
             }
           } else {
@@ -1671,29 +1671,34 @@ class UserService {
         TMI: {key: "tmi", label: "TMI"},
       };
 
-      const toDate = (value) => {
+      const toDateString = (value) => {
         if (!value) return null;
         if (typeof value.toDate === "function") {
           try {
-            return value.toDate();
+            return value.toDate().toISOString().split('T')[0];
           } catch (_) {
             return null;
           }
         }
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? null : date;
+        if (value instanceof Date) {
+          return value.toISOString().split('T')[0];
+        }
+        if (typeof value === 'string' && value.includes('-')) {
+          return value.split('T')[0];
+        }
+        return null;
       };
 
-      const now = new Date();
+      const today = nowKstIso().split('T')[0];
 
       const filteredCommunities = communities.filter((community) => {
-        const startDate = toDate(community.startDate);
-        const endDate = toDate(community.endDate);
+        const startDateStr = toDateString(community.startDate);
+        const endDateStr = toDateString(community.endDate);
 
         // status가 null이면 진행중 + 완료된 것만 반환 (시작 전 제외)
         if (status === null || status === undefined) {
           // 시작 전인 것은 제외
-          if (startDate && startDate > now) {
+          if (startDateStr && startDateStr > today) {
             return false;
           }
           // 나머지는 모두 포함 (진행중 + 완료)
@@ -1701,14 +1706,14 @@ class UserService {
         }
 
         if (status === "completed") {
-          return !!endDate && endDate < now;
+          return !!endDateStr && endDateStr < today;
         }
 
         // default ongoing
-        if (endDate && endDate < now) {
+        if (endDateStr && endDateStr < today) {
           return false;
         }
-        if (startDate && startDate > now) {
+        if (startDateStr && startDateStr > today) {
           return false;
         }
         return true;
@@ -1724,14 +1729,24 @@ class UserService {
 
         if (programType && programTypeMapping[programType]) {
           const typeInfo = programTypeMapping[programType];
-          const startDate = toDate(community.startDate);
-          const endDate = toDate(community.endDate);
+          const startDateStr = toDateString(community.startDate);
+          const endDateStr = toDateString(community.endDate);
           
-          // programStatus 결정
+          // programStatus 결정 - programService.js와 동일한 로직 (KST 기준 날짜 문자열 비교)
           let programStatus = "ongoing";
-          if (endDate && endDate < now) {
-            programStatus = "completed";
+          if (startDateStr && endDateStr) {
+            // startDate와 endDate가 모두 있는 경우
+            if (today >= startDateStr && today <= endDateStr) {
+              programStatus = "ongoing"; // 활동 기간 중
+            } else if (today > endDateStr) {
+              programStatus = "completed"; // 종료
+            }
+            // today < startDateStr인 경우는 이미 필터링에서 제외됨
+          } else if (endDateStr) {
+            // endDate만 있는 경우
+            programStatus = today > endDateStr ? "completed" : "ongoing";
           }
+          // startDate만 있거나 둘 다 없는 경우는 "ongoing" 유지
           
           grouped[typeInfo.key].items.push({
             id: community.id,
