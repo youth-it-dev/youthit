@@ -659,8 +659,7 @@ const WritePageContent = () => {
                   <p className="whitespace-pre-line">
                     {certificationMethod
                       .map((method) => method.plain_text)
-                      .filter(Boolean)
-                      .join("\n")}
+                      .filter(Boolean)}
                   </p>
                 </div>
               )}
