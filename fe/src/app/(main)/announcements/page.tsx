@@ -11,7 +11,9 @@ const filterAnnouncements = (allAnnouncements: Announcement[]) => {
   return allAnnouncements.filter((announcement) => {
     if (!announcement.startDate || !announcement.endDate) return true;
     const startDate = new Date(announcement.startDate);
-    const endDate = new Date(announcement.endDate);
+    const endDate = announcement.endDate?.length
+      ? new Date(announcement.endDate)
+      : new Date("9999-12-31");
     const today = new Date();
     return today >= startDate && today <= endDate;
   });
