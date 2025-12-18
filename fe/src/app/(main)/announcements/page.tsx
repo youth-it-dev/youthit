@@ -4,7 +4,18 @@ import Link from "next/link";
 import { Typography } from "@/components/shared/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGetAnnouncements } from "@/hooks/generated/announcements-hooks";
+import { Announcement } from "@/types/generated/api-schema";
 import { getTimeAgo } from "@/utils/shared/date";
+
+const filterAnnouncements = (allAnnouncements: Announcement[]) => {
+  return allAnnouncements.filter((announcement) => {
+    if (!announcement.startDate || !announcement.endDate) return true;
+    const startDate = new Date(announcement.startDate);
+    const endDate = new Date(announcement.endDate);
+    const today = new Date();
+    return today >= startDate && today <= endDate;
+  });
+};
 
 /**
  * @description 공지사항 목록 페이지
@@ -63,8 +74,21 @@ const AnnouncementsPage = () => {
     );
   }
 
-  const pinnedAnnouncements = data?.pinned || [];
-  const regularAnnouncements = data?.regular || [];
+  const pinnedAnnouncements = filterAnnouncements(data?.pinned || []);
+  const regularAnnouncements = filterAnnouncements(data?.regular || []);
+
+  const allAnnouncements = [...pinnedAnnouncements, ...regularAnnouncements];
+  if (!allAnnouncements.length) {
+    return (
+      <div className="mt-12 min-h-screen bg-white p-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <Typography font="noto" variant="body2R" className="text-gray-500">
+            등록된 공지사항이 없습니다.
+          </Typography>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-12 min-h-screen bg-white p-4">
@@ -88,14 +112,14 @@ const AnnouncementsPage = () => {
                     {announcement.title || "-"}
                   </Typography>
                 </div>
-                {announcement.createdAt && (
+                {announcement.startDate && (
                   <div className="mb-3">
                     <Typography
                       font="noto"
                       variant="caption1R"
                       className="text-gray-500"
                     >
-                      {getTimeAgo(announcement.createdAt)}
+                      {getTimeAgo(announcement.startDate)}
                     </Typography>
                   </div>
                 )}
@@ -107,43 +131,35 @@ const AnnouncementsPage = () => {
 
       {/* 일반 공지 */}
       <div className="space-y-3">
-        {regularAnnouncements.length > 0 ? (
-          regularAnnouncements.map((announcement) => (
-            <Link
-              key={announcement.id}
-              href={`/announcements/${announcement.id}`}
-              className="block rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
-            >
-              <div className="mb-2">
+        {regularAnnouncements.map((announcement) => (
+          <Link
+            key={announcement.id}
+            href={`/announcements/${announcement.id}`}
+            className="block rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
+          >
+            <div className="mb-2">
+              <Typography
+                as="h3"
+                font="noto"
+                variant="heading3B"
+                className="text-gray-900"
+              >
+                {announcement.title || "-"}
+              </Typography>
+            </div>
+            {announcement.startDate && (
+              <div>
                 <Typography
-                  as="h3"
                   font="noto"
-                  variant="heading3B"
-                  className="text-gray-900"
+                  variant="caption1R"
+                  className="text-gray-500"
                 >
-                  {announcement.title || "-"}
+                  {getTimeAgo(announcement.startDate)}
                 </Typography>
               </div>
-              {announcement.createdAt && (
-                <div>
-                  <Typography
-                    font="noto"
-                    variant="caption1R"
-                    className="text-gray-500"
-                  >
-                    {getTimeAgo(announcement.createdAt)}
-                  </Typography>
-                </div>
-              )}
-            </Link>
-          ))
-        ) : (
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <Typography font="noto" variant="body2R" className="text-gray-500">
-              등록된 공지사항이 없습니다.
-            </Typography>
-          </div>
-        )}
+            )}
+          </Link>
+        ))}
       </div>
     </div>
   );
