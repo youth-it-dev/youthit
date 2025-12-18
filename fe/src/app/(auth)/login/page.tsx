@@ -11,7 +11,6 @@ import { Typography } from "@/components/shared/typography";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
-import { useFCM } from "@/hooks/shared/useFCM";
 import { signInWithKakao, handleKakaoRedirectResult } from "@/lib/auth";
 import { auth } from "@/lib/firebase";
 import { triggerSuspensionDialog } from "@/contexts/shared/suspension-dialog";
@@ -45,7 +44,6 @@ const LoginPageContent = () => {
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { registerFCMToken } = useFCM();
 
   // 로그인 후 돌아갈 경로 (next 쿼리 파라미터)
   const rawNext = searchParams.get("next") || null;
@@ -149,7 +147,6 @@ const LoginPageContent = () => {
             }
 
             setKakaoAccessToken(kakaoAccessToken);
-            await registerFCMTokenSafely();
 
             // 인증 쿠키 설정 (미들웨어에서 빠른 체크를 위해)
             const { setAuthCookie } = await import("@/utils/auth/auth-cookie");
@@ -166,7 +163,6 @@ const LoginPageContent = () => {
           try {
             const { data: userData } = await refetchUserData();
             const hasNickname = !!userData?.nickname;
-            await registerFCMTokenSafely();
 
             // 인증 쿠키 설정 (미들웨어에서 빠른 체크를 위해)
             const { setAuthCookie } = await import("@/utils/auth/auth-cookie");
@@ -266,18 +262,6 @@ const LoginPageContent = () => {
   }, []);
 
   /**
-   * @description FCM 토큰 등록 (실패해도 로그인은 계속 진행)
-   */
-  const registerFCMTokenSafely = async () => {
-    try {
-      await registerFCMToken();
-    } catch (fcmError) {
-      debug.error("FCM 토큰 저장 실패:", fcmError);
-      // FCM 토큰 저장 실패해도 로그인은 계속 진행
-    }
-  };
-
-  /**
    * @description 로그인 성공 후 라우팅 처리
    * @param hasNickname - 닉네임 존재 여부
    */
@@ -339,9 +323,6 @@ const LoginPageContent = () => {
           return;
         }
 
-        // 2-1. FCM 토큰 등록 (실패해도 계속 진행)
-        await registerFCMTokenSafely();
-
         // 2-2. 신규 회원은 항상 온보딩 페이지로 (next 파라미터 무시)
         setIsLoading(false);
         router.replace(LINK_URL.MY_PAGE_EDIT);
@@ -353,9 +334,6 @@ const LoginPageContent = () => {
           // 3-1. 사용자 정보 조회
           const { data: userData } = await refetchUserData();
           const hasNickname = !!userData?.nickname;
-
-          // 3-2. FCM 토큰 등록 (실패해도 계속 진행)
-          await registerFCMTokenSafely();
 
           // 3-3. 닉네임 여부에 따라 라우팅
           setIsLoading(false);

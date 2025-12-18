@@ -41,21 +41,25 @@ const waitForAuthReady = async (): Promise<void> => {
  */
 export const requestNotificationPermission =
   async (): Promise<NotificationPermission> => {
-    if (!("Notification" in window)) {
-      debug.warn("이 브라우저는 알림을 지원하지 않습니다.");
+    try {
+      if (typeof window === "undefined") return "denied";
+
+      if (!("Notification" in window)) {
+        debug.warn("이 브라우저는 알림을 지원하지 않습니다.");
+        return "denied";
+      }
+
+      // 이미 결정된 상태면 추가 요청 불가/불필요
+      if (Notification.permission === "granted") return "granted";
+      if (Notification.permission === "denied") return "denied";
+
+      // 주의: 많은 브라우저에서 사용자 제스처(클릭/탭) 없이 호출하면 팝업이 무시될 수 있음
+      const permission = await Notification.requestPermission();
+      return permission as NotificationPermission;
+    } catch (error) {
+      debug.error("알림 권한 요청 실패:", error);
       return "denied";
     }
-
-    if (Notification.permission === "granted") {
-      return "granted";
-    }
-
-    if (Notification.permission === "denied") {
-      return "denied";
-    }
-
-    const permission = await Notification.requestPermission();
-    return permission as NotificationPermission;
   };
 
 /**
@@ -64,11 +68,26 @@ export const requestNotificationPermission =
 export const getFCMToken = async (): Promise<FCMTokenResult> => {
   try {
     // 1. 알림 권한 확인
-    const permission = await requestNotificationPermission();
-    if (permission !== "granted") {
+    // 토큰 발급 함수에서는 권한 팝업(사이드 이펙트)을 발생시키지 않도록 유지합니다.
+    // 권한 요청은 앱 최초 진입 시점(사용자 제스처 기반)에서 별도로 처리합니다.
+    if (typeof window === "undefined") {
       return {
         token: null,
-        error: `알림 권한이 ${permission} 상태입니다.`,
+        error: "클라이언트 환경에서만 FCM 토큰을 발급할 수 있습니다.",
+      };
+    }
+
+    if (!("Notification" in window)) {
+      return {
+        token: null,
+        error: "이 브라우저는 알림을 지원하지 않습니다.",
+      };
+    }
+
+    if (Notification.permission !== "granted") {
+      return {
+        token: null,
+        error: `알림 권한이 ${Notification.permission} 상태입니다.`,
       };
     }
 
