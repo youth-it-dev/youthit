@@ -23,12 +23,10 @@ export const CustomImage = ({
   src,
   alt,
   href,
-  target,
   style,
   className = "",
   width,
   height,
-  ...rest
 }: CustomImageProps) => {
   const router = useRouter();
 
@@ -40,7 +38,7 @@ export const CustomImage = ({
   const linkUrl =
     alt && (alt.startsWith("http") || alt.startsWith("/")) ? alt : href;
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!linkUrl) return;
 
     e.preventDefault();
@@ -56,7 +54,8 @@ export const CustomImage = ({
       if (
         urlObj.hostname === window.location.hostname ||
         urlObj.hostname.includes("youth-it") ||
-        urlObj.hostname.includes("localhost")
+        urlObj.hostname.includes("localhost") ||
+        urlObj.hostname.startsWith("/")
       ) {
         // 경로만 추출하여 router.push 사용 (서비스 내 페이지 이동)
         router.push(urlObj.pathname + urlObj.search);
@@ -150,46 +149,10 @@ export const CustomImage = ({
     return imageElement;
   }
 
-  // linkUrl이 youth-it 도메인인 경우 내부 링크로 처리
-  const isInternalLink =
-    linkUrl &&
-    (linkUrl.includes("youth-it") ||
-      linkUrl.includes("localhost") ||
-      linkUrl.startsWith("/"));
-
-  // 내부 링크인 경우 항상 onClick 핸들러 사용 (target 무시)
-  if (isInternalLink) {
-    return (
-      <a
-        href={linkUrl}
-        onClick={handleClick}
-        style={style}
-        className={className}
-      >
-        {imageElement}
-      </a>
-    );
-  }
-
-  // 외부 링크이고 target이 blank인 경우
-  if (target === "blank_" || target === "_blank") {
-    return (
-      <a
-        href={linkUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={style}
-        className={className}
-      >
-        {imageElement}
-      </a>
-    );
-  }
-
   // 내부 링크는 클릭 핸들러 사용
   return (
-    <a href={linkUrl} onClick={handleClick} style={style} className={className}>
+    <div onClick={handleClick} style={style} className={className}>
       {imageElement}
-    </a>
+    </div>
   );
 };

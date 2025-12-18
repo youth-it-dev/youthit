@@ -19,6 +19,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       attribute="class"
       forcedTheme="light"
       enableSystem={false}
+      enableColorScheme={false}
     >
       {children}
     </NextThemesProvider>

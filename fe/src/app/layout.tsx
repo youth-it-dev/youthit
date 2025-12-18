@@ -260,7 +260,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="ko" className={notoSansKr.variable}>
+    <html lang="ko" className={cn(notoSansKr.variable, "light")}>
       <body
         className={cn(
           notoSansKr.className,
