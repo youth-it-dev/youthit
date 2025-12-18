@@ -1,21 +1,54 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { requestNotificationPermission } from "@/hooks/shared/useFCM";
+import { onAuthStateChanged } from "firebase/auth";
+import { requestNotificationPermission, useFCM } from "@/hooks/shared/useFCM";
+import { auth } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
 
 const NOTIFICATION_PERMISSION_REQUESTED_SESSION_KEY =
   "notification-permission-requested-session";
 
 /**
- * @description 앱(서비스) 진입 시 알림 권한 요청
- * - 일부 브라우저는 사용자 제스처 없이 requestPermission을 무시/차단할 수 있어
- *   "진입 즉시 1회(auto) 시도" + "첫 사용자 제스처에서 1회(backup) 시도"로 안정성 확보
- * - 동일 세션에서 backup 시도는 1회로 제한
+ * @description 앱 알림 초기화
+ * 1. 알림 권한 요청: 로그인 여부와 무관하게 앱 진입 시점에 수행
+ *    - 일부 브라우저는 사용자 제스처 없이 requestPermission을 무시/차단할 수 있어
+ *      "진입 즉시 1회(auto) 시도" + "첫 사용자 제스처에서 1회(backup) 시도"로 안정성 확보
+ *    - 동일 세션에서 backup 시도는 1회로 제한
+ * 2. FCM 토큰 서버 저장: 로그인 직후 onAuthStateChanged에서만 수행
  */
 const AppNotificationsInitializer = () => {
   const isRequestingPermissionRef = useRef(false);
   const hasAutoAttemptedRef = useRef(false);
+  const isRegisteringTokenRef = useRef(false);
+
+  const { registerFCMToken } = useFCM();
+
+  const tryRegisterTokenIfPossible = useCallback(async () => {
+    if (isRegisteringTokenRef.current) return;
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    isRegisteringTokenRef.current = true;
+
+    try {
+      const result = await registerFCMToken();
+      if (!result.token) {
+        debug.warn("[FCM] 토큰 등록 실패:", result.error);
+        return;
+      }
+
+      debug.log("[FCM] 토큰 등록 완료");
+    } catch (error) {
+      debug.error("[FCM] 토큰 등록 중 예외:", error);
+    } finally {
+      isRegisteringTokenRef.current = false;
+    }
+  }, [registerFCMToken]);
 
   const tryRequestPermission = useCallback(async () => {
     if (isRequestingPermissionRef.current) return;
@@ -36,6 +69,7 @@ const AppNotificationsInitializer = () => {
     }
   }, []);
 
+  // 1. 알림 권한 요청 (로그인 여부와 무관)
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "default") return;
@@ -74,6 +108,18 @@ const AppNotificationsInitializer = () => {
       window.removeEventListener("keydown", handleUserGesture);
     };
   }, [tryRequestPermission]);
+
+  // 2. FCM 토큰 서버 저장 (로그인 직후에만 수행)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) return;
+      void tryRegisterTokenIfPossible();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [tryRegisterTokenIfPossible]);
 
   return null;
 };

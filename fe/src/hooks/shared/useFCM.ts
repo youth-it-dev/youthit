@@ -15,6 +15,16 @@ import { debug } from "@/utils/shared/debugger";
 import { useSaveFCMToken } from "./useSaveFCMToken";
 
 /**
+ * registerFCMToken 디듀프(탭 단위, in-memory)
+ * - Dev StrictMode / 중복 마운트 / auth 리스너 중복 등으로 동일 uid에서 여러 번 호출되는 것을 방지
+ * - localStorage 없이도 "현재 탭"에서는 충분히 중복 폭주를 막을 수 있습니다.
+ */
+const REGISTER_DEDUPE_WINDOW_MS = 60_000;
+const inFlightRegistrationByUid = new Map<string, Promise<FCMTokenResult>>();
+const lastSavedTokenByUid = new Map<string, string>();
+const lastSavedAtByUid = new Map<string, number>();
+
+/**
  * @description Firebase Auth가 초기화될 때까지 대기
  *
  * redirect 직후나 최초 로그인 직후에는 auth.currentUser가 잠시 null일 수 있어
@@ -115,11 +125,31 @@ export const getFCMToken = async (): Promise<FCMTokenResult> => {
 
 /**
  * @description 디바이스 정보 생성
+ *
+ * FCM 토큰 저장 시 Firestore document ID로 사용될 deviceInfo를 생성합니다.
+ *
+ * **형식**: `{deviceType}_{token 앞 6자리}`
+ *
+ * **예시**:
+ * - `mobile_c2OmA4` (모바일 디바이스)
+ * - `pwa_d3PnB5` (PWA 설치)
+ * - `web_e4QoC6` (웹 브라우저)
+ *
+ * **주의사항**:
+ * - userAgent 전체를 사용하지 않고 간결한 형식 사용
+ * - Firestore document ID 규칙 준수 (슬래시 등 특수문자 방지)
+ * - 토큰 앞 6자리로 동일 사용자의 여러 디바이스 구분
+ *
+ * @param token - FCM 토큰
+ * @param deviceType - 디바이스 타입 (pwa, mobile, web)
+ * @returns Firestore document ID로 사용 가능한 deviceInfo 문자열
  */
-export const getDeviceInfo = (): string => {
-  if (typeof window === "undefined") return "";
-
-  return navigator.userAgent;
+export const getDeviceInfo = (
+  token: string,
+  deviceType: DeviceType
+): string => {
+  const tokenPrefix = token.substring(0, 6);
+  return `${deviceType}_${tokenPrefix}`;
 };
 
 /**
@@ -170,26 +200,55 @@ export const useFCM = () => {
         };
       }
 
-      // 1. FCM 토큰 발급
-      const tokenResult = await getFCMToken();
-      if (!tokenResult.token) {
-        return tokenResult;
+      // uid 기준 in-flight 디듀프 (동시에 여러 곳에서 호출되더라도 1회만 수행)
+      const existingInFlight = inFlightRegistrationByUid.get(user.uid);
+      if (existingInFlight) {
+        return await existingInFlight;
       }
 
-      // 2. 디바이스 정보 수집
-      const deviceInfo = getDeviceInfo();
-      const deviceType = getDeviceType();
+      const promise = (async (): Promise<FCMTokenResult> => {
+        // 1. FCM 토큰 발급
+        const tokenResult = await getFCMToken();
+        if (!tokenResult.token) {
+          return tokenResult;
+        }
 
-      // 3. 서버에 토큰 저장
-      const tokenRequest: FCMTokenRequest = {
-        token: tokenResult.token,
-        deviceInfo,
-        deviceType,
-      };
+        // 최근 성공 디듀프 (짧은 시간 내 동일 토큰 재저장 방지)
+        const now = Date.now();
+        const lastToken = lastSavedTokenByUid.get(user.uid);
+        const lastSavedAt = lastSavedAtByUid.get(user.uid) ?? 0;
+        if (
+          lastToken === tokenResult.token &&
+          now - lastSavedAt < REGISTER_DEDUPE_WINDOW_MS
+        ) {
+          return { token: tokenResult.token };
+        }
 
-      await saveTokenMutation.mutateAsync(tokenRequest);
+        // 2. 디바이스 정보 수집
+        const deviceType = getDeviceType();
+        const deviceInfo = getDeviceInfo(tokenResult.token, deviceType);
 
-      return { token: tokenResult.token };
+        // 3. 서버에 토큰 저장
+        const tokenRequest: FCMTokenRequest = {
+          token: tokenResult.token,
+          deviceInfo,
+          deviceType,
+        };
+
+        await saveTokenMutation.mutateAsync(tokenRequest);
+
+        lastSavedTokenByUid.set(user.uid, tokenResult.token);
+        lastSavedAtByUid.set(user.uid, now);
+
+        return { token: tokenResult.token };
+      })();
+
+      inFlightRegistrationByUid.set(user.uid, promise);
+      try {
+        return await promise;
+      } finally {
+        inFlightRegistrationByUid.delete(user.uid);
+      }
     } catch (error) {
       return {
         token: null,
