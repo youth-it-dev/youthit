@@ -46,8 +46,6 @@ const AppNotificationsInitializer = () => {
   const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [hasRegisteredToken, setHasRegisteredToken] = useState(false);
-  const [needsGestureForPermission, setNeedsGestureForPermission] =
-    useState(false);
 
   const { registerFCMToken } = useFCM();
 
@@ -98,7 +96,7 @@ const AppNotificationsInitializer = () => {
     }
   }, [isServiceWorkerReady]);
 
-  // 알림 권한 요청 (모든 플랫폼에서 즉시 시도 → 실패 시 제스처 기반)
+  // 알림 권한 요청 (iOS 여부로 분기)
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
       debug.log("[Notifications] 알림을 지원하지 않는 환경");
@@ -127,71 +125,55 @@ const AppNotificationsInitializer = () => {
       return;
     }
 
-    // 모든 플랫폼에서 즉시 권한 요청 시도
-    debug.log(
-      `[Notifications] 즉시 알림 권한 요청 시도 (${isIOS ? "iOS" : "데스크톱/Android"})`
-    );
+    // iOS가 아니면 즉시 권한 요청 시도
+    if (!isIOS) {
+      debug.log("[Notifications] 데스크톱/Android: 즉시 알림 권한 요청 시도");
 
-    const attemptImmediateRequest = async () => {
-      try {
-        await tryRequestPermission();
-        const finalPermission = Notification.permission;
-        debug.log("[Notifications] 즉시 권한 요청 완료:", finalPermission);
-
-        // default 상태 유지 = 팝업이 표시되지 않음 (제스처 필요)
-        if (finalPermission === "default") {
-          debug.warn(
-            "[Notifications] 권한 팝업이 표시되지 않음, 사용자 제스처 필요"
+      const attemptImmediateRequest = async () => {
+        try {
+          await tryRequestPermission();
+          debug.log(
+            "[Notifications] 즉시 권한 요청 완료:",
+            Notification.permission
           );
-          setNeedsGestureForPermission(true);
+        } catch (error) {
+          debug.error("[Notifications] 즉시 권한 요청 실패:", error);
         }
-      } catch (error) {
-        debug.warn(
-          "[Notifications] 즉시 권한 요청 실패, 사용자 제스처 필요:",
-          error
-        );
-        setNeedsGestureForPermission(true);
-      }
-    };
+      };
 
-    void attemptImmediateRequest();
-  }, [isServiceWorkerReady, tryRequestPermission]);
-
-  // 제스처가 필요한 경우 리스너 등록 (fallback)
-  useEffect(() => {
-    if (!needsGestureForPermission) return;
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission !== "default") return;
-
-    // iOS에서는 Service Worker가 준비되어야 함
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS && !isServiceWorkerReady) {
-      debug.log(
-        "[Notifications] Fallback: iOS Service Worker 대기 중... 준비되면 리스너 등록"
-      );
+      void attemptImmediateRequest();
       return;
     }
 
-    debug.log(
-      "[Notifications] Fallback: 제스처 필요 - 사용자 제스처 리스너 등록"
-    );
+    // iOS인 경우: 사용자 제스처 리스너 등록 (필수)
+    debug.log("[Notifications] iOS: 사용자 제스처 리스너 등록 (필수)");
 
     const handleUserGesture = () => {
-      if (Notification.permission !== "default") return;
+      // 권한 상태 재확인
+      if (Notification.permission !== "default") {
+        debug.log(
+          "[Notifications] 제스처 발생했지만 권한이 이미 결정됨:",
+          Notification.permission
+        );
+        return;
+      }
 
-      debug.log("[Notifications] Fallback 제스처 감지! 알림 권한 요청 시작");
+      debug.log("[Notifications] 사용자 제스처 감지! 알림 권한 요청 시작");
       void tryRequestPermission();
-      setNeedsGestureForPermission(false);
     };
 
+    // 사용자 제스처 리스너 등록 (1회만)
     window.addEventListener("pointerdown", handleUserGesture, { once: true });
     window.addEventListener("keydown", handleUserGesture, { once: true });
+
+    debug.log("[Notifications] 사용자 제스처 리스너 등록 완료");
 
     return () => {
       window.removeEventListener("pointerdown", handleUserGesture);
       window.removeEventListener("keydown", handleUserGesture);
+      debug.log("[Notifications] 사용자 제스처 리스너 해제");
     };
-  }, [needsGestureForPermission, isServiceWorkerReady, tryRequestPermission]);
+  }, [isServiceWorkerReady, tryRequestPermission]);
 
   // 로그인 후 FCM 토큰 등록 (사용자 ID가 변경될 때마다 1회만)
   useEffect(() => {
