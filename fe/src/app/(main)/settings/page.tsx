@@ -16,8 +16,10 @@ import {
   usePostUsersMeMarketingTermsToggle,
   usePostUsersMePushNotificationToggle,
 } from "@/hooks/generated/users-hooks";
+import { requestNotificationPermission, useFCM } from "@/hooks/shared/useFCM";
 import { getKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
+import { showToast } from "@/utils/shared/toast";
 import { useThrottle } from "@/utils/shared/useThrottle";
 
 /**
@@ -40,6 +42,7 @@ const SettingsPage = () => {
     usePostUsersMePushNotificationToggle();
   const { mutate: marketingTermsToggleMutate } =
     usePostUsersMeMarketingTermsToggle();
+  const { registerFCMToken } = useFCM();
 
   // 사용자 정보 가져오기
   const { data: userData, isLoading: isUsersMeLoading } = useGetUsersMe({
@@ -168,8 +171,56 @@ const SettingsPage = () => {
     debug.log("나다움 내역 클릭");
   };
 
-  const handleNotificationToggle = useThrottle((checked: boolean) => {
+  const handleNotificationToggle = useThrottle(async (checked: boolean) => {
     const previousValue = isNotificationEnabled;
+
+    // 알림을 켜려고 할 때
+    if (checked) {
+      if (typeof window === "undefined" || !("Notification" in window)) {
+        showToast("이 브라우저는 알림을 지원하지 않습니다.");
+        return;
+      }
+
+      // 현재 권한 상태 확인
+      let currentPermission = Notification.permission;
+
+      // 권한이 없으면 요청 (브라우저 네이티브 팝업)
+      if (currentPermission === "default") {
+        debug.log("[Settings] 알림 권한 요청 시작");
+        currentPermission = await requestNotificationPermission();
+      }
+
+      // 권한이 거부되었으면 토글을 끄고 사용자에게 알림
+      if (currentPermission === "denied") {
+        showToast(
+          "알림 권한 요청이 거부되었습니다.\n알림을 받으시려면 브라우저 설정에서 알림을 허용해주세요."
+        );
+        setIsNotificationEnabled(true);
+        return;
+      }
+
+      // 권한이 승인되었으면 FCM 토큰 등록
+      if (currentPermission === "granted") {
+        try {
+          debug.log("[Settings] FCM 토큰 등록 시작");
+          const result = await registerFCMToken();
+          if (!result.token) {
+            debug.warn("[Settings] FCM 토큰 등록 실패:", result.error);
+            showToast("알림 설정에 실패했습니다. 다시 시도해주세요.");
+            setIsNotificationEnabled(false);
+            return;
+          }
+          debug.log("[Settings] FCM 토큰 등록 완료");
+        } catch (error) {
+          debug.error("[Settings] FCM 토큰 등록 중 예외:", error);
+          showToast("알림 설정에 실패했습니다. 다시 시도해주세요.");
+          setIsNotificationEnabled(false);
+          return;
+        }
+      }
+    }
+
+    // 토글 상태 업데이트 및 API 호출
     setIsNotificationEnabled(checked);
 
     pushNotificationToggleMutate(undefined, {
@@ -185,6 +236,7 @@ const SettingsPage = () => {
       onError: (error) => {
         debug.error("알림 설정 변경 오류:", error);
         setIsNotificationEnabled(previousValue);
+        showToast("알림 설정 변경에 실패했습니다.");
       },
     });
   }, 2000);

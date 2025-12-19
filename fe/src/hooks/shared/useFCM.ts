@@ -15,16 +15,6 @@ import { debug } from "@/utils/shared/debugger";
 import { useSaveFCMToken } from "./useSaveFCMToken";
 
 /**
- * registerFCMToken 디듀프(탭 단위, in-memory)
- * - Dev StrictMode / 중복 마운트 / auth 리스너 중복 등으로 동일 uid에서 여러 번 호출되는 것을 방지
- * - localStorage 없이도 "현재 탭"에서는 충분히 중복 폭주를 막을 수 있습니다.
- */
-const REGISTER_DEDUPE_WINDOW_MS = 60_000;
-const inFlightRegistrationByUid = new Map<string, Promise<FCMTokenResult>>();
-const lastSavedTokenByUid = new Map<string, string>();
-const lastSavedAtByUid = new Map<string, number>();
-
-/**
  * @description Firebase Auth가 초기화될 때까지 대기
  *
  * redirect 직후나 최초 로그인 직후에는 auth.currentUser가 잠시 null일 수 있어
@@ -47,7 +37,93 @@ const waitForAuthReady = async (): Promise<void> => {
 };
 
 /**
+ * @description Service Worker 등록 완료 대기
+ *
+ * iOS Safari/PWA에서는 Service Worker가 등록되어 있어야 알림 권한 요청이 가능합니다.
+ * Service Worker 등록 완료를 최대 5초까지 대기합니다.
+ *
+ * @returns Service Worker가 준비되었는지 여부
+ */
+const waitForServiceWorker = async (): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+  if (!("serviceWorker" in navigator)) {
+    debug.warn("[FCM] Service Worker를 지원하지 않는 환경입니다.");
+    return false;
+  }
+
+  try {
+    // 이미 등록된 Service Worker 확인
+    const registration = await navigator.serviceWorker.ready;
+    if (registration) {
+      debug.log("[FCM] Service Worker가 이미 등록되어 있습니다.");
+      return true;
+    }
+  } catch (error) {
+    debug.warn("[FCM] Service Worker 확인 실패:", error);
+  }
+
+  // Service Worker 등록 대기 (최대 5초)
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      debug.warn("[FCM] Service Worker 등록 대기 시간 초과 (5초)");
+      resolve(false);
+    }, 5000);
+
+    navigator.serviceWorker.ready
+      .then((registration) => {
+        clearTimeout(timeout);
+        debug.log("[FCM] Service Worker 등록 완료:", registration);
+        resolve(true);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        debug.error("[FCM] Service Worker 등록 실패:", error);
+        resolve(false);
+      });
+  });
+};
+
+/**
+ * @description iOS 버전 확인
+ *
+ * iOS 16.4 이상에서만 PWA 알림이 지원됩니다.
+ *
+ * @returns iOS 버전이 알림을 지원하는지 여부
+ */
+const isIOSVersionSupported = (): boolean => {
+  if (typeof window === "undefined") return false;
+
+  const userAgent = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+
+  if (!isIOS) return true; // iOS가 아니면 지원됨
+
+  // iOS 버전 추출
+  const match = userAgent.match(/OS (\d+)_(\d+)/);
+  if (!match) return false;
+
+  const major = parseInt(match[1], 10);
+  const minor = parseInt(match[2], 10);
+
+  // iOS 16.4 이상 체크
+  if (major > 16) return true;
+  if (major === 16 && minor >= 4) return true;
+
+  debug.warn(
+    `[FCM] iOS ${major}.${minor}는 PWA 알림을 지원하지 않습니다. iOS 16.4 이상이 필요합니다.`
+  );
+  return false;
+};
+
+/**
  * @description 알림 권한 요청
+ *
+ * iOS Safari/PWA에서는 다음 조건이 모두 충족되어야 합니다:
+ * 1. iOS 16.4 이상
+ * 2. Service Worker 등록 완료
+ * 3. 사용자 제스처(클릭/탭) 컨텍스트 내에서 호출
+ *
+ * 참고: https://developer.mozilla.org/ko/docs/Web/Progressive_web_apps/Tutorials/js13kGames/Re-engageable_Notifications_Push
  */
 export const requestNotificationPermission =
   async (): Promise<NotificationPermission> => {
@@ -55,7 +131,12 @@ export const requestNotificationPermission =
       if (typeof window === "undefined") return "denied";
 
       if (!("Notification" in window)) {
-        debug.warn("이 브라우저는 알림을 지원하지 않습니다.");
+        debug.warn("[FCM] 이 브라우저는 알림을 지원하지 않습니다.");
+        return "denied";
+      }
+
+      // iOS 버전 체크
+      if (!isIOSVersionSupported()) {
         return "denied";
       }
 
@@ -63,11 +144,28 @@ export const requestNotificationPermission =
       if (Notification.permission === "granted") return "granted";
       if (Notification.permission === "denied") return "denied";
 
+      // iOS에서는 Service Worker가 등록되어 있어야 알림 권한 요청이 가능
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        const swReady = await waitForServiceWorker();
+        if (!swReady) {
+          debug.warn(
+            "[FCM] Service Worker가 등록되지 않아 알림 권한을 요청할 수 없습니다."
+          );
+          return "denied";
+        }
+        debug.log(
+          "[FCM] iOS에서 Service Worker 준비 완료, 알림 권한 요청 진행"
+        );
+      }
+
       // 주의: 많은 브라우저에서 사용자 제스처(클릭/탭) 없이 호출하면 팝업이 무시될 수 있음
+      debug.log("[FCM] 알림 권한 요청 시작");
       const permission = await Notification.requestPermission();
+      debug.log("[FCM] 알림 권한 요청 결과:", permission);
       return permission as NotificationPermission;
     } catch (error) {
-      debug.error("알림 권한 요청 실패:", error);
+      debug.error("[FCM] 알림 권한 요청 실패:", error);
       return "denied";
     }
   };
@@ -200,55 +298,27 @@ export const useFCM = () => {
         };
       }
 
-      // uid 기준 in-flight 디듀프 (동시에 여러 곳에서 호출되더라도 1회만 수행)
-      const existingInFlight = inFlightRegistrationByUid.get(user.uid);
-      if (existingInFlight) {
-        return await existingInFlight;
+      // 1. FCM 토큰 발급
+      const tokenResult = await getFCMToken();
+      if (!tokenResult.token) {
+        return tokenResult;
       }
 
-      const promise = (async (): Promise<FCMTokenResult> => {
-        // 1. FCM 토큰 발급
-        const tokenResult = await getFCMToken();
-        if (!tokenResult.token) {
-          return tokenResult;
-        }
+      // 2. 디바이스 정보 수집
+      const deviceType = getDeviceType();
+      const deviceInfo = getDeviceInfo(tokenResult.token, deviceType);
 
-        // 최근 성공 디듀프 (짧은 시간 내 동일 토큰 재저장 방지)
-        const now = Date.now();
-        const lastToken = lastSavedTokenByUid.get(user.uid);
-        const lastSavedAt = lastSavedAtByUid.get(user.uid) ?? 0;
-        if (
-          lastToken === tokenResult.token &&
-          now - lastSavedAt < REGISTER_DEDUPE_WINDOW_MS
-        ) {
-          return { token: tokenResult.token };
-        }
+      // 3. 서버에 토큰 저장
+      const tokenRequest: FCMTokenRequest = {
+        token: tokenResult.token,
+        deviceInfo,
+        deviceType,
+      };
 
-        // 2. 디바이스 정보 수집
-        const deviceType = getDeviceType();
-        const deviceInfo = getDeviceInfo(tokenResult.token, deviceType);
+      await saveTokenMutation.mutateAsync(tokenRequest);
 
-        // 3. 서버에 토큰 저장
-        const tokenRequest: FCMTokenRequest = {
-          token: tokenResult.token,
-          deviceInfo,
-          deviceType,
-        };
-
-        await saveTokenMutation.mutateAsync(tokenRequest);
-
-        lastSavedTokenByUid.set(user.uid, tokenResult.token);
-        lastSavedAtByUid.set(user.uid, now);
-
-        return { token: tokenResult.token };
-      })();
-
-      inFlightRegistrationByUid.set(user.uid, promise);
-      try {
-        return await promise;
-      } finally {
-        inFlightRegistrationByUid.delete(user.uid);
-      }
+      debug.log("[FCM] 토큰 등록 완료:", tokenResult.token.substring(0, 20));
+      return { token: tokenResult.token };
     } catch (error) {
       return {
         token: null,

@@ -86,9 +86,31 @@ export const getClientMessaging = async () => {
 
 /**
  * @description FCM 토큰 가져오기
+ *
+ * iOS Safari/PWA에서는 Service Worker가 등록되어 있어야 토큰을 발급할 수 있습니다.
  */
 export const fetchToken = async () => {
   try {
+    // iOS에서는 Service Worker가 등록되어 있어야 함
+    const isIOS =
+      typeof window !== "undefined" &&
+      /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS) {
+      if (!("serviceWorker" in navigator)) {
+        debug.warn("[FCM] Service Worker를 지원하지 않는 환경입니다.");
+        return null;
+      }
+
+      try {
+        await navigator.serviceWorker.ready;
+        debug.log("[FCM] Service Worker가 준비되었습니다.");
+      } catch (error) {
+        debug.warn("[FCM] Service Worker가 준비되지 않았습니다:", error);
+        return null;
+      }
+    }
+
     const fcmMessaging = await getClientMessaging();
     if (!fcmMessaging) return null;
 
@@ -96,9 +118,14 @@ export const fetchToken = async () => {
     const token = await getToken(fcmMessaging, {
       vapidKey: process.env.FCM_VAPID_KEY,
     });
+
+    if (token) {
+      debug.log("[FCM] 토큰 발급 성공:", token.substring(0, 20) + "...");
+    }
+
     return token;
   } catch (error) {
-    debug.error("An error occurred while fetching the token::", error);
+    debug.error("[FCM] 토큰 발급 실패:", error);
     return null;
   }
 };
