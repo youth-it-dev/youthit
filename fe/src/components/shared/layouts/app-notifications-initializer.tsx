@@ -159,18 +159,6 @@ const AppNotificationsInitializer = () => {
       // 모달 닫기
       setShowPermissionModal(false);
 
-      // 권한이 거부된 경우 sessionStorage에서 제거
-      // 사용자가 브라우저 설정에서 권한을 변경하거나, 다른 경로(설정 페이지 등)에서
-      // 권한을 다시 요청할 수 있도록 세션 제한을 해제합니다.
-      if (permission === "denied" && typeof window !== "undefined") {
-        sessionStorage.removeItem(
-          NOTIFICATION_PERMISSION_MODAL_SHOWN_SESSION_KEY
-        );
-        debug.log(
-          "[Notifications] 권한이 거부되었습니다. 세션 제한을 해제하여 다음에 다시 시도할 수 있습니다."
-        );
-      }
-
       // 권한 승인 시 토큰 등록은 별도 useEffect에서 처리됨
     } catch (error) {
       debug.error("[Notifications] 알림 권한 요청 실패:", error);
