@@ -459,4 +459,124 @@ router.get('/:programId/applications/:applicationId/approve', programController.
  */
 router.get('/:programId/applications/:applicationId/reject', programController.rejectApplication);
 
+/**
+ * @swagger
+ * /programs/approve:
+ *   get:
+ *     summary: 선택된 신청자 일괄 승인
+ *     description: |
+ *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 일괄 승인합니다.
+ *       
+ *       **처리 과정:**
+ *       1. Notion에서 '선택' 체크박스가 true인 항목 조회
+ *       2. 각 항목의 프로그램ID와 사용자ID 추출
+ *       3. 모든 선택된 신청자를 승인 처리
+ *       4. Firestore member 상태를 'approved'로 변경
+ *       5. Notion '승인여부'를 '승인'으로 변경
+ *       6. FCM 승인 알림 발송
+ *       7. 성공한 항목의 '선택' 체크박스 자동 해제
+ *       
+ *       **주의사항:**
+ *       - 프로그램 구분 없이 선택된 모든 신청자를 처리합니다.
+ *       - 일부 항목이 실패해도 다른 항목은 계속 처리됩니다.
+ *       - 실패한 항목은 '선택' 상태가 유지되어 재시도 가능합니다.
+ *     tags: [Programs]
+ *     responses:
+ *       200:
+ *         description: 일괄 승인 처리 완료 (성공/실패 건수 포함)
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>✅ 일괄 승인 완료</h1><p>총 15건 중 13건 승인 완료, 2건 실패</p><p>처리된 프로그램: 프로그램A (5건), 프로그램B (8건)</p></body></html>"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>❌ 오류 발생</h1><p>일괄 승인 처리 중 오류가 발생했습니다.</p></body></html>"
+ */
+router.get('/approve', programController.bulkApproveApplications);
+
+/**
+ * @swagger
+ * /programs/reject:
+ *   get:
+ *     summary: 선택된 신청자 일괄 거절
+ *     description: |
+ *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 일괄 거절합니다.
+ *       
+ *       **처리 과정:**
+ *       1. Notion에서 '선택' 체크박스가 true인 항목 조회
+ *       2. 각 항목의 프로그램ID와 사용자ID 추출
+ *       3. 모든 선택된 신청자를 거절 처리
+ *       4. Firestore member 상태를 'rejected'로 변경
+ *       5. Notion '승인여부'를 '승인거절'로 변경
+ *       6. FCM 거절 알림 발송
+ *       7. 성공한 항목의 '선택' 체크박스 자동 해제
+ *       
+ *       **주의사항:**
+ *       - 프로그램 구분 없이 선택된 모든 신청자를 처리합니다.
+ *       - 일부 항목이 실패해도 다른 항목은 계속 처리됩니다.
+ *       - 실패한 항목은 '선택' 상태가 유지되어 재시도 가능합니다.
+ *     tags: [Programs]
+ *     responses:
+ *       200:
+ *         description: 일괄 거절 처리 완료 (성공/실패 건수 포함)
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>🚫 일괄 거절 완료</h1><p>총 10건 중 9건 거절 완료, 1건 실패</p><p>처리된 프로그램: 프로그램C (9건)</p></body></html>"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>❌ 오류 발생</h1><p>일괄 거절 처리 중 오류가 발생했습니다.</p></body></html>"
+ */
+router.get('/reject', programController.bulkRejectApplications);
+
+/**
+ * @swagger
+ * /programs/pending:
+ *   get:
+ *     summary: 선택된 신청자 일괄 대기 상태 변경
+ *     description: |
+ *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 승인대기 상태로 변경합니다.
+ *       
+ *       **처리 과정:**
+ *       1. Notion에서 '선택' 체크박스가 true인 항목 조회
+ *       2. 각 항목의 프로그램ID와 사용자ID 추출
+ *       3. 모든 선택된 신청자를 대기 상태로 변경
+ *       4. Firestore member 상태를 'pending'으로 변경
+ *       5. Notion '승인여부'를 '승인대기'로 변경
+ *       6. 성공한 항목의 '선택' 체크박스 자동 해제
+ *       
+ *       **주의사항:**
+ *       - 프로그램 구분 없이 선택된 모든 신청자를 처리합니다.
+ *       - 일부 항목이 실패해도 다른 항목은 계속 처리됩니다.
+ *       - 실패한 항목은 '선택' 상태가 유지되어 재시도 가능합니다.
+ *       - 알림은 발송되지 않습니다.
+ *     tags: [Programs]
+ *     responses:
+ *       200:
+ *         description: 일괄 대기 처리 완료 (성공/실패 건수 포함)
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>⏸️ 일괄 대기 처리 완료</h1><p>총 8건 중 8건 처리 완료</p><p>처리된 프로그램: 프로그램D (8건)</p></body></html>"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *               example: "<html><body><h1>❌ 오류 발생</h1><p>일괄 대기 처리 중 오류가 발생했습니다.</p></body></html>"
+ */
+router.get('/pending', programController.bulkPendingApplications);
+
 module.exports = router;
