@@ -590,6 +590,450 @@ class ProgramApplicationService {
       throw serviceError;
     }
   }
+
+  /**
+   * 프로그램 신청을 대기 상태로 변경
+   * @param {string} programId - 프로그램 ID
+   * @param {string} applicationId - 신청 ID (Firestore member ID)
+   * @returns {Promise<Object>} 대기 처리 결과
+   */
+  async pendingApplication(programId, applicationId) {
+    try {
+      const { ERROR_CODES, normalizeProgramIdForFirestore } = require('./programService');
+      const normalizedProgramId = normalizeProgramIdForFirestore(programId);
+      console.log(`[ProgramApplicationService] 대기 처리 요청 - programId: ${programId}, applicationId: ${applicationId}`);
+      
+      const member = await this.firestoreService.getDocument(
+        `communities/${normalizedProgramId}/members`,
+        applicationId
+      );
+
+      if (!member) {
+        console.error(`[ProgramApplicationService] 멤버를 찾을 수 없음 - programId: ${programId}, applicationId: ${applicationId}`);
+        const error = new Error('신청 정보를 찾을 수 없습니다.');
+        error.code = ERROR_CODES.NOT_FOUND;
+        error.statusCode = 404;
+        throw error;
+      }
+
+      await this.firestoreService.updateDocument(
+        `communities/${normalizedProgramId}/members`,
+        applicationId,
+        {
+          status: 'pending',
+          pendingAt: FieldValue.serverTimestamp()
+        }
+      );
+
+      if (member.applicantsPageId) {
+        try {
+          await this.notion.pages.update({
+            page_id: member.applicantsPageId,
+            properties: {
+              '승인여부': {
+                select: {
+                  name: '승인대기'
+                }
+              }
+            }
+          });
+        } catch (notionError) {
+          console.warn('[ProgramApplicationService] Notion 업데이트 실패:', notionError.message);
+        }
+      }
+
+      // 대기 처리 시에는 알림 발송하지 않음
+
+      return {
+        applicationId,
+        status: 'pending',
+        pendingAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[ProgramApplicationService] 대기 처리 오류:', error.message);
+      
+      const { ERROR_CODES } = require('./programService');
+      
+      if (error.code === ERROR_CODES.NOT_FOUND) {
+        throw error;
+      }
+      
+      const serviceError = new Error(`대기 처리 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 성공한 항목들의 '선택' 체크박스를 해제
+   * @param {Array} successResults - 성공한 결과 배열
+   * @returns {Promise<void>}
+   */
+  async resetSelectionCheckboxes(successResults) {
+    const resetPromises = successResults.map(r => {
+      const pageId = r.value.pageId;
+      return this.notion.pages.update({
+        page_id: pageId,
+        properties: {
+          '선택': {
+            checkbox: false
+          }
+        }
+      }).catch(error => {
+        console.warn(`[ProgramApplicationService] 체크박스 해제 실패 (pageId: ${pageId}):`, error.message);
+      });
+    });
+
+    await Promise.allSettled(resetPromises);
+  }
+
+  /**
+   * 프로그램별 통계 생성
+   * @param {Array} successResults - 성공한 결과 배열
+   * @returns {Object} 프로그램별 건수 { "프로그램A": 5, "프로그램B": 3 }
+   */
+  generateProgramStats(successResults) {
+    const programStats = {};
+    successResults.forEach(r => {
+      const { programName } = r.value;
+      programStats[programName] = (programStats[programName] || 0) + 1;
+    });
+    return programStats;
+  }
+
+  /**
+   * Notion 속성에서 사용자ID 추출 (formula, rollup, rich_text 지원)
+   * @param {Object} properties - Notion 페이지 properties
+   * @returns {string|null} Firebase UID
+   */
+  extractUserIdFromProperties(properties) {
+    const userIdProperty = properties['사용자ID'];
+    
+    if (!userIdProperty) {
+      return null;
+    }
+
+    // 방법 1: Formula 필드 (가장 일반적)
+    if (userIdProperty.type === 'formula') {
+      const formula = userIdProperty.formula;
+      if (formula.type === 'string' && formula.string) {
+        return formula.string;
+      }
+    }
+
+    // 방법 2: Rich Text 필드
+    if (userIdProperty.rich_text && userIdProperty.rich_text.length > 0) {
+      return userIdProperty.rich_text[0].plain_text;
+    }
+
+    // 방법 3: Rollup 필드
+    if (userIdProperty.rollup) {
+      const rollup = userIdProperty.rollup;
+      if (rollup.type === 'string' && rollup.string) {
+        return rollup.string;
+      }
+      if (rollup.type === 'array' && rollup.array?.length > 0) {
+        const firstValue = rollup.array[0];
+        if (firstValue.rich_text && firstValue.rich_text.length > 0) {
+          return firstValue.rich_text[0].plain_text;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Notion에서 '선택' 체크박스가 true인 신청자 조회 (페이지네이션 지원)
+   * @returns {Promise<Array>} 선택된 신청자 목록 [{ pageId, programId, userId, currentStatus, programName }]
+   */
+  async getSelectedApplications() {
+    try {
+      const allPages = [];
+      let hasMore = true;
+      let startCursor = undefined;
+
+      // 페이지네이션으로 모든 선택된 항목 조회
+      console.log('[ProgramApplicationService] 선택된 신청자 조회 시작...');
+      while (hasMore) {
+        const response = await this.notion.dataSources.query({
+          data_source_id: this.applicationDataSource,
+          filter: {
+            property: '선택',
+            checkbox: {
+              equals: true
+            }
+          },
+          page_size: 100,
+          start_cursor: startCursor
+        });
+
+        allPages.push(...response.results);
+        hasMore = response.has_more;
+        startCursor = response.next_cursor;
+
+        console.log(`[ProgramApplicationService] ${allPages.length}건 조회 중... (hasMore: ${hasMore})`);
+        
+        // 다음 페이지 조회 전 delay (rate limit 고려)
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 350));
+        }
+      }
+
+      console.log(`[ProgramApplicationService] 총 ${allPages.length}건 조회 완료, 데이터 처리 중...`);
+
+      // 각 페이지에서 필요한 정보 추출 (추가 API 호출 없음!)
+      const applications = [];
+      const missingUserIds = [];
+      
+      for (const page of allPages) {
+        try {
+          // 프로그램명 relation에서 programId 추출
+          const programRelation = page.properties['프로그램명']?.relation || [];
+          const programId = programRelation.length > 0 ? programRelation[0].id : null;
+
+          // 신청자 페이지 relation
+          const applicantRelation = page.properties['신청자 페이지']?.relation || [];
+          const applicantPageId = applicantRelation.length > 0 ? applicantRelation[0].id : null;
+
+          // 사용자ID 추출 (Formula 필드에서)
+          const userId = this.extractUserIdFromProperties(page.properties);
+
+          // 프로그램명 rollup에서 이름 추출
+          const programNameRollup = page.properties['신청한 프로그램명']?.rollup?.array || [];
+          let programName = '알 수 없음';
+          if (programNameRollup.length > 0 && programNameRollup[0].type === 'title') {
+            const titleArray = programNameRollup[0].title || [];
+            programName = titleArray.map(t => t.plain_text).join('') || '알 수 없음';
+          }
+
+          if (programId && userId) {
+            applications.push({
+              pageId: page.id,
+              programId,
+              userId,
+              programName
+            });
+          } else {
+            // Formula에서 userId를 가져오지 못한 경우 (드물게 발생)
+            if (!userId && applicantPageId) {
+              missingUserIds.push({ pageId: page.id, applicantPageId, programId, programName });
+            } else {
+              console.warn(`[ProgramApplicationService] 필수 정보 누락 - pageId: ${page.id}, programId: ${programId}, userId: ${userId}`);
+            }
+          }
+        } catch (itemError) {
+          console.error(`[ProgramApplicationService] 항목 처리 오류 (pageId: ${page.id}):`, itemError.message);
+        }
+      }
+
+      // Formula에서 userId를 가져오지 못한 경우만 추가 조회 (Fallback)
+      if (missingUserIds.length > 0) {
+        console.warn(`[ProgramApplicationService] Formula에서 사용자ID를 가져오지 못한 ${missingUserIds.length}건 발견. 추가 조회 시도...`);
+        
+        // 배치로 조회 (rate limit 고려)
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < missingUserIds.length; i += BATCH_SIZE) {
+          const batch = missingUserIds.slice(i, i + BATCH_SIZE);
+          
+          const results = await Promise.allSettled(
+            batch.map(async (item) => {
+              try {
+                const userPage = await this.notion.pages.retrieve({ page_id: item.applicantPageId });
+                const userIdProperty = userPage.properties['사용자ID'];
+                
+                let userId = null;
+                if (userIdProperty?.rich_text && userIdProperty.rich_text.length > 0) {
+                  userId = userIdProperty.rich_text[0].plain_text;
+                } else if (userIdProperty?.title && userIdProperty.title.length > 0) {
+                  userId = userIdProperty.title[0].plain_text;
+                }
+                
+                if (userId) {
+                  return {
+                    pageId: item.pageId,
+                    programId: item.programId,
+                    userId,
+                    programName: item.programName
+                  };
+                }
+                return null;
+              } catch (error) {
+                console.warn(`[ProgramApplicationService] 사용자ID 조회 실패 (pageId: ${item.applicantPageId}):`, error.message);
+                return null;
+              }
+            })
+          );
+
+          // 성공한 조회 결과를 applications에 추가
+          results.forEach(result => {
+            if (result.status === 'fulfilled' && result.value) {
+              applications.push(result.value);
+            }
+          });
+
+          // rate limit 고려 delay
+          if (i + BATCH_SIZE < missingUserIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 350));
+          }
+        }
+      }
+
+      console.log(`[ProgramApplicationService] 선택된 신청자 ${applications.length}건 조회 완료 (전체 ${allPages.length}건 중)`);
+      return applications;
+
+    } catch (error) {
+      console.error('[ProgramApplicationService] 선택된 신청자 조회 오류:', error.message);
+      throw new Error(`선택된 신청자 조회에 실패했습니다: ${error.message}`);
+    }
+  }
+
+  /**
+   * 선택된 신청자들을 일괄 승인 처리
+   * @returns {Promise<Object>} 처리 결과 { totalCount, successCount, failedCount, results, programStats }
+   */
+  async bulkApproveApplications() {
+    try {
+      const applications = await this.getSelectedApplications();
+
+      if (applications.length === 0) {
+        return {
+          totalCount: 0,
+          successCount: 0,
+          failedCount: 0,
+          results: [],
+          programStats: {}
+        };
+      }
+
+      const results = await Promise.allSettled(
+        applications.map(app => 
+          this.approveApplication(app.programId, app.userId)
+            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+        )
+      );
+
+      const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
+      const failedResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+
+      // 성공한 항목의 '선택' 체크박스 해제
+      await this.resetSelectionCheckboxes(successResults);
+
+      // 프로그램별 통계 생성
+      const programStats = this.generateProgramStats(successResults);
+
+      return {
+        totalCount: applications.length,
+        successCount: successResults.length,
+        failedCount: failedResults.length,
+        results: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason }),
+        programStats
+      };
+
+    } catch (error) {
+      console.error('[ProgramApplicationService] 일괄 승인 오류:', error.message);
+      throw new Error(`일괄 승인 처리 중 오류가 발생했습니다: ${error.message}`);
+    }
+  }
+
+  /**
+   * 선택된 신청자들을 일괄 거절 처리
+   * @returns {Promise<Object>} 처리 결과 { totalCount, successCount, failedCount, results, programStats }
+   */
+  async bulkRejectApplications() {
+    try {
+      const applications = await this.getSelectedApplications();
+
+      if (applications.length === 0) {
+        return {
+          totalCount: 0,
+          successCount: 0,
+          failedCount: 0,
+          results: [],
+          programStats: {}
+        };
+      }
+
+      const results = await Promise.allSettled(
+        applications.map(app => 
+          this.rejectApplication(app.programId, app.userId)
+            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+        )
+      );
+
+      const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
+
+      // 성공한 항목의 '선택' 체크박스 해제
+      await this.resetSelectionCheckboxes(successResults);
+
+      // 프로그램별 통계 생성
+      const programStats = this.generateProgramStats(successResults);
+
+      return {
+        totalCount: applications.length,
+        successCount: successResults.length,
+        failedCount: applications.length - successResults.length,
+        results: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason }),
+        programStats
+      };
+
+    } catch (error) {
+      console.error('[ProgramApplicationService] 일괄 거절 오류:', error.message);
+      throw new Error(`일괄 거절 처리 중 오류가 발생했습니다: ${error.message}`);
+    }
+  }
+
+  /**
+   * 선택된 신청자들을 일괄 대기 상태로 변경
+   * @returns {Promise<Object>} 처리 결과 { totalCount, successCount, failedCount, results, programStats }
+   */
+  async bulkPendingApplications() {
+    try {
+      const applications = await this.getSelectedApplications();
+
+      if (applications.length === 0) {
+        return {
+          totalCount: 0,
+          successCount: 0,
+          failedCount: 0,
+          results: [],
+          programStats: {}
+        };
+      }
+
+      const results = await Promise.allSettled(
+        applications.map(app => 
+          this.pendingApplication(app.programId, app.userId)
+            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+        )
+      );
+
+      const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
+
+      // 성공한 항목의 '선택' 체크박스 해제
+      await this.resetSelectionCheckboxes(successResults);
+
+      // 프로그램별 통계 생성
+      const programStats = this.generateProgramStats(successResults);
+
+      return {
+        totalCount: applications.length,
+        successCount: successResults.length,
+        failedCount: applications.length - successResults.length,
+        results: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason }),
+        programStats
+      };
+
+    } catch (error) {
+      console.error('[ProgramApplicationService] 일괄 대기 처리 오류:', error.message);
+      throw new Error(`일괄 대기 처리 중 오류가 발생했습니다: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new ProgramApplicationService();

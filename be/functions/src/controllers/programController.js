@@ -355,6 +355,384 @@ class ProgramController {
     }
   }
 
+  /**
+   * 선택된 신청자 일괄 승인
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async bulkApproveApplications(req, res, next) {
+    try {
+      console.log('[ProgramController] 일괄 승인 요청 시작');
+      
+      const result = await programApplicationService.bulkApproveApplications();
+
+      // 프로그램별 통계 포맷팅
+      const programStatsText = Object.entries(result.programStats)
+        .map(([name, count]) => `${name} (${count}건)`)
+        .join(', ');
+
+      const htmlResponse = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>일괄 승인 완료</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+              background-color: #f5f5f5;
+            }
+            .container {
+              background: white;
+              border-radius: 8px;
+              padding: 30px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: ${result.successCount > 0 ? '#22c55e' : '#ef4444'};
+              margin-top: 0;
+            }
+            .stats {
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+            .stats p {
+              margin: 8px 0;
+              color: #374151;
+            }
+            .success {
+              color: #16a34a;
+              font-weight: bold;
+            }
+            .failed {
+              color: #dc2626;
+              font-weight: bold;
+            }
+            .note {
+              color: #6b7280;
+              font-size: 14px;
+              margin-top: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>✅ 일괄 승인 ${result.successCount > 0 ? '완료' : '실패'}</h1>
+            <div class="stats">
+              <p>총 <strong>${result.totalCount}건</strong> 처리</p>
+              <p class="success">성공: ${result.successCount}건</p>
+              ${result.failedCount > 0 ? `<p class="failed">실패: ${result.failedCount}건</p>` : ''}
+              ${programStatsText ? `<p>처리된 프로그램: ${programStatsText}</p>` : ''}
+            </div>
+            <p class="note">이 창을 닫으셔도 됩니다.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(htmlResponse);
+
+    } catch (error) {
+      console.error('[ProgramController] 일괄 승인 오류:', error.message);
+      
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <title>오류 발생</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+            }
+            .error {
+              background: #fee;
+              border: 1px solid #fcc;
+              padding: 20px;
+              border-radius: 8px;
+            }
+            h1 {
+              color: #c00;
+              margin-top: 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>❌ 오류 발생</h1>
+            <p>${error.message || '일괄 승인 처리 중 오류가 발생했습니다.'}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.status(500).setHeader('Content-Type', 'text/html; charset=utf-8').send(errorHtml);
+    }
+  }
+
+  /**
+   * 선택된 신청자 일괄 거절
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async bulkRejectApplications(req, res, next) {
+    try {
+      console.log('[ProgramController] 일괄 거절 요청 시작');
+      
+      const result = await programApplicationService.bulkRejectApplications();
+
+      // 프로그램별 통계 포맷팅
+      const programStatsText = Object.entries(result.programStats)
+        .map(([name, count]) => `${name} (${count}건)`)
+        .join(', ');
+
+      const htmlResponse = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>일괄 거절 완료</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+              background-color: #f5f5f5;
+            }
+            .container {
+              background: white;
+              border-radius: 8px;
+              padding: 30px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: ${result.successCount > 0 ? '#f59e0b' : '#ef4444'};
+              margin-top: 0;
+            }
+            .stats {
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+            .stats p {
+              margin: 8px 0;
+              color: #374151;
+            }
+            .success {
+              color: #16a34a;
+              font-weight: bold;
+            }
+            .failed {
+              color: #dc2626;
+              font-weight: bold;
+            }
+            .note {
+              color: #6b7280;
+              font-size: 14px;
+              margin-top: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚫 일괄 거절 ${result.successCount > 0 ? '완료' : '실패'}</h1>
+            <div class="stats">
+              <p>총 <strong>${result.totalCount}건</strong> 처리</p>
+              <p class="success">성공: ${result.successCount}건</p>
+              ${result.failedCount > 0 ? `<p class="failed">실패: ${result.failedCount}건</p>` : ''}
+              ${programStatsText ? `<p>처리된 프로그램: ${programStatsText}</p>` : ''}
+            </div>
+            <p class="note">이 창을 닫으셔도 됩니다.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(htmlResponse);
+
+    } catch (error) {
+      console.error('[ProgramController] 일괄 거절 오류:', error.message);
+      
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <title>오류 발생</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+            }
+            .error {
+              background: #fee;
+              border: 1px solid #fcc;
+              padding: 20px;
+              border-radius: 8px;
+            }
+            h1 {
+              color: #c00;
+              margin-top: 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>❌ 오류 발생</h1>
+            <p>${error.message || '일괄 거절 처리 중 오류가 발생했습니다.'}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.status(500).setHeader('Content-Type', 'text/html; charset=utf-8').send(errorHtml);
+    }
+  }
+
+  /**
+   * 선택된 신청자 일괄 대기 상태 변경
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async bulkPendingApplications(req, res, next) {
+    try {
+      console.log('[ProgramController] 일괄 대기 처리 요청 시작');
+      
+      const result = await programApplicationService.bulkPendingApplications();
+
+      // 프로그램별 통계 포맷팅
+      const programStatsText = Object.entries(result.programStats)
+        .map(([name, count]) => `${name} (${count}건)`)
+        .join(', ');
+
+      const htmlResponse = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>일괄 대기 처리 완료</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+              background-color: #f5f5f5;
+            }
+            .container {
+              background: white;
+              border-radius: 8px;
+              padding: 30px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: ${result.successCount > 0 ? '#3b82f6' : '#ef4444'};
+              margin-top: 0;
+            }
+            .stats {
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+            .stats p {
+              margin: 8px 0;
+              color: #374151;
+            }
+            .success {
+              color: #16a34a;
+              font-weight: bold;
+            }
+            .failed {
+              color: #dc2626;
+              font-weight: bold;
+            }
+            .note {
+              color: #6b7280;
+              font-size: 14px;
+              margin-top: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⏸️ 일괄 대기 처리 ${result.successCount > 0 ? '완료' : '실패'}</h1>
+            <div class="stats">
+              <p>총 <strong>${result.totalCount}건</strong> 처리</p>
+              <p class="success">성공: ${result.successCount}건</p>
+              ${result.failedCount > 0 ? `<p class="failed">실패: ${result.failedCount}건</p>` : ''}
+              ${programStatsText ? `<p>처리된 프로그램: ${programStatsText}</p>` : ''}
+            </div>
+            <p class="note">이 창을 닫으셔도 됩니다.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(htmlResponse);
+
+    } catch (error) {
+      console.error('[ProgramController] 일괄 대기 처리 오류:', error.message);
+      
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <title>오류 발생</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+            }
+            .error {
+              background: #fee;
+              border: 1px solid #fcc;
+              padding: 20px;
+              border-radius: 8px;
+            }
+            h1 {
+              color: #c00;
+              margin-top: 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>❌ 오류 발생</h1>
+            <p>${error.message || '일괄 대기 처리 중 오류가 발생했습니다.'}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.status(500).setHeader('Content-Type', 'text/html; charset=utf-8').send(errorHtml);
+    }
+  }
+
 }
 
 module.exports = new ProgramController();
