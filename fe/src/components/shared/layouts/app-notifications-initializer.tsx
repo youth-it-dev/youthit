@@ -1,31 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { requestNotificationPermission, useFCM } from "@/hooks/shared/useFCM";
 import { auth } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
+import { isIOSDevice } from "@/utils/shared/device";
+import { waitForServiceWorker } from "@/utils/shared/service-worker";
 import NotificationPermissionModal from "./notification-permission-modal";
 
 const NOTIFICATION_PERMISSION_MODAL_SHOWN_SESSION_KEY =
   "notification-permission-modal-shown-session";
-
-/**
- * @description Service Worker 등록 완료 대기
- */
-const waitForServiceWorker = async (): Promise<boolean> => {
-  if (typeof window === "undefined") return false;
-  if (!("serviceWorker" in navigator)) return false;
-
-  try {
-    await navigator.serviceWorker.ready;
-    debug.log("[Notifications] Service Worker 준비 완료");
-    return true;
-  } catch (error) {
-    debug.warn("[Notifications] Service Worker 준비 실패:", error);
-    return false;
-  }
-};
 
 /**
  * @description 앱 알림 초기화
@@ -53,8 +38,18 @@ const AppNotificationsInitializer = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [hasRegisteredToken, setHasRegisteredToken] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const previousUserIdRef = useRef<string | null>(null);
+  const registerFCMTokenRef = useRef<
+    (() => Promise<{ token: string | null; error?: string }>) | null
+  >(null);
+  const isRegisteringRef = useRef(false);
 
   const { registerFCMToken } = useFCM();
+
+  // registerFCMToken을 ref에 저장하여 안정적인 참조 유지
+  useEffect(() => {
+    registerFCMTokenRef.current = registerFCMToken;
+  }, [registerFCMToken]);
 
   // Service Worker 등록 상태 확인
   useEffect(() => {
@@ -69,7 +64,9 @@ const AppNotificationsInitializer = () => {
     };
 
     const checkServiceWorker = async () => {
-      const ready = await waitForServiceWorker();
+      // 첫 번째 체크는 적절한 타임아웃으로 확인
+      // iOS PWA에서는 Service Worker 등록이 더 오래 걸릴 수 있으므로 3초 사용
+      const ready = await waitForServiceWorker(3000);
       if (isMounted) {
         setIsServiceWorkerReady(ready);
         debug.log(
@@ -86,6 +83,10 @@ const AppNotificationsInitializer = () => {
         const maxAttempts = 10;
         let attempts = 0;
 
+        debug.log(
+          `[Notifications] Service Worker 재확인 시작 (최대 ${maxAttempts}회)`
+        );
+
         retryInterval = setInterval(async () => {
           if (!isMounted) {
             cleanup();
@@ -93,17 +94,24 @@ const AppNotificationsInitializer = () => {
           }
 
           attempts++;
-          const ready = await waitForServiceWorker();
+          // 재확인 시에는 더 긴 타임아웃 사용 (iOS PWA 고려)
+          const ready = await waitForServiceWorker(5000);
 
           if (ready && isMounted) {
             setIsServiceWorkerReady(true);
-            debug.log("[Notifications] Service Worker 준비 완료 (재확인)");
+            debug.log(
+              `[Notifications] Service Worker 준비 완료 (재확인, ${attempts}회 시도)`
+            );
             cleanup();
           } else if (attempts >= maxAttempts) {
             debug.warn(
-              "[Notifications] Service Worker 재확인 중단 (최대 시도 횟수 도달)"
+              `[Notifications] Service Worker 재확인 중단 (최대 시도 횟수 도달: ${maxAttempts}회)`
             );
             cleanup();
+          } else {
+            debug.log(
+              `[Notifications] Service Worker 재확인 중... (${attempts}/${maxAttempts})`
+            );
           }
         }, 1000);
       }
@@ -118,7 +126,20 @@ const AppNotificationsInitializer = () => {
   // 사용자 인증 상태 추적
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUserId(user?.uid ?? null);
+      const previousUserId = previousUserIdRef.current;
+      const newUserId = user?.uid ?? null;
+
+      // 이전 userId 업데이트
+      previousUserIdRef.current = newUserId;
+      setCurrentUserId(newUserId);
+
+      // 로그인한 경우 (이전에 로그인하지 않았고, 지금 로그인함)
+      // 토큰 등록은 별도 useEffect에서 처리하므로 여기서는 상태만 업데이트
+      if (!previousUserId && newUserId) {
+        debug.log("[Notifications] 사용자 로그인 감지");
+        // hasRegisteredToken을 false로 리셋하여 토큰 등록을 다시 시도할 수 있도록 함
+        setHasRegisteredToken(false);
+      }
     });
 
     return () => {
@@ -143,7 +164,7 @@ const AppNotificationsInitializer = () => {
     }
 
     // iOS에서는 Service Worker가 준비되어야 함
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isIOS = isIOSDevice();
     if (isIOS && !isServiceWorkerReady) {
       debug.warn(
         "[Notifications] iOS에서는 Service Worker 준비 후 알림 권한을 요청할 수 있습니다."
@@ -202,8 +223,10 @@ const AppNotificationsInitializer = () => {
     // 현재 권한 상태 로깅
     // 주의: 권한 요청은 로그인 여부와 무관하게 서비스워커 준비 후 수행
     const currentPermission = Notification.permission;
+    const isIOS = isIOSDevice();
+
     debug.log(
-      `[Notifications] 현재 알림 권한 상태: ${currentPermission}, Service Worker 준비: ${isServiceWorkerReady}`
+      `[Notifications] 현재 알림 권한 상태: ${currentPermission}, Service Worker 준비: ${isServiceWorkerReady}, iOS: ${isIOS}`
     );
 
     // 이미 결정된 상태면 모달 표시하지 않음
@@ -223,11 +246,21 @@ const AppNotificationsInitializer = () => {
       return;
     }
 
-    // Service Worker가 준비될 때까지 대기
+    // iOS가 아닌 환경에서는 Service Worker 준비를 기다리지 않고 즉시 모달 표시
+    // iOS에서만 Service Worker가 필수입니다.
+    if (!isIOS) {
+      debug.log(
+        "[Notifications] iOS가 아닌 환경이므로 Service Worker 준비 없이 모달 표시"
+      );
+      setShowPermissionModal(true);
+      return;
+    }
+
+    // iOS에서는 Service Worker가 준비될 때까지 대기
     // Service Worker가 준비되면 useEffect가 다시 실행되어 모달을 표시합니다.
     if (!isServiceWorkerReady) {
       debug.log(
-        "[Notifications] Service Worker 등록 대기 중... 준비되면 모달을 표시합니다."
+        "[Notifications] iOS 환경: Service Worker 등록 대기 중... 준비되면 모달을 표시합니다."
       );
       return;
     }
@@ -256,11 +289,21 @@ const AppNotificationsInitializer = () => {
     // 로그인 상태가 아니면 무시
     if (!currentUserId) {
       setHasRegisteredToken(false);
+      isRegisteringRef.current = false;
       return;
     }
 
     // 이미 등록했으면 무시
-    if (hasRegisteredToken) return;
+    if (hasRegisteredToken) {
+      debug.log("[FCM] 토큰이 이미 등록되어 있습니다.");
+      return;
+    }
+
+    // 이미 등록 중이면 무시 (중복 실행 방지)
+    if (isRegisteringRef.current) {
+      debug.log("[FCM] 토큰 등록이 이미 진행 중입니다.");
+      return;
+    }
 
     // 알림 권한이 승인되지 않았으면 무시
     if (
@@ -268,29 +311,67 @@ const AppNotificationsInitializer = () => {
       !("Notification" in window) ||
       Notification.permission !== "granted"
     ) {
+      debug.log(
+        "[FCM] 알림 권한이 granted 상태가 아니어서 토큰 등록을 건너뜁니다."
+      );
       return;
     }
 
     // FCM 토큰 등록
+    let isMounted = true;
+    isRegisteringRef.current = true;
+
     const register = async () => {
+      // ref에서 최신 함수 가져오기
+      const registerFn = registerFCMTokenRef.current;
+      if (!registerFn) {
+        debug.warn("[FCM] registerFCMToken 함수가 아직 준비되지 않았습니다.");
+        isRegisteringRef.current = false;
+        return;
+      }
+
       try {
         debug.log("[FCM] 토큰 등록 시작 - userId:", currentUserId);
-        const result = await registerFCMToken();
+        const result = await registerFn();
+
+        // 컴포넌트가 unmount된 경우 상태 업데이트하지 않음
+        if (!isMounted) {
+          debug.log(
+            "[FCM] 컴포넌트가 unmount되어 토큰 등록 결과를 무시합니다."
+          );
+          isRegisteringRef.current = false;
+          return;
+        }
+
         if (!result.token) {
           debug.warn("[FCM] 토큰 등록 실패:", result.error);
+          // 실패해도 hasRegisteredToken을 true로 설정하여 무한 루프 방지
+          // 다음 로그인 시 다시 시도할 수 있도록 currentUserId 변경 시 리셋됨
+          setHasRegisteredToken(true);
+          isRegisteringRef.current = false;
           return;
         }
         debug.log("[FCM] 토큰 등록 완료:", result.token.substring(0, 20));
         setHasRegisteredToken(true);
+        isRegisteringRef.current = false;
       } catch (error) {
-        debug.error("[FCM] 토큰 등록 중 예외:", error);
+        if (isMounted) {
+          debug.error("[FCM] 토큰 등록 중 예외:", error);
+          // 예외 발생 시에도 무한 루프 방지를 위해 true로 설정
+          setHasRegisteredToken(true);
+        }
+        isRegisteringRef.current = false;
       }
     };
 
     void register();
-    // registerFCMToken은 useFCM 훅에서 useCallback으로 감싸져 있어 안정적이지만,
-    // 명시적으로 의존성 배열에 포함하여 React의 exhaustive-deps 규칙을 준수합니다.
-  }, [currentUserId, hasRegisteredToken, registerFCMToken]);
+
+    return () => {
+      isMounted = false;
+      isRegisteringRef.current = false;
+    };
+    // registerFCMToken은 ref를 통해 접근하므로 의존성 배열에서 제외
+  }, [currentUserId, hasRegisteredToken]);
 
   return (
     <NotificationPermissionModal
