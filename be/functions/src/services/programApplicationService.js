@@ -908,13 +908,28 @@ class ProgramApplicationService {
         };
       }
 
-      const results = await Promise.allSettled(
-        applications.map(app => 
-          this.approveApplication(app.programId, app.userId)
-            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
-            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
-        )
-      );
+      // 배치 처리로 rate limit 회피 (5개씩 + 300ms delay)
+      const results = [];
+      const BATCH_SIZE = 5;
+      
+      for (let i = 0; i < applications.length; i += BATCH_SIZE) {
+        const batch = applications.slice(i, i + BATCH_SIZE);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(app => 
+            this.approveApplication(app.programId, app.userId)
+              .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+              .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+          )
+        );
+        
+        results.push(...batchResults);
+        
+        // 다음 배치 전 delay (rate limit 고려)
+        if (i + BATCH_SIZE < applications.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
 
       const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
       const failedResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
@@ -957,13 +972,28 @@ class ProgramApplicationService {
         };
       }
 
-      const results = await Promise.allSettled(
-        applications.map(app => 
-          this.rejectApplication(app.programId, app.userId)
-            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
-            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
-        )
-      );
+      // 배치 처리로 rate limit 회피 (5개씩 + 300ms delay)
+      const results = [];
+      const BATCH_SIZE = 5;
+      
+      for (let i = 0; i < applications.length; i += BATCH_SIZE) {
+        const batch = applications.slice(i, i + BATCH_SIZE);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(app => 
+            this.rejectApplication(app.programId, app.userId)
+              .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+              .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+          )
+        );
+        
+        results.push(...batchResults);
+        
+        // 다음 배치 전 delay (rate limit 고려)
+        if (i + BATCH_SIZE < applications.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
 
       const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
 
@@ -1005,13 +1035,28 @@ class ProgramApplicationService {
         };
       }
 
-      const results = await Promise.allSettled(
-        applications.map(app => 
-          this.pendingApplication(app.programId, app.userId)
-            .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
-            .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
-        )
-      );
+      // 배치 처리로 rate limit 회피 (5개씩 + 300ms delay)
+      const results = [];
+      const BATCH_SIZE = 5;
+      
+      for (let i = 0; i < applications.length; i += BATCH_SIZE) {
+        const batch = applications.slice(i, i + BATCH_SIZE);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(app => 
+            this.pendingApplication(app.programId, app.userId)
+              .then(() => ({ success: true, pageId: app.pageId, programId: app.programId, programName: app.programName }))
+              .catch(error => ({ success: false, pageId: app.pageId, error: error.message, programId: app.programId, programName: app.programName }))
+          )
+        );
+        
+        results.push(...batchResults);
+        
+        // 다음 배치 전 delay (rate limit 고려)
+        if (i + BATCH_SIZE < applications.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
 
       const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
 
