@@ -8,7 +8,7 @@ const { FieldValue } = require('../config/database');
  */
 class ProgramCommunityService {
   constructor() {
-    this.firestoreService = new FirestoreService('communities');
+    this.firestoreService = new FirestoreService();
     this.communityService = new CommunityService();
   }
 
