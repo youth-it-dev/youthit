@@ -13,7 +13,8 @@ const {
   getRollupValues,
   formatNotionBlocks,
   nowKstIso,
-  getCoverImageUrl
+  getCoverImageUrl,
+  getNumberValue
 } = require('../utils/notionHelper');
 const faqService = require('./faqService');
 const FirestoreService = require('./firestoreService');
@@ -74,7 +75,9 @@ const NOTION_FIELDS = {
   LEADER_USER_ID: "리더 사용자ID",
   LEADER_USER_NICKNAME: "리더 사용자 별명",
   LEADER_USER_REAL_NAME: "리더 사용자 실명",
-  CERTIFICATION_METHOD: "인증 방법"
+  CERTIFICATION_METHOD: "인증 방법",
+  FIRST_COME_DEADLINE_ENABLED: "선착순 마감 여부",
+  FIRST_COME_CAPACITY: "선착순 인원 수"
 };
 
 const PROGRAM_TYPE_ALIASES = {
@@ -337,6 +340,71 @@ class ProgramService {
 
 
   /**
+   * Notion 신청자 DB에서 승인된 멤버 수 조회
+   * @param {string} programId - 프로그램 ID
+   * @returns {Promise<number>} 승인된 멤버 수
+   */
+  async getApprovedMembersCount(programId) {
+    try {
+      // this.applicationDataSource는 constructor에서 이미 설정됨
+      const response = await this.notion.databases.query({
+        database_id: this.applicationDataSource,
+        filter: {
+          and: [
+            {
+              property: '프로그램명',
+              relation: {
+                contains: programId
+              }
+            },
+            {
+              property: '승인여부',
+              select: {
+                equals: '승인'
+              }
+            }
+          ]
+        }
+      });
+      
+      return response.results.length;
+    } catch (error) {
+      console.warn('[ProgramService] Notion 신청자 수 조회 실패:', error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * 선착순을 고려한 모집 상태 계산
+   * @param {string} currentStatus - 현재 모집 상태
+   * @param {boolean} isFirstComeEnabled - 선착순 마감 여부
+   * @param {number} firstComeCapacity - 선착순 인원 수
+   * @param {number} approvedCount - 승인된 멤버 수
+   * @returns {string} 계산된 모집 상태
+   */
+  calculateRecruitmentStatusWithFirstCome(
+    currentStatus,
+    isFirstComeEnabled,
+    firstComeCapacity,
+    approvedCount
+  ) {
+    // 우선순위: 모집 기간 먼저 체크
+    // "모집 전" 또는 기간 종료로 인한 "모집 완료"는 그대로 유지
+    if (currentStatus === "모집 전" || currentStatus === "모집 완료") {
+      return currentStatus;
+    }
+    
+    // "모집 중"일 때만 선착순 체크
+    if (currentStatus === "모집 중") {
+      if (isFirstComeEnabled && firstComeCapacity && approvedCount >= firstComeCapacity) {
+        return "선착순 마감";  // 선착순으로 마감된 경우
+      }
+    }
+    
+    return currentStatus;
+  }
+
+  /**
    * 프로그램 상세 조회 (FAQ 포함)
    * @param {string} programId - 프로그램 ID
    * @returns {Promise<Object>} 프로그램 상세 정보 (FAQ 포함)
@@ -350,6 +418,18 @@ class ProgramService {
         page_id: programId
       });
       const programData = this.formatProgramData(page, true);
+
+      // 승인된 멤버 수 조회
+      const approvedCount = await this.getApprovedMembersCount(programId);
+      programData.approvedMembersCount = approvedCount;
+
+      // recruitmentStatus 재계산 (선착순 고려)
+      programData.recruitmentStatus = this.calculateRecruitmentStatusWithFirstCome(
+        programData.recruitmentStatus,
+        programData.isFirstComeDeadlineEnabled,
+        programData.firstComeCapacity,
+        approvedCount
+      );
 
       // 프로그램 페이지 블록 내용 조회
       const pageBlocks = await this.getProgramPageBlocks(programId);
@@ -549,6 +629,8 @@ class ProgramService {
       leaderNickname: leaderNickname,
       leaderRealName: leaderRealName,
       certificationMethod: getRichTextValue(props[NOTION_FIELDS.CERTIFICATION_METHOD]),
+      isFirstComeDeadlineEnabled: getCheckboxValue(props[NOTION_FIELDS.FIRST_COME_DEADLINE_ENABLED]),
+      firstComeCapacity: getNumberValue(props[NOTION_FIELDS.FIRST_COME_CAPACITY]),
       createdAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       updatedAt: page.last_edited_time || getDateValue(props[NOTION_FIELDS.LAST_EDITED_TIME]) || null,
       notionPageTitle: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE])

@@ -2429,8 +2429,8 @@ const options = {
             },
             recruitmentStatus: {
               type: "string",
-              enum: ["모집 전", "모집 중", "모집 완료"],
-              description: "모집상태 (날짜 기반 자동 계산)",
+              enum: ["모집 전", "모집 중", "모집 완료", "선착순 마감"],
+              description: "모집상태 (날짜 기반 자동 계산, 선착순 인원 도달 시 '선착순 마감')",
               example: "모집 중",
             },
             programStatus: {
@@ -2694,6 +2694,22 @@ const options = {
                   href: null,
                 },
               ],
+            },
+            isFirstComeDeadlineEnabled: {
+              type: "boolean",
+              description: "선착순 마감 여부",
+              example: false,
+            },
+            firstComeCapacity: {
+              type: "number",
+              nullable: true,
+              description: "선착순 인원 수",
+              example: 30,
+            },
+            approvedMembersCount: {
+              type: "number",
+              description: "현재 승인된 멤버 수 (프로그램 상세 조회 시에만 포함)",
+              example: 25,
             },
           },
         },
