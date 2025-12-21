@@ -12,6 +12,7 @@ import {
   DeviceType,
 } from "@/types/shared/fcm";
 import { debug } from "@/utils/shared/debugger";
+import { waitForServiceWorker } from "@/utils/shared/service-worker";
 import { useSaveFCMToken } from "./useSaveFCMToken";
 
 /**
@@ -33,53 +34,6 @@ const waitForAuthReady = async (): Promise<void> => {
       unsubscribe();
       resolve();
     }, 1000);
-  });
-};
-
-/**
- * @description Service Worker 등록 완료 대기
- *
- * iOS Safari/PWA에서는 Service Worker가 등록되어 있어야 알림 권한 요청이 가능합니다.
- * Service Worker 등록 완료를 최대 5초까지 대기합니다.
- *
- * @returns Service Worker가 준비되었는지 여부
- */
-const waitForServiceWorker = async (): Promise<boolean> => {
-  if (typeof window === "undefined") return false;
-  if (!("serviceWorker" in navigator)) {
-    debug.warn("[FCM] Service Worker를 지원하지 않는 환경입니다.");
-    return false;
-  }
-
-  try {
-    // 이미 등록된 Service Worker 확인
-    const registration = await navigator.serviceWorker.ready;
-    if (registration) {
-      debug.log("[FCM] Service Worker가 이미 등록되어 있습니다.");
-      return true;
-    }
-  } catch (error) {
-    debug.warn("[FCM] Service Worker 확인 실패:", error);
-  }
-
-  // Service Worker 등록 대기 (최대 5초)
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      debug.warn("[FCM] Service Worker 등록 대기 시간 초과 (5초)");
-      resolve(false);
-    }, 5000);
-
-    navigator.serviceWorker.ready
-      .then((registration) => {
-        clearTimeout(timeout);
-        debug.log("[FCM] Service Worker 등록 완료:", registration);
-        resolve(true);
-      })
-      .catch((error) => {
-        clearTimeout(timeout);
-        debug.error("[FCM] Service Worker 등록 실패:", error);
-        resolve(false);
-      });
   });
 };
 
