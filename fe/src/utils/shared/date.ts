@@ -188,3 +188,20 @@ export const formatDateSlash = (dateString?: string | Date): string => {
   const day = date.getDate();
   return `${month}/${day}`;
 };
+
+/**
+ * 날짜를 "YYYY.MM.DD(요일)" 형식으로 변환
+ * @param dateString - ISO 8601 문자열 또는 Date 객체
+ * @returns "YYYY.MM.DD(요일)" 형식의 문자열 (예: "2025.10.23(수)")
+ */
+export const formatDateWithDayKorean = (dateString?: string | Date): string => {
+  if (!dateString) return "";
+  const date =
+    typeof dateString === "string" ? new Date(dateString) : dateString;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dayName = dayNames[date.getDay()];
+  return `${year}.${month}.${day}(${dayName})`;
+};
