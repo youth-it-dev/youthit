@@ -9,6 +9,9 @@ import { onAuthStateChange } from "@/lib/auth";
 import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
 
+const MAX_TOKEN_RETRY_COUNT = 3;
+const TOKEN_RETRY_DELAY_MS = 1000;
+
 /**
  * @description 알림 권한이 이미 granted인 경우에만 FCM 토큰을 가져옵니다.
  *
@@ -72,13 +75,13 @@ const useFcmToken = () => {
       return;
     }
 
-    // Step 6: Retry fetching the token if necessary. (up to 3 times)
+    // Step 6: Retry fetching the token if necessary. (up to MAX_TOKEN_RETRY_COUNT times)
     // This step is typical initially as the service worker may not be ready/installed yet.
     if (!token) {
-      if (retryLoadToken.current >= 3) {
+      if (retryLoadToken.current >= MAX_TOKEN_RETRY_COUNT) {
         alert("Unable to load token, refresh the browser");
         debug.warn(
-          "%cPush Notifications issue - unable to load token after 3 retries",
+          `%cPush Notifications issue - unable to load token after ${MAX_TOKEN_RETRY_COUNT} retries`,
           "color: green; background: #c7c7c7; padding: 8px; font-size: 20px"
         );
         isLoading.current = false;
@@ -88,6 +91,8 @@ const useFcmToken = () => {
       retryLoadToken.current += 1;
       debug.error("An error occurred while retrieving token. Retrying...");
       isLoading.current = false;
+      // 서비스 워커가 준비될 시간을 확보하기 위해 딜레이 추가
+      await new Promise((resolve) => setTimeout(resolve, TOKEN_RETRY_DELAY_MS));
       await loadToken();
       return;
     }
