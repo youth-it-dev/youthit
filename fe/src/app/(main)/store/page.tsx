@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Typography } from "@/components/shared/typography";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetStoreProducts } from "@/hooks/generated/store-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -71,7 +72,7 @@ const StorePage = () => {
       {/* 사용 가능한 나다움 포인트 */}
       <div className="px-4 pt-4">
         <Link
-          href="/my-page"
+          href={LINK_URL.STORE_HISTORY_NADAUM}
           className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4"
         >
           <Typography font="noto" variant="label1B" className="text-gray-700">

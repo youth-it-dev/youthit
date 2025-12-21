@@ -18,6 +18,8 @@ export const LINK_URL = {
   MY_PAGE_EDIT: "/my-page/edit",
   SETTINGS: "/settings",
   PERSONAL_INFO: "/settings/personal-info",
+  STORE: "/store",
+  STORE_HISTORY_NADAUM: "/store/history/nadaum",
   ANNOUNCEMENTS: "/announcements",
   NOTIFICATIONS: "/notifications",
   // 이용약관
