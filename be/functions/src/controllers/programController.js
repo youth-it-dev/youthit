@@ -1,4 +1,5 @@
 const programService = require("../services/programService");
+const programApplicationService = require("../services/programApplicationService");
 const { successResponse } = require("../utils/helpers");
 
 // 상수 정의
@@ -257,7 +258,7 @@ class ProgramController {
         canAttendEvents
       };
 
-      const result = await programService.applyToProgram(programId, applicationData);
+      const result = await programApplicationService.applyToProgram(programId, applicationData);
 
       res.success({
         message: "프로그램 신청이 완료되었습니다.",
@@ -301,7 +302,7 @@ class ProgramController {
         return next(error);
       }
 
-      const result = await programService.approveApplication(programId, applicationId);
+      const result = await programApplicationService.approveApplication(programId, applicationId);
 
       res.success({
         message: "프로그램 신청이 승인되었습니다.",
@@ -336,7 +337,7 @@ class ProgramController {
         return next(error);
       }
 
-      const result = await programService.rejectApplication(programId, applicationId);
+      const result = await programApplicationService.rejectApplication(programId, applicationId);
 
       res.success({
         message: "프로그램 신청이 거부되었습니다.",
