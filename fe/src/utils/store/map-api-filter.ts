@@ -16,7 +16,7 @@ import type {
  * @param filter - 페이지 필터 타입
  * @returns API 필터 타입
  */
-export const mapApiFilterToPageFilter = (
+export const mapPageFilterToApiFilter = (
   filter: PageFilterType
 ): ApiFilterType => {
   if (filter === PAGE_FILTER.ALL) return API_FILTER.ALL;
