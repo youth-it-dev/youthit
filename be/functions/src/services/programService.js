@@ -348,8 +348,8 @@ class ProgramService {
   async getApprovedMembersCount(programId) {
     try {
       // this.applicationDataSource는 constructor에서 이미 설정됨
-      const response = await this.notion.databases.query({
-        database_id: this.applicationDataSource,
+      const response = await this.notion.dataSources.query({
+        data_source_id: this.applicationDataSource,
         filter: {
           and: [
             {
