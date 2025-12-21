@@ -23,7 +23,7 @@ import type { HistorySection, HistoryType } from "@/types/reward-history";
 import type { PageFilterType } from "@/types/store/_nadaum-history-types";
 import { cn } from "@/utils/shared/cn";
 import { formatDateWithDayKorean } from "@/utils/shared/date";
-import { mapApiFilterToPageFilter } from "@/utils/store/map-api-filter";
+import { mapPageFilterToApiFilter } from "@/utils/store/map-api-filter";
 
 /**
  * @description 나다움 내역 페이지
@@ -46,7 +46,7 @@ const Page = () => {
   }, []);
 
   // API 필터 매핑
-  const apiFilter = mapApiFilterToPageFilter(activeFilter);
+  const apiFilter = mapPageFilterToApiFilter(activeFilter);
 
   const PAGE_SIZE = 20;
 
@@ -270,7 +270,9 @@ const Page = () => {
                   const originalItem = allHistory.find((h) => h.id === item.id);
                   const isExpired = originalItem?.isExpired ?? false;
                   const amount =
-                    item.amount > 0 ? `+ ${item.amount}N` : `${item.amount}N`;
+                    originalItem?.changeType === CHANGE_TYPE.ADD
+                      ? `+ ${item.amount}N`
+                      : `- ${item.amount}N`;
                   const amountColor =
                     item.type === "earn" ? "text-main-500" : "text-gray-500";
                   const detailText = item.description ?? item.label;
