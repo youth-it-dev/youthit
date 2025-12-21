@@ -48,7 +48,8 @@ const ERROR_CODES = {
   NICKNAME_DUPLICATE: 'NICKNAME_DUPLICATE',
   DUPLICATE_APPLICATION: 'DUPLICATE_APPLICATION',
   NOT_FOUND: 'NOT_FOUND',
-  RECRUITMENT_PERIOD_CLOSED: 'RECRUITMENT_PERIOD_CLOSED'
+  RECRUITMENT_PERIOD_CLOSED: 'RECRUITMENT_PERIOD_CLOSED',
+  FIRST_COME_DEADLINE_REACHED: 'FIRST_COME_DEADLINE_REACHED'
 };
 
 // Notion 필드명 상수
@@ -850,48 +851,63 @@ class ProgramService {
 
       validateNicknameOrThrow(nickname);
       
-      // 3. 중복 신청 체크 (먼저 확인하여 Notion 중복 저장 방지)
+      // 3. Transaction으로 중복 체크, 선착순 체크, 멤버 추가를 원자적으로 처리
       const membersService = new FirestoreService(`communities/${normalizedProgramId}/members`);
-      const existingMember = await membersService.getById(applicantId);
-      if (existingMember) {
-        const duplicateError = new Error('같은 프로그램은 또 신청할 수 없습니다.');
-        duplicateError.code = ERROR_CODES.DUPLICATE_APPLICATION;
-        duplicateError.statusCode = 409;
-        throw duplicateError;
-      }
       
-      // 4. 닉네임 중복 체크
-      const isNicknameAvailable = await this.communityService.checkNicknameAvailability(normalizedProgramId, nickname);
-      if (!isNicknameAvailable) {
-        const error = new Error("이미 사용 중인 닉네임입니다");
-        error.code = ERROR_CODES.NICKNAME_DUPLICATE;
-        error.statusCode = 409;
-        throw error;
-      }
-
-      // 5. 멤버 추가 (Firestore) - Notion 저장 전에 먼저 처리
-      let memberResult;
-      try {
-        memberResult = await this.communityService.addMemberToCommunity(
-          normalizedProgramId, 
-          applicantId, 
-          nickname
-        );
-      } catch (memberError) {
-        if (memberError.code === 'CONFLICT') {
+      const memberResult = await membersService.runTransaction(async (transaction, collectionRef) => {
+        // 3-1. Members 전체 조회 (Transaction 내에서 Lock)
+        const allMembers = await membersService.getAllInTransaction(transaction);
+        
+        // 3-2. 중복 신청 체크
+        const existingMember = allMembers.find(m => m.id === applicantId || m.userId === applicantId);
+        if (existingMember) {
           const duplicateError = new Error('같은 프로그램은 또 신청할 수 없습니다.');
           duplicateError.code = ERROR_CODES.DUPLICATE_APPLICATION;
           duplicateError.statusCode = 409;
           throw duplicateError;
         }
-        if (memberError.code === ERROR_CODES.NICKNAME_DUPLICATE) {
+        
+        // 3-3. 닉네임 중복 체크
+        const nicknameExists = allMembers.some(m => m.nickname === nickname.trim());
+        if (nicknameExists) {
           const error = new Error("이미 사용 중인 닉네임입니다");
           error.code = ERROR_CODES.NICKNAME_DUPLICATE;
           error.statusCode = 409;
           throw error;
         }
-        throw memberError;
-      }
+        
+        // 3-4. 승인된 멤버 수 카운트
+        const approvedCount = allMembers.filter(m => m.status === 'approved').length;
+        
+        // 3-5. 선착순 마감 체크
+        if (program.isFirstComeDeadlineEnabled && 
+            program.firstComeCapacity && 
+            approvedCount >= program.firstComeCapacity) {
+          const capacityError = new Error('선착순 마감되었습니다.');
+          capacityError.code = ERROR_CODES.FIRST_COME_DEADLINE_REACHED;
+          capacityError.statusCode = 400;
+          throw capacityError;
+        }
+        
+        // 3-6. 멤버 추가 (원자적 실행)
+        const newMemberRef = collectionRef.doc(applicantId);
+        transaction.set(newMemberRef, {
+          userId: applicantId,
+          nickname: nickname.trim(),
+          role: "member",
+          status: 'pending',
+          joinedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp()
+        });
+        
+        return {
+          id: applicantId,
+          userId: applicantId,
+          nickname: nickname.trim(),
+          role: "member",
+          status: 'pending'
+        };
+      });
 
       // 6. Notion 프로그램신청자DB에 저장 (Firestore 성공 후)
       const applicantsPageId = await this.saveToNotionApplication(programId, applicationData, program);
@@ -927,6 +943,8 @@ class ProgramService {
       if (error.code === ERROR_CODES.NICKNAME_DUPLICATE || 
           error.code === ERROR_CODES.DUPLICATE_APPLICATION ||
           error.code === ERROR_CODES.PROGRAM_NOT_FOUND ||
+          error.code === ERROR_CODES.FIRST_COME_DEADLINE_REACHED ||
+          error.code === ERROR_CODES.RECRUITMENT_PERIOD_CLOSED ||
           error.code === 'BAD_REQUEST') {
         throw error;
       }

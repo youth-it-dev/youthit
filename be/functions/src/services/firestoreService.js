@@ -632,11 +632,34 @@ class FirestoreService {
 
   /**
    * Firestore 트랜잭션 실행
-   * @param {Function} updateFunction - 트랜잭션 함수
+   * @param {Function} callback - 트랜잭션 콜백 함수 (transaction, collectionRef를 인자로 받음)
    * @return {Promise<any>} 트랜잭션 결과
    */
-  async runTransaction(updateFunction) {
-    return await this.db.runTransaction(updateFunction);
+  async runTransaction(callback) {
+    return await this.db.runTransaction(async (transaction) => {
+      const collectionRef = this.db.collection(this.collectionName);
+      return await callback(transaction, collectionRef);
+    });
+  }
+
+  /**
+   * Transaction 내에서 전체 문서 조회
+   * @param {Transaction} transaction - Firestore transaction
+   * @return {Promise<Array>} 문서 목록
+   */
+  async getAllInTransaction(transaction) {
+    const collectionRef = this.db.collection(this.collectionName);
+    const snapshot = await transaction.get(collectionRef);
+    
+    const documents = [];
+    snapshot.forEach(doc => {
+      documents.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    return documents;
   }
 }
 
