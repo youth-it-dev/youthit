@@ -41,7 +41,7 @@ class ProgramApplicationService {
     });
 
     this.applicationDataSource = NOTION_PROGRAM_APPLICATION_DB_ID;
-    this.firestoreService = new FirestoreService('communities');
+    this.firestoreService = new FirestoreService();
     this.communityService = new CommunityService();
   }
 
@@ -159,7 +159,7 @@ class ProgramApplicationService {
         programId,
         applicantId,
         nickname,
-        appliedAt: new Date().toISOString(),
+        appliedAt: new Date().toISOString(), // 클라이언트 응답용
         applicantsPageId
       };
 
@@ -432,7 +432,7 @@ class ProgramApplicationService {
         applicationId,
         {
           status: 'approved',
-          approvedAt: new Date()
+          approvedAt: FieldValue.serverTimestamp()
         }
       );
 
@@ -526,7 +526,7 @@ class ProgramApplicationService {
         applicationId,
         {
           status: 'rejected',
-          rejectedAt: new Date()
+          rejectedAt: FieldValue.serverTimestamp()
         }
       );
 
