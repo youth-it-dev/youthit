@@ -150,9 +150,11 @@ export const requestNotificationPermission =
         const swReady = await waitForServiceWorker();
         if (!swReady) {
           debug.warn(
-            "[FCM] Service Worker가 등록되지 않아 알림 권한을 요청할 수 없습니다."
+            "[FCM] Service Worker가 등록되지 않아 알림 권한을 요청할 수 없습니다. 나중에 다시 시도할 수 있습니다."
           );
-          return "denied";
+          // Service Worker 준비 실패를 "denied"로 간주하지 않고 "default" 상태 유지
+          // 이렇게 하면 나중에 Service Worker가 준비되면 다시 권한 요청을 시도할 수 있습니다.
+          return "default";
         }
         debug.log(
           "[FCM] iOS에서 Service Worker 준비 완료, 알림 권한 요청 진행"
