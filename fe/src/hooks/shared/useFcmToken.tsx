@@ -9,33 +9,40 @@ import { onAuthStateChange } from "@/lib/auth";
 import { fetchToken, getClientMessaging } from "@/lib/firebase";
 import { debug } from "@/utils/shared/debugger";
 
+/**
+ * @description 알림 권한이 이미 granted인 경우에만 FCM 토큰을 가져옵니다.
+ *
+ * 주의: 이 함수는 권한을 요청하지 않습니다.
+ * 권한 요청은 AppNotificationsInitializer에서 사용자 제스처 기반으로 처리됩니다.
+ * 사용자 제스처 없이 Notification.requestPermission()을 호출하면 브라우저가 팝업을 무시할 수 있습니다.
+ */
 async function getNotificationPermissionAndToken() {
   // Step 1: Check if Notifications are supported in the browser.
   if (!("Notification" in window)) {
-    debug.warn("This browser does not support desktop notification");
+    debug.warn(
+      "[useFcmToken] This browser does not support desktop notification"
+    );
     return null;
   }
 
   // Step 2: Check if permission is already granted.
+  // 권한이 granted인 경우에만 토큰을 가져옵니다.
+  // 권한 요청은 AppNotificationsInitializer에서 사용자 제스처 기반으로 처리됩니다.
   if (Notification.permission === "granted") {
+    debug.log(
+      "[useFcmToken] 알림 권한이 이미 granted 상태입니다. 토큰을 가져옵니다."
+    );
     return await fetchToken();
   }
 
-  // Step 3: If permission is not denied, request permission from the user.
-  if (Notification.permission !== "denied") {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      return await fetchToken();
-    }
-  }
-
-  debug.log("Notification permission not granted.");
+  // 권한이 default 또는 denied인 경우 토큰을 가져오지 않습니다.
+  debug.log(
+    `[useFcmToken] 알림 권한이 ${Notification.permission} 상태입니다. 권한 요청은 AppNotificationsInitializer에서 처리됩니다.`
+  );
   return null;
 }
 
 const useFcmToken = () => {
-  console.log("useFcmToken hook initialized");
-
   const router = useRouter(); // Initialize the router for navigation.
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<NotificationPermission | null>(null); // State to store the notification permission status.
