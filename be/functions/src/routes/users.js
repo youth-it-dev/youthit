@@ -187,18 +187,18 @@ const router = express.Router();
  * /users/me:
  *   get:
  *     summary: 본인 정보 조회
- *     description: 인증된 사용자의 정보를 조회합니다. deviceInfo를 쿼리 파라미터로 제공하면 해당 기기의 pushTermsAgreed도 함께 반환됩니다.
+ *     description: 인증된 사용자의 정보를 조회합니다. token을 쿼리 파라미터로 제공하면 해당 토큰의 pushTermsAgreed도 함께 반환됩니다.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: deviceInfo
+ *         name: token
  *         required: false
  *         schema:
  *           type: string
- *         description: 디바이스 정보 (선택, 제공 시 해당 기기의 pushTermsAgreed 반환)
- *         example: "pwa_550e8400-e29b-41d4-a716-446655440000"
+ *         description: FCM 토큰 (선택, 제공 시 해당 토큰의 pushTermsAgreed 반환)
+ *         example: "fcm_token_string_here"
  *     responses:
  *       200:
  *         description: 사용자 정보 조회 성공
@@ -1361,10 +1361,10 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
  *   post:
  *     summary: 알림 설정 토글
  *     description: |
- *       특정 기기의 푸시 알림 동의 설정을 토글합니다.
+ *       특정 FCM 토큰의 푸시 알림 동의 설정을 토글합니다.
  *       - pushTermsAgreed가 true이면 false로 변경
  *       - pushTermsAgreed가 false이면 true로 변경
- *       - deviceInfo를 요청 바디로 받아 해당 기기의 fcmTokens 문서에서 pushTermsAgreed를 수정합니다.
+ *       - token을 요청 바디로 받아 해당 토큰의 fcmTokens 문서에서 pushTermsAgreed를 수정합니다.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -1375,12 +1375,12 @@ router.post("/me/sync-kakao-profile", authGuard, userController.syncKakaoProfile
  *           schema:
  *             type: object
  *             required:
- *               - deviceInfo
+ *               - token
  *             properties:
- *               deviceInfo:
+ *               token:
  *                 type: string
- *                 description: 디바이스 정보 (필수)
- *                 example: "pwa_550e8400-e29b-41d4-a716-446655440000"
+ *                 description: FCM 토큰 (필수)
+ *                 example: "fcm_token_string_here"
  *     responses:
  *       200:
  *         description: 알림 설정 토글 성공

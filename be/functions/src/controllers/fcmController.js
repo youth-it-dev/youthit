@@ -7,14 +7,14 @@ class FCMController {
 
   async saveToken(req, res) {
     try {
-      const {token, deviceInfo, deviceType = "pwa"} = req.body;
+      const {token, deviceType = "pwa"} = req.body;
       const userId = req.user.uid;
 
       if (!token) {
         return res.error(400, "FCM 토큰이 필요합니다.");
       }
 
-      const result = await this.fcmService.saveToken(userId, token, deviceInfo, deviceType);
+      const result = await this.fcmService.saveToken(userId, token, deviceType);
       if (!result) {
         return res.error(500, "토큰 저장에 실패했습니다.");
       }
