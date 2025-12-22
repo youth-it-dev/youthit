@@ -202,8 +202,25 @@ export const getDeviceInfo = (
   token: string,
   deviceType: DeviceType
 ): string => {
-  const tokenPrefix = token.substring(0, 6);
-  return `${deviceType}_${tokenPrefix}`;
+  // localStorage에 저장된 deviceInfo가 있으면 그대로 사용 (토큰이 바뀌어도 동일)
+  if (typeof window !== "undefined") {
+    const STORAGE_KEY = "fcm_device_info";
+    const savedDeviceInfo = localStorage.getItem(STORAGE_KEY);
+
+    if (savedDeviceInfo) {
+      return savedDeviceInfo;
+    }
+
+    // 없으면 UUID 형식으로 생성하고 localStorage에 저장
+    const uuid = crypto.randomUUID();
+    const deviceInfo = `${deviceType}_${uuid}`;
+    localStorage.setItem(STORAGE_KEY, deviceInfo);
+    return deviceInfo;
+  }
+
+  // SSR 환경
+  const uuid = crypto.randomUUID();
+  return `${deviceType}_${uuid}`;
 };
 
 /**
