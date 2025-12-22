@@ -3,6 +3,7 @@ const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 const {admin} = require("../config/database");
 const crypto = require("crypto");
+const FirestoreService = require("./firestoreService");
 
 /*
 - 1초, 10배치 : 100명에서 끊어짐
@@ -33,6 +34,7 @@ class NotionUserService {
     this.withdrawUserDB = process.env.NOTION_WITHDRAWN_USER;
     this.pendingUserDB = process.env.NOTION_PENDING_USER;
     this.notionUserAccountBackupDB = process.env.NOTION_USER_ACCOUNT_BACKUP_DB_ID;
+    this.firestoreService = new FirestoreService("users");
   }
 
   /**
@@ -42,17 +44,16 @@ class NotionUserService {
    */
   async getPushAdvertisingStatusFromFcmTokens(userId) {
     try {
-      const fcmTokensSnapshot = await db.collection(`users/${userId}/fcmTokens`).get();
+      const fcmTokens = await this.firestoreService.getCollection(`users/${userId}/fcmTokens`);
       
       // fcmTokens가 없으면 미설정
-      if (fcmTokensSnapshot.empty) {
+      if (!fcmTokens || fcmTokens.length === 0) {
         return "미설정";
       }
 
       // pushTermsAgreed가 true인 토큰이 하나라도 있으면 동의
-      const hasAgreedToken = fcmTokensSnapshot.docs.some(doc => {
-        const data = doc.data();
-        return data.pushTermsAgreed === true;
+      const hasAgreedToken = fcmTokens.some(token => {
+        return token.pushTermsAgreed === true;
       });
 
       if (hasAgreedToken) {
