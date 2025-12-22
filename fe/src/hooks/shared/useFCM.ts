@@ -178,36 +178,6 @@ export const getFCMToken = async (): Promise<FCMTokenResult> => {
 };
 
 /**
- * @description 디바이스 정보 생성
- *
- * FCM 토큰 저장 시 Firestore document ID로 사용될 deviceInfo를 생성합니다.
- *
- * **형식**: `{deviceType}_{token 앞 6자리}`
- *
- * **예시**:
- * - `mobile_c2OmA4` (모바일 디바이스)
- * - `pwa_d3PnB5` (PWA 설치)
- * - `web_e4QoC6` (웹 브라우저)
- *
- * **주의사항**:
- * - userAgent 전체를 사용하지 않고 간결한 형식 사용
- * - Firestore document ID 규칙 준수 (슬래시 등 특수문자 방지)
- * - 토큰 앞 6자리로 동일 사용자의 여러 디바이스 구분
- *
- * @param token - FCM 토큰
- * @param deviceType - 디바이스 타입 (pwa, mobile, web)
- * @returns Firestore document ID로 사용 가능한 deviceInfo 문자열
- */
-export const getDeviceInfo = (
-  token: string,
-  deviceType: DeviceType
-): string => {
-  // 토큰 앞 6자리 추출
-  const tokenPrefix = token.substring(0, 6);
-  return `${deviceType}_${tokenPrefix}`;
-};
-
-/**
  * @description 디바이스 타입 감지
  */
 export const getDeviceType = (): DeviceType => {
@@ -261,14 +231,10 @@ export const useFCM = () => {
         return tokenResult;
       }
 
-      // 2. 디바이스 정보 수집
+      // 2. 서버에 토큰 저장 (deviceInfo 미포함)
       const deviceType = getDeviceType();
-      const deviceInfo = getDeviceInfo(tokenResult.token, deviceType);
-
-      // 3. 서버에 토큰 저장
       const tokenRequest: FCMTokenRequest = {
         token: tokenResult.token,
-        deviceInfo,
         deviceType,
       };
 
@@ -292,7 +258,6 @@ export const useFCM = () => {
     // 유틸리티
     getFCMToken,
     requestNotificationPermission,
-    getDeviceInfo,
     getDeviceType,
 
     // 뮤테이션 상태
