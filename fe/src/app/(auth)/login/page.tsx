@@ -54,6 +54,7 @@ const LoginPageContent = () => {
     : rawNext;
 
   const { refetch: refetchUserDataRaw } = useGetUsersMe({
+    request: {},
     enabled: false, // 자동 실행 비활성화
     select: (data) => {
       return data?.user;

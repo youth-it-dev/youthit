@@ -24,6 +24,7 @@ const StorePage = () => {
   }, [setTitle]);
 
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => {
       return data?.user;
     },

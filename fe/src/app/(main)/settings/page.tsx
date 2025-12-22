@@ -11,12 +11,10 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
-import {
-  useGetUsersMe,
-  usePostUsersMeMarketingTermsToggle,
-  usePostUsersMePushNotificationToggle,
-} from "@/hooks/generated/users-hooks";
+import { usePostUsersMeMarketingTermsToggle } from "@/hooks/generated/users-hooks";
 import { requestNotificationPermission, useFCM } from "@/hooks/shared/useFCM";
+import { useGetUsersMeWithToken } from "@/hooks/shared/useGetUsersMeWithToken";
+import { usePostUsersMePushNotificationToggleWithToken } from "@/hooks/shared/usePostUsersMePushNotificationToggleWithToken";
 import { getKakaoAccessToken } from "@/utils/auth/kakao-access-token";
 import { debug } from "@/utils/shared/debugger";
 import { showToast } from "@/utils/shared/toast";
@@ -39,17 +37,18 @@ const SettingsPage = () => {
   const { mutate: deleteAccountMutate, isPending: isDeleting } =
     useDeleteAccount();
   const { mutate: pushNotificationToggleMutate } =
-    usePostUsersMePushNotificationToggle();
+    usePostUsersMePushNotificationToggleWithToken();
   const { mutate: marketingTermsToggleMutate } =
     usePostUsersMeMarketingTermsToggle();
   const { registerFCMToken } = useFCM();
 
   // 사용자 정보 가져오기
-  const { data: userData, isLoading: isUsersMeLoading } = useGetUsersMe({
-    select: (data) => {
-      return data?.user;
-    },
-  });
+  const { data: userData, isLoading: isUsersMeLoading } =
+    useGetUsersMeWithToken({
+      select: (data) => {
+        return data?.user;
+      },
+    });
 
   const pushTermsAgreed = userData?.pushTermsAgreed;
   const marketingTermsAgreed = (
@@ -223,7 +222,7 @@ const SettingsPage = () => {
     // 토글 상태 업데이트 및 API 호출
     setIsNotificationEnabled(checked);
 
-    pushNotificationToggleMutate(undefined, {
+    pushNotificationToggleMutate(undefined as void, {
       onSuccess: (response) => {
         const nextPushTermsAgreed = response.data?.pushTermsAgreed;
 
@@ -231,7 +230,9 @@ const SettingsPage = () => {
           setIsNotificationEnabled(nextPushTermsAgreed);
         }
 
-        queryClient.invalidateQueries({ queryKey: usersKeys.getUsersMe });
+        queryClient.invalidateQueries({
+          queryKey: ["users", "getUsersMe", "withToken"],
+        });
       },
       onError: (error) => {
         debug.error("알림 설정 변경 오류:", error);
@@ -262,7 +263,9 @@ const SettingsPage = () => {
             setIsMarketingConsentEnabled(nextMarketingTermsAgreed);
           }
 
-          queryClient.invalidateQueries({ queryKey: usersKeys.getUsersMe });
+          queryClient.invalidateQueries({
+            queryKey: ["users", "getUsersMe", "withToken"],
+          });
         },
         onError: (error) => {
           debug.error("마케팅 정보 수신 동의 변경 오류:", error);

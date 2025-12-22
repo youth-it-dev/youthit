@@ -39,6 +39,7 @@ const BottomNavigation = () => {
     isLoading,
     isError,
   } = useGetUsersMe({
+    request: {},
     select: (data) => data?.user,
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(currentUser), // 로그인된 사용자일 때만 API 호출

@@ -38,7 +38,9 @@ const MissionCommunityPageContent = () => {
   }, [setHideTopBar]);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: userMe } = useGetUsersMe();
+  const { data: userMe } = useGetUsersMe({
+    request: {},
+  });
 
   const getInitialSearchQuery = () => searchParams.get("search") || "";
   const getInitialAppliedSearchQuery = () => searchParams.get("search") || "";

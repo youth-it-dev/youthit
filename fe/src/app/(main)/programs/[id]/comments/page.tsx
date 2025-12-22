@@ -23,6 +23,7 @@ const ProgramCommentsPage = () => {
 
   // 사용자 정보 조회
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => data?.user,
     enabled: isReady && !!user,
   });

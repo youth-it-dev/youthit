@@ -59,6 +59,7 @@ const ProfileEditPage = () => {
   const selectedFileRef = useRef<File | null>(null);
 
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => {
       return data?.user;
     },
@@ -362,7 +363,7 @@ const ProfileEditPage = () => {
    */
   const invalidateUserQueries = () => {
     queryClient.invalidateQueries({
-      queryKey: usersKeys.getUsersMe,
+      queryKey: usersKeys.getUsersMe({}),
     });
     queryClient.invalidateQueries({
       queryKey: usersKeys.getUsersMeMyPage,
