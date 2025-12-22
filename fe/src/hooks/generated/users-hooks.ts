@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-query";
 import * as Api from "@/api/generated/users-api";
 import { usersKeys } from "@/constants/generated/query-keys";
+import { getDeviceInfoFromStorage } from "@/hooks/shared/useFCM";
 import type * as Types from "@/types/generated/users-types";
 
 export const useGetUsers = <TData = Types.TGETUsersRes>(
@@ -104,7 +105,8 @@ export const useGetUsersMe = <TData = Types.TGETUsersMeRes>(
   return useQuery<Types.TGETUsersMeRes, Error, TData>({
     queryKey: usersKeys.getUsersMe,
     queryFn: async () => {
-      const response = await Api.getUsersMe();
+      const deviceInfo = getDeviceInfoFromStorage();
+      const response = await Api.getUsersMe(deviceInfo || undefined);
       return response.data;
     },
     ...options,
@@ -296,8 +298,17 @@ export const usePostUsersMePushNotificationToggle = <
     TVariables,
     TContext
   >({
-    mutationFn: (_variables: TVariables) =>
-      Api.postUsersMePushNotificationToggle(),
+    mutationFn: () => {
+      const deviceInfo = getDeviceInfoFromStorage();
+
+      if (!deviceInfo) {
+        throw new Error(
+          "deviceInfo를 찾을 수 없습니다. FCM 토큰을 먼저 등록해주세요."
+        );
+      }
+
+      return Api.postUsersMePushNotificationToggle({ deviceInfo });
+    },
     ...options,
   });
 };
