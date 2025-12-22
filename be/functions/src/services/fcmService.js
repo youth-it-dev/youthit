@@ -60,6 +60,11 @@ class FCMService {
           updateData
         );
         
+        // fcmTokens 변경 시 유저 컬렉션의 lastUpdatedAt도 업데이트
+        await this.firestoreService.update(userId, {
+          lastUpdatedAt: FieldValue.serverTimestamp(),
+        });
+        
         return {deviceId, message: "토큰 업데이트 완료"};
       }
 
@@ -87,6 +92,11 @@ class FCMService {
           deviceId,
           tokenData,
       );
+
+      // fcmTokens 변경 시 유저 컬렉션의 lastUpdatedAt도 업데이트
+      await this.firestoreService.update(userId, {
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      });
 
       return {deviceId, message: "토큰 저장 완료"};
     } catch (error) {
@@ -178,6 +188,11 @@ class FCMService {
         }
       );
 
+      // fcmTokens 변경 시 유저 컬렉션의 lastUpdatedAt도 업데이트
+      await this.firestoreService.update(userId, {
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      });
+
       return newValue;
     } catch (error) {
       console.error("토큰별 pushTermsAgreed 토글 실패:", error);
@@ -200,6 +215,11 @@ class FCMService {
   async deleteToken(userId, deviceId) {
     try {
       await this.firestoreService.deleteDocument(`users/${userId}/fcmTokens`, deviceId);
+      
+      // fcmTokens 변경 시 유저 컬렉션의 lastUpdatedAt도 업데이트
+      await this.firestoreService.update(userId, {
+        lastUpdatedAt: FieldValue.serverTimestamp(),
+      });
     } catch (error) {
       console.error("FCM 토큰 삭제 실패:", error);
       const fcmError = new Error("토큰 삭제에 실패했습니다.");
