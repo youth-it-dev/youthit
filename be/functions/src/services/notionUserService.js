@@ -35,6 +35,39 @@ class NotionUserService {
     this.notionUserAccountBackupDB = process.env.NOTION_USER_ACCOUNT_BACKUP_DB_ID;
   }
 
+  /**
+   * fcmTokens 서브컬렉션에서 pushTermsAgreed 값을 확인하여 상태 반환
+   * @param {string} userId - 사용자 ID
+   * @return {Promise<string>} "동의", "거부", "미설정" 중 하나
+   */
+  async getPushAdvertisingStatusFromFcmTokens(userId) {
+    try {
+      const fcmTokensSnapshot = await db.collection(`users/${userId}/fcmTokens`).get();
+      
+      // fcmTokens가 없으면 미설정
+      if (fcmTokensSnapshot.empty) {
+        return "미설정";
+      }
+
+      // pushTermsAgreed가 true인 토큰이 하나라도 있으면 동의
+      const hasAgreedToken = fcmTokensSnapshot.docs.some(doc => {
+        const data = doc.data();
+        return data.pushTermsAgreed === true;
+      });
+
+      if (hasAgreedToken) {
+        return "동의";
+      }
+
+      // 하나도 true가 없으면 거부
+      return "거부";
+    } catch (error) {
+      console.warn(`[getPushAdvertisingStatusFromFcmTokens] 사용자 ${userId}의 fcmTokens 조회 실패:`, error.message);
+      // 조회 실패 시 미설정 반환
+      return "미설정";
+    }
+  }
+
 
   /**
    * Firebase의 users 컬렉션에서 전체회원 조회 후 -> Notion 데이터베이스에 등록
@@ -122,6 +155,9 @@ class NotionUserService {
             const lastLoginIso = safeDateToIso(user.lastLoginAt);
             const lastUpdatedIso = now;
             
+            // fcmTokens 서브컬렉션에서 Push 광고 수신 여부 확인
+            const pushAdvertisingStatus = await this.getPushAdvertisingStatusFromFcmTokens(userId);
+            
             // 노션 페이지 데이터 구성
             const notionPage = {
               '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
@@ -159,12 +195,7 @@ class NotionUserService {
               },
               "Push 광고 수신 여부": {
                 select: {
-                  name:
-                    user.pushTermsAgreed === true
-                      ? "동의"
-                      : user.pushTermsAgreed === false
-                      ? "거부"
-                      : "미설정",
+                  name: pushAdvertisingStatus,
                 },
               },
               "자격정지 기간(시작)": user.suspensionStartAt ? {
@@ -520,6 +551,9 @@ async syncAllUserAccounts() {
           const lastLoginIso = safeDateToIso(user.lastLoginAt);
           const lastUpdatedIso = now;
 
+          // fcmTokens 서브컬렉션에서 Push 광고 수신 여부 확인
+          const pushAdvertisingStatus = await this.getPushAdvertisingStatusFromFcmTokens(userId);
+
           // Notion 페이지 데이터 구성
           const notionPage = {
             '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
@@ -557,12 +591,7 @@ async syncAllUserAccounts() {
             },
             "Push 광고 수신 여부": {
               select: {
-                name:
-                  user.pushTermsAgreed === true
-                    ? "동의"
-                    : user.pushTermsAgreed === false
-                    ? "거부"
-                    : "미설정",
+                name: pushAdvertisingStatus,
               },
             },
             "자격정지 기간(시작)": user.suspensionStartAt ? {
@@ -2087,6 +2116,9 @@ async syncSingleUserToNotion(userId) {
     const lastLoginIso = safeDateToIso(user.lastLoginAt);
     const lastUpdatedIso = now;
 
+    // fcmTokens 서브컬렉션에서 Push 광고 수신 여부 확인
+    const pushAdvertisingStatus = await this.getPushAdvertisingStatusFromFcmTokens(userId);
+
     // 노션 페이지 데이터 구성
     const notionPage = {
       '기본 닉네임': { title: [{ text: { content: user.nickname || "" } }] },
@@ -2124,12 +2156,7 @@ async syncSingleUserToNotion(userId) {
       },
       "Push 광고 수신 여부": {
         select: {
-          name:
-            user.pushTermsAgreed === true
-              ? "동의"
-              : user.pushTermsAgreed === false
-              ? "거부"
-              : "미설정",
+          name: pushAdvertisingStatus,
         },
       },
       "자격정지 기간(시작)": user.suspensionStartAt ? {
