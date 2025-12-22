@@ -594,7 +594,7 @@ export interface Program {
   programName?: string;
   description?: string;
   programType?: "ROUTINE" | "TMI" | "GATHERING";
-  recruitmentStatus?: "모집 전" | "모집 중" | "모집 완료";
+  recruitmentStatus?: "모집 전" | "모집 중" | "모집 완료" | "선착순 마감";
   programStatus?: "진행 전" | "진행 중" | "종료됨";
   recruitmentStartDate?: string;
   recruitmentEndDate?: string;
@@ -645,6 +645,9 @@ export interface Program {
     plain_text?: string;
     href?: string;
   }[];
+  isFirstComeDeadlineEnabled?: boolean;
+  firstComeCapacity?: number;
+  approvedMembersCount?: number;
 }
 
 export interface ProgramDetail extends Schema.Program {

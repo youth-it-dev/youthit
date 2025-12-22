@@ -96,18 +96,21 @@ export const useGetUsersDeletePostById = <
 };
 
 export const useGetUsersMe = <TData = Types.TGETUsersMeRes>(
-  options?: Omit<
+  options: {
+    request: Types.TGETUsersMeReq;
+  } & Omit<
     UseQueryOptions<Types.TGETUsersMeRes, Error, TData>,
     "queryKey" | "queryFn"
   >
 ) => {
+  const { request, ...queryOptions } = options;
   return useQuery<Types.TGETUsersMeRes, Error, TData>({
-    queryKey: usersKeys.getUsersMe,
+    queryKey: usersKeys.getUsersMe(request),
     queryFn: async () => {
-      const response = await Api.getUsersMe();
+      const response = await Api.getUsersMe(request);
       return response.data;
     },
-    ...options,
+    ...queryOptions,
   });
 };
 
@@ -278,7 +281,7 @@ export const useGetUsersMePosts = <TData = Types.TGETUsersMePostsRes>(
 
 export const usePostUsersMePushNotificationToggle = <
   TContext = unknown,
-  TVariables = void,
+  TVariables = Types.TPOSTUsersMePushNotificationToggleReq,
 >(
   options?: Omit<
     UseMutationOptions<
@@ -296,8 +299,10 @@ export const usePostUsersMePushNotificationToggle = <
     TVariables,
     TContext
   >({
-    mutationFn: (_variables: TVariables) =>
-      Api.postUsersMePushNotificationToggle(),
+    mutationFn: (variables: TVariables) =>
+      Api.postUsersMePushNotificationToggle(
+        variables as Types.TPOSTUsersMePushNotificationToggleReq
+      ),
     ...options,
   });
 };

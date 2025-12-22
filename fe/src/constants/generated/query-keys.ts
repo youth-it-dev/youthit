@@ -291,6 +291,9 @@ export const programsKeys = {
       },
       query: {},
     }),
+  getProgramsApprove: __buildKey("programs", "getProgramsApprove"),
+  getProgramsPending: __buildKey("programs", "getProgramsPending"),
+  getProgramsReject: __buildKey("programs", "getProgramsReject"),
   getProgramsSearch: (request: programsTypes.TGETProgramsSearchReq) =>
     __buildKey("programs", "getProgramsSearch", {
       path: {},
@@ -358,7 +361,11 @@ export const usersKeys = {
       path: { userId: request.userId },
       query: {},
     }),
-  getUsersMe: __buildKey("users", "getUsersMe"),
+  getUsersMe: (request: usersTypes.TGETUsersMeReq) =>
+    __buildKey("users", "getUsersMe", {
+      path: {},
+      query: { token: request.token },
+    }),
   getUsersMeCommentedPosts: (
     request: usersTypes.TGETUsersMeCommentedPostsReq
   ) =>

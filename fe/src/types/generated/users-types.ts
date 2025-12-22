@@ -48,6 +48,10 @@ export type TGETUsersDeletePostByIdRes = {
   userId?: string;
 };
 
+export interface TGETUsersMeReq {
+  token?: string;
+}
+
 export type TGETUsersMeRes = { user?: Schema.User };
 
 export interface TGETUsersMeCommentedPostsReq {
@@ -302,6 +306,12 @@ export type TGETUsersMePostsRes = {
     isLast?: boolean;
   };
 };
+
+export interface TPOSTUsersMePushNotificationToggleReq {
+  data: {
+    token: string;
+  };
+}
 
 export type TPOSTUsersMePushNotificationToggleRes = {
   pushTermsAgreed?: boolean;
