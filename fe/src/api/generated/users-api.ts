@@ -29,9 +29,8 @@ export const getUsersDeletePostById = (
   );
 };
 
-export const getUsersMe = (deviceInfo?: string) => {
-  const config = deviceInfo ? { params: { deviceInfo } } : undefined;
-  return get<Types.TGETUsersMeRes>(`/users/me`, config);
+export const getUsersMe = () => {
+  return get<Types.TGETUsersMeRes>(`/users/me`);
 };
 
 export const getUsersMeCommentedPosts = (
@@ -88,12 +87,9 @@ export const getUsersMePosts = (request: Types.TGETUsersMePostsReq) => {
   return get<Types.TGETUsersMePostsRes>(`/users/me/posts`, { params: request });
 };
 
-export const postUsersMePushNotificationToggle = (request: {
-  deviceInfo: string;
-}) => {
+export const postUsersMePushNotificationToggle = () => {
   return post<Types.TPOSTUsersMePushNotificationToggleRes>(
-    `/users/me/push-notification-toggle`,
-    request
+    `/users/me/push-notification-toggle`
   );
 };
 
