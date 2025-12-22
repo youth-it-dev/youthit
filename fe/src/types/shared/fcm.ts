@@ -8,7 +8,7 @@ export type DeviceType = "pwa" | "mobile" | "web";
 /** FCM 토큰 저장 요청 */
 export interface FCMTokenRequest {
   token: string;
-  deviceInfo: string;
+  deviceInfo?: string;
   deviceType?: DeviceType;
 }
 
