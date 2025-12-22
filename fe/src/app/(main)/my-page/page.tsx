@@ -32,6 +32,7 @@ const Page = () => {
     isLoading,
     isFetched: isUserFetched,
   } = useGetUsersMe({
+    request: {},
     select: (data) => {
       return data?.user;
     },

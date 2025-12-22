@@ -80,6 +80,7 @@ const MissionCommentsSection = ({
 
   // 현재 사용자 정보
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => data?.user,
   });
 

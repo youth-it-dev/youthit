@@ -257,6 +257,7 @@ const StoreProductDetailPage = () => {
 
   // 사용자 리워드 조회 (React Query 캐시에서 재사용)
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => {
       return data?.user;
     },

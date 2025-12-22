@@ -354,6 +354,7 @@ const ProgramDetailPage = () => {
   // 사용자 정보 조회 (QnA 작성자 이름용)
   // 주의: 조건부 return 이전에 Hook을 호출해야 React Hooks 규칙을 준수합니다
   const { data: userData } = useGetUsersMe({
+    request: {},
     select: (data) => data?.user,
     enabled: !!currentUser,
   });
