@@ -30,7 +30,7 @@ class UserController {
   async getMe(req, res, next) {
     try {
       const {uid} = req.user;
-      const { deviceInfo } = req.query; 
+      const { token } = req.query; // 쿼리 파라미터에서 token 받기
       
       // 사용자 정보 조회
       const user = await userService.getUserById(uid);
@@ -41,8 +41,8 @@ class UserController {
       }
 
       let pushTermsAgreed = null;
-      if (deviceInfo) {
-        pushTermsAgreed = await fcmService.getDevicePushTermsAgreed(uid, deviceInfo);
+      if (token) {
+        pushTermsAgreed = await fcmService.getDevicePushTermsAgreed(uid, token);
       }
 
       // 로그인 시점: 리워드 만료 검증 및 차감 (비동기, 실패해도 계속 진행)
@@ -397,16 +397,16 @@ class UserController {
   async togglePushNotification(req, res, next) {
     try {
       const {uid} = req.user;
-      const { deviceInfo } = req.body; 
+      const { token } = req.body; // 요청 바디에서 token 받기
       
-      if (!deviceInfo) {
-        const err = new Error("deviceInfo가 필요합니다");
+      if (!token) {
+        const err = new Error("token이 필요합니다");
         err.code = "INVALID_INPUT";
         err.statusCode = 400;
         throw err;
       }
       
-      const pushTermsAgreed = await fcmService.toggleDevicePushTermsAgreed(uid, deviceInfo);
+      const pushTermsAgreed = await fcmService.toggleDevicePushTermsAgreed(uid, token);
       
       // pushTermsAgreed 필드만 반환
       return res.success({ pushTermsAgreed });

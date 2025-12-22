@@ -32,24 +32,24 @@ class FCMService {
   /**
    * FCM 토큰 저장/업데이트
    * @param {string} userId - 사용자 ID
-   * @param {string} token - FCM 토큰
-   * @param {string} deviceInfo - 디바이스 정보 (PWA: userAgent, 모바일: deviceId, 웹: userAgent)
+   * @param {string} token - FCM 토큰 (문서 ID로 사용)
    * @param {string} deviceType - 디바이스 타입 (pwa, mobile, web)
    * @return {Promise<Object>} 저장 결과
    */
-  async saveToken(userId, token, deviceInfo, deviceType = "pwa") {
+  async saveToken(userId, token, deviceType = "pwa") {
     try {
-      const deviceId = deviceInfo;
+      // 토큰을 문서 ID로 사용
+      const deviceId = token;
 
       const existingTokens = await this.getUserTokens(userId);
 
       const existingDeviceDoc = existingTokens.find((t) => t.id === deviceId);
       
       if (existingDeviceDoc) {
+        // 같은 토큰 문서가 있으면 업데이트 (pushTermsAgreed 등 기존 설정 유지)
         const updateData = {
           token,
           deviceType,
-          deviceInfo,
           lastUsed: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -73,10 +73,10 @@ class FCMService {
         await this.deleteToken(userId, oldestToken.id);
       }
 
+      // 새 문서 생성 (해당 토큰에서 처음 저장하는 경우 pushTermsAgreed: true)
       const tokenData = {
         token,
         deviceType,
-        deviceInfo,
         pushTermsAgreed: true,
         lastUsed: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
@@ -117,14 +117,15 @@ class FCMService {
   }
 
   /**
-   * 특정 기기의 pushTermsAgreed 조회
+   * 특정 토큰의 pushTermsAgreed 조회
    * @param {string} userId - 사용자 ID
-   * @param {string} deviceInfo - 디바이스 정보
+   * @param {string} token - FCM 토큰
    * @return {Promise<boolean|null>} pushTermsAgreed 값 (문서가 없으면 null)
    */
-  async getDevicePushTermsAgreed(userId, deviceInfo) {
+  async getDevicePushTermsAgreed(userId, token) {
     try {
-      const deviceId = deviceInfo;
+      // 토큰을 문서 ID로 사용
+      const deviceId = token;
       const tokenDoc = await this.firestoreService.getDocument(
         `users/${userId}/fcmTokens`,
         deviceId
@@ -136,7 +137,7 @@ class FCMService {
       
       return tokenDoc.pushTermsAgreed === true;
     } catch (error) {
-      console.error("기기별 pushTermsAgreed 조회 실패:", error);
+      console.error("토큰별 pushTermsAgreed 조회 실패:", error);
       const fcmError = new Error("알림 설정 조회에 실패했습니다.");
       fcmError.code = "FCM_PUSH_TERMS_GET_FAILED";
       fcmError.statusCode = 500;
@@ -145,21 +146,22 @@ class FCMService {
   }
 
   /**
-   * 특정 기기의 pushTermsAgreed 토글
+   * 특정 토큰의 pushTermsAgreed 토글
    * @param {string} userId - 사용자 ID
-   * @param {string} deviceInfo - 디바이스 정보
+   * @param {string} token - FCM 토큰
    * @return {Promise<boolean>} 변경된 pushTermsAgreed 값
    */
-  async toggleDevicePushTermsAgreed(userId, deviceInfo) {
+  async toggleDevicePushTermsAgreed(userId, token) {
     try {
-      const deviceId = deviceInfo;
+      // 토큰을 문서 ID로 사용
+      const deviceId = token;
       const tokenDoc = await this.firestoreService.getDocument(
         `users/${userId}/fcmTokens`,
         deviceId
       );
       
       if (!tokenDoc) {
-        const e = new Error("해당 기기의 FCM 토큰을 찾을 수 없습니다");
+        const e = new Error("해당 FCM 토큰을 찾을 수 없습니다");
         e.code = "NOT_FOUND";
         throw e;
       }
@@ -178,7 +180,7 @@ class FCMService {
 
       return newValue;
     } catch (error) {
-      console.error("기기별 pushTermsAgreed 토글 실패:", error);
+      console.error("토큰별 pushTermsAgreed 토글 실패:", error);
       if (error.code) {
         throw error;
       }
