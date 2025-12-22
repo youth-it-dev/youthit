@@ -117,6 +117,79 @@ class FCMService {
   }
 
   /**
+   * 특정 기기의 pushTermsAgreed 조회
+   * @param {string} userId - 사용자 ID
+   * @param {string} deviceInfo - 디바이스 정보
+   * @return {Promise<boolean|null>} pushTermsAgreed 값 (문서가 없으면 null)
+   */
+  async getDevicePushTermsAgreed(userId, deviceInfo) {
+    try {
+      const deviceId = deviceInfo;
+      const tokenDoc = await this.firestoreService.getDocument(
+        `users/${userId}/fcmTokens`,
+        deviceId
+      );
+      
+      if (!tokenDoc) {
+        return null;
+      }
+      
+      return tokenDoc.pushTermsAgreed === true;
+    } catch (error) {
+      console.error("기기별 pushTermsAgreed 조회 실패:", error);
+      const fcmError = new Error("알림 설정 조회에 실패했습니다.");
+      fcmError.code = "FCM_PUSH_TERMS_GET_FAILED";
+      fcmError.statusCode = 500;
+      throw fcmError;
+    }
+  }
+
+  /**
+   * 특정 기기의 pushTermsAgreed 토글
+   * @param {string} userId - 사용자 ID
+   * @param {string} deviceInfo - 디바이스 정보
+   * @return {Promise<boolean>} 변경된 pushTermsAgreed 값
+   */
+  async toggleDevicePushTermsAgreed(userId, deviceInfo) {
+    try {
+      const deviceId = deviceInfo;
+      const tokenDoc = await this.firestoreService.getDocument(
+        `users/${userId}/fcmTokens`,
+        deviceId
+      );
+      
+      if (!tokenDoc) {
+        const e = new Error("해당 기기의 FCM 토큰을 찾을 수 없습니다");
+        e.code = "NOT_FOUND";
+        throw e;
+      }
+
+      const currentValue = tokenDoc.pushTermsAgreed === true;
+      const newValue = !currentValue;
+
+      await this.firestoreService.updateDocument(
+        `users/${userId}/fcmTokens`,
+        deviceId,
+        {
+          pushTermsAgreed: newValue,
+          updatedAt: FieldValue.serverTimestamp(),
+        }
+      );
+
+      return newValue;
+    } catch (error) {
+      console.error("기기별 pushTermsAgreed 토글 실패:", error);
+      if (error.code) {
+        throw error;
+      }
+      const fcmError = new Error("알림 설정을 변경할 수 없습니다");
+      fcmError.code = "FCM_PUSH_TERMS_TOGGLE_FAILED";
+      fcmError.statusCode = 500;
+      throw fcmError;
+    }
+  }
+
+  /**
    * 특정 토큰 삭제
    * @param {string} userId - 사용자 ID
    * @param {string} deviceId - 디바이스 ID
@@ -161,14 +234,17 @@ class FCMService {
   async sendToUser(userId, notification, options = {}) {
     try {
       const { skipPushTermsFilter = false } = options;
+      
+      const tokens = await this.getUserTokens(userId);
+      
+      // pushTermsAgreed 필터링: fcmTokens 서브컬렉션에서 확인
       if (!skipPushTermsFilter) {
-        const userDoc = await this.firestoreService.getById(userId);
-        if (!userDoc || userDoc.pushTermsAgreed !== true) {
+        // pushTermsAgreed가 true인 토큰만 필터링
+        const approvedTokens = tokens.filter((t) => t.pushTermsAgreed === true);
+        if (approvedTokens.length === 0) {
           return {sentCount: 0, failedCount: 0, filteredOut: true};
         }
       }
-
-      const tokens = await this.getUserTokens(userId);
       this.notificationService.saveNotification(userId, {
         title: notification.title,
         message: notification.message,
@@ -180,11 +256,17 @@ class FCMService {
         console.error("알림 저장 실패:", err);
       });
 
-      if (tokens.length === 0) {
+      // pushTermsAgreed 필터링된 토큰 사용
+      let approvedTokens = tokens;
+      if (!skipPushTermsFilter) {
+        approvedTokens = tokens.filter((t) => t.pushTermsAgreed === true);
+      }
+
+      if (approvedTokens.length === 0) {
         return {sentCount: 0, failedCount: 0};
       }
 
-      const tokenList = tokens.map((t) => t.token);
+      const tokenList = approvedTokens.map((t) => t.token);
       const result = await this.sendToTokens(tokenList, notification);
 
       return {
@@ -234,60 +316,52 @@ class FCMService {
         });
       }
       
-      // pushTermsAgreed가 true인 사용자만 필터링
+      // pushTermsAgreed가 true인 사용자만 필터링 (fcmTokens 서브컬렉션에서 확인)
       const approvedUserIds = [];
+      const userTokenMap = new Map(); // 유저 ID -> 토큰 배열 매핑
+      const tokenToUserMap = new Map(); // 토큰 -> 유저 ID 매핑
+      const allTokens = [];
+      
       if (uniqueUserIds.length > 0) {
-        // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
-        const chunks = [];
-        for (let i = 0; i < uniqueUserIds.length; i += 10) {
-          chunks.push(uniqueUserIds.slice(i, i + 10));
-        }
-
-        const userResults = await Promise.all(
-          chunks.map((chunk) =>
-            this.firestoreService.getCollectionWhereIn("users", "__name__", chunk)
-          )
-        );
-
-        if (skipPushTermsFilter) {
-          userResults.flat().forEach((user) => {
-            if (user?.id) {
-              approvedUserIds.push(user.id);
+        // 모든 사용자의 토큰을 한 번에 가져오기
+        const tokenPromises = uniqueUserIds.map(async (userId) => {
+          const tokens = await this.getUserTokens(userId);
+          return { userId, tokens };
+        });
+        
+        const tokenResults = await Promise.all(tokenPromises);
+        
+        tokenResults.forEach(({ userId, tokens }) => {
+          if (skipPushTermsFilter) {
+            // 필터링 스킵 시 모든 토큰 사용
+            const tokenList = tokens.map((t) => t.token);
+            userTokenMap.set(userId, tokenList);
+            tokenList.forEach(token => {
+              allTokens.push(token);
+              tokenToUserMap.set(token, userId);
+            });
+            approvedUserIds.push(userId);
+          } else {
+            // pushTermsAgreed가 true인 토큰만 필터링
+            const approvedTokens = tokens.filter((t) => t.pushTermsAgreed === true);
+            if (approvedTokens.length > 0) {
+              const tokenList = approvedTokens.map((t) => t.token);
+              userTokenMap.set(userId, tokenList);
+              tokenList.forEach(token => {
+                allTokens.push(token);
+                tokenToUserMap.set(token, userId);
+              });
+              approvedUserIds.push(userId);
+            } else {
+              filteredOutUserIds.push(userId); // 푸시 미동의 사용자
             }
-          });
-        } else {
-          const users = userResults.flat();
-          users.forEach((user) => {
-            if (user?.pushTermsAgreed === true) {
-              approvedUserIds.push(user.id);
-            } else if (user?.id) {
-              filteredOutUserIds.push(user.id); // 푸시 미동의 사용자
-            }
-          });
-        }
+          }
+        });
       }
 
       if (approvedUserIds.length === 0) {
         return {sentCount: 0, failedCount: 0, successfulUserIds: [], filteredOutUserIds};
       }
-
-      const tokenPromises = approvedUserIds.map((userId) => this.getUserTokens(userId));
-      const tokenResults = await Promise.all(tokenPromises);
-      
-      // 유저별 토큰 매핑 생성 (유저 ID -> 토큰 배열)
-      const userTokenMap = new Map();
-      const allTokens = [];
-      const tokenToUserMap = new Map(); // 토큰 -> 유저 ID 매핑
-      
-      approvedUserIds.forEach((userId, index) => {
-        const tokens = tokenResults[index] || [];
-        const tokenList = tokens.map((t) => t.token);
-        userTokenMap.set(userId, tokenList);
-        tokenList.forEach(token => {
-          allTokens.push(token);
-          tokenToUserMap.set(token, userId);
-        });
-      });
 
       if (allTokens.length === 0) {
         return {sentCount: 0, failedCount: 0, successfulUserIds: []};

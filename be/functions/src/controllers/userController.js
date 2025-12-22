@@ -1,11 +1,13 @@
 const UserService = require("../services/userService");
 const NicknameService = require("../services/nicknameService");
 const RewardService = require("../services/rewardService");
+const FCMService = require("../services/fcmService");
 
 // 서비스 인스턴스 생성
 const userService = new UserService();
 const nicknameService = new NicknameService();
 const rewardService = new RewardService();
+const fcmService = new FCMService();
 
 class UserController {
   
@@ -28,6 +30,7 @@ class UserController {
   async getMe(req, res, next) {
     try {
       const {uid} = req.user;
+      const { deviceInfo } = req.query; 
       
       // 사용자 정보 조회
       const user = await userService.getUserById(uid);
@@ -35,6 +38,11 @@ class UserController {
         const err = new Error("사용자를 찾을 수 없습니다");
         err.code = "NOT_FOUND";
         throw err;
+      }
+
+      let pushTermsAgreed = null;
+      if (deviceInfo) {
+        pushTermsAgreed = await fcmService.getDevicePushTermsAgreed(uid, deviceInfo);
       }
 
       // 로그인 시점: 리워드 만료 검증 및 차감 (비동기, 실패해도 계속 진행)
@@ -48,7 +56,13 @@ class UserController {
           console.error(`[LOGIN] userId=${uid}, 리워드 만료 체크 실패:`, error.message);
         });
 
-      return res.success({user});
+      
+      const userResponse = { ...user };
+      if (pushTermsAgreed !== null) {
+        userResponse.pushTermsAgreed = pushTermsAgreed;
+      }
+
+      return res.success({user: userResponse});
     } catch (error) {
       return next(error);
     }
@@ -378,16 +392,24 @@ class UserController {
 
   /**
    * 알림 설정 토글 API
-   * - pushTermsAgreed 필드를 현재 값의 반대로 변경
+   * - fcmTokens 서브컬렉션의 pushTermsAgreed 필드를 현재 값의 반대로 변경
    */
   async togglePushNotification(req, res, next) {
     try {
       const {uid} = req.user;
+      const { deviceInfo } = req.body; 
       
-      const user = await userService.togglePushNotification(uid);
+      if (!deviceInfo) {
+        const err = new Error("deviceInfo가 필요합니다");
+        err.code = "INVALID_INPUT";
+        err.statusCode = 400;
+        throw err;
+      }
+      
+      const pushTermsAgreed = await fcmService.toggleDevicePushTermsAgreed(uid, deviceInfo);
       
       // pushTermsAgreed 필드만 반환
-      return res.success({ pushTermsAgreed: user.pushTermsAgreed });
+      return res.success({ pushTermsAgreed });
     } catch (error) {
       return next(error);
     }
