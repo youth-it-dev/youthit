@@ -15,9 +15,10 @@ export const getUsersById = (request: Types.TGETUsersByIdReq) => {
 };
 
 export const putUsersById = (request: Types.TPUTUsersByIdReq) => {
+  const { userId, ...data } = request;
   return put<Types.TPUTUsersByIdRes>(
     `/users/${request.userId}`,
-    request.data ?? request
+    data.data ?? data
   );
 };
 
@@ -29,8 +30,8 @@ export const getUsersDeletePostById = (
   );
 };
 
-export const getUsersMe = () => {
-  return get<Types.TGETUsersMeRes>(`/users/me`);
+export const getUsersMe = (request: Types.TGETUsersMeReq) => {
+  return get<Types.TGETUsersMeRes>(`/users/me`, { params: request });
 };
 
 export const getUsersMeCommentedPosts = (
@@ -87,9 +88,12 @@ export const getUsersMePosts = (request: Types.TGETUsersMePostsReq) => {
   return get<Types.TGETUsersMePostsRes>(`/users/me/posts`, { params: request });
 };
 
-export const postUsersMePushNotificationToggle = () => {
+export const postUsersMePushNotificationToggle = (
+  request: Types.TPOSTUsersMePushNotificationToggleReq
+) => {
   return post<Types.TPOSTUsersMePushNotificationToggleRes>(
-    `/users/me/push-notification-toggle`
+    `/users/me/push-notification-toggle`,
+    request.data ?? request
   );
 };
 

@@ -111,6 +111,45 @@ export const usePostProgramsApplyById = <
   });
 };
 
+export const useGetProgramsApprove = <TData = any>(
+  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+) => {
+  return useQuery<any, Error, TData>({
+    queryKey: programsKeys.getProgramsApprove,
+    queryFn: async () => {
+      const response = await Api.getProgramsApprove();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
+export const useGetProgramsPending = <TData = any>(
+  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+) => {
+  return useQuery<any, Error, TData>({
+    queryKey: programsKeys.getProgramsPending,
+    queryFn: async () => {
+      const response = await Api.getProgramsPending();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
+export const useGetProgramsReject = <TData = any>(
+  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+) => {
+  return useQuery<any, Error, TData>({
+    queryKey: programsKeys.getProgramsReject,
+    queryFn: async () => {
+      const response = await Api.getProgramsReject();
+      return response.data;
+    },
+    ...options,
+  });
+};
+
 export const useGetProgramsSearch = <TData = Types.TGETProgramsSearchRes>(
   options: {
     request: Types.TGETProgramsSearchReq;
