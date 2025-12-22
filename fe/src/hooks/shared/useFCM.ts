@@ -224,6 +224,17 @@ export const getDeviceInfo = (
 };
 
 /**
+ * @description localStorage에서 deviceInfo 조회 (없으면 null 반환)
+ */
+export const getDeviceInfoFromStorage = (): string | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const STORAGE_KEY = "fcm_device_info";
+  return localStorage.getItem(STORAGE_KEY);
+};
+
+/**
  * @description 디바이스 타입 감지
  */
 export const getDeviceType = (): DeviceType => {
