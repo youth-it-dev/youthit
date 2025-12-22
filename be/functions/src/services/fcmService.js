@@ -39,16 +39,28 @@ class FCMService {
    */
   async saveToken(userId, token, deviceInfo, deviceType = "pwa") {
     try {
-      const deviceId = deviceType === "mobile" ?
-        deviceInfo :
-        this.generateDeviceId(deviceInfo);
+      const deviceId = deviceInfo;
 
       const existingTokens = await this.getUserTokens(userId);
 
-      const existingToken = existingTokens.find((t) => t.token === token);
-      if (existingToken) {
-        await this.updateTokenLastUsed(userId, existingToken.id);
-        return {deviceId: existingToken.id, message: "토큰 업데이트 완료"};
+      const existingDeviceDoc = existingTokens.find((t) => t.id === deviceId);
+      
+      if (existingDeviceDoc) {
+        const updateData = {
+          token,
+          deviceType,
+          deviceInfo,
+          lastUsed: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        
+        await this.firestoreService.updateDocument(
+          `users/${userId}/fcmTokens`,
+          deviceId,
+          updateData
+        );
+        
+        return {deviceId, message: "토큰 업데이트 완료"};
       }
 
       if (existingTokens.length >= this.maxTokensPerUser) {
@@ -65,6 +77,7 @@ class FCMService {
         token,
         deviceType,
         deviceInfo,
+        pushTermsAgreed: true,
         lastUsed: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
       };
