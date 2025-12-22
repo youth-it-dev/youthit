@@ -144,7 +144,7 @@ router.get('/search', programController.searchPrograms);
 /**
  * @swagger
  * /programs/approve:
- *   get:
+ *   post:
  *     summary: 선택된 신청자 일괄 승인
  *     description: |
  *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 일괄 승인합니다.
@@ -178,12 +178,12 @@ router.get('/search', programController.searchPrograms);
  *               type: string
  *               example: "[오류 발생]\n일괄 승인 처리 중 오류가 발생했습니다."
  */
-router.get('/approve', programController.bulkApproveApplications);
+router.post('/approve', programController.bulkApproveApplications);
 
 /**
  * @swagger
  * /programs/reject:
- *   get:
+ *   post:
  *     summary: 선택된 신청자 일괄 거절
  *     description: |
  *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 일괄 거절합니다.
@@ -217,12 +217,12 @@ router.get('/approve', programController.bulkApproveApplications);
  *               type: string
  *               example: "[오류 발생]\n일괄 거절 처리 중 오류가 발생했습니다."
  */
-router.get('/reject', programController.bulkRejectApplications);
+router.post('/reject', programController.bulkRejectApplications);
 
 /**
  * @swagger
  * /programs/pending:
- *   get:
+ *   post:
  *     summary: 선택된 신청자 일괄 대기 상태 변경
  *     description: |
  *       Notion "프로그램 신청자 관리" DB에서 '선택' 체크박스가 true인 모든 신청자를 승인대기 상태로 변경합니다.
@@ -256,7 +256,7 @@ router.get('/reject', programController.bulkRejectApplications);
  *               type: string
  *               example: "[오류 발생]\n일괄 대기 처리 중 오류가 발생했습니다."
  */
-router.get('/pending', programController.bulkPendingApplications);
+router.post('/pending', programController.bulkPendingApplications);
 
 /**
  * @swagger
