@@ -487,6 +487,38 @@ class CommentService {
         }
       }
 
+      let commentAuthorName = null;
+      if (viewerId) {
+        try {
+          const programType = CommentService.normalizeProgramType(
+            post.programType || post.type
+          );
+
+          if (programType === CommentService.PROGRAM_TYPES.TMI) {
+            const userProfile = await this.firestoreService.getDocument("users", viewerId);
+            commentAuthorName = userProfile?.name || null;
+          } else {
+            const members = await this.firestoreService.getCollectionWhere(
+              `communities/${communityId}/members`,
+              "userId",
+              "==",
+              viewerId
+            );
+            const memberData = members && members[0];
+
+            if (memberData && memberData.nickname) {
+              commentAuthorName = memberData.nickname;
+            } else {
+              const userProfile = await this.firestoreService.getDocument("users", viewerId);
+              commentAuthorName = userProfile?.nickname || null;
+            }
+          }
+        } catch (error) {
+          console.warn("[COMMENT] commentAuthorName 조회 실패:", error.message);
+          commentAuthorName = null;
+        }
+      }
+
       return {
         content: commentsWithReplies,
         pagination: parentCommentsResult.pageable || {
@@ -499,6 +531,7 @@ class CommentService {
           isFirst: true,
           isLast: true,
         },
+        commentAuthorName,
       };
     } catch (error) {
       console.error("Get comments error:", error.message);
