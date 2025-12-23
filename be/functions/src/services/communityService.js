@@ -838,6 +838,7 @@ class CommunityService {
                 errorMessage: firestoreError.message,
               });
               result = await postsService.getCollectionGroupWithoutCount("posts", {
+                page: rawPage,
                 size: batchSize,
                 orderBy,
                 orderDirection,
