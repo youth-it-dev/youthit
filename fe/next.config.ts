@@ -49,6 +49,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true,
     formats: ["image/webp", "image/avif"],
     remotePatterns: [
       {
