@@ -41,16 +41,16 @@ export const postProgramsApplyById = (
   );
 };
 
-export const getProgramsApprove = () => {
-  return get<any>(`/programs/approve`);
+export const postProgramsApprove = () => {
+  return post<any>(`/programs/approve`);
 };
 
-export const getProgramsPending = () => {
-  return get<any>(`/programs/pending`);
+export const postProgramsPending = () => {
+  return post<any>(`/programs/pending`);
 };
 
-export const getProgramsReject = () => {
-  return get<any>(`/programs/reject`);
+export const postProgramsReject = () => {
+  return post<any>(`/programs/reject`);
 };
 
 export const getProgramsSearch = (request: Types.TGETProgramsSearchReq) => {

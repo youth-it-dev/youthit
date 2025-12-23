@@ -291,9 +291,6 @@ export const programsKeys = {
       },
       query: {},
     }),
-  getProgramsApprove: __buildKey("programs", "getProgramsApprove"),
-  getProgramsPending: __buildKey("programs", "getProgramsPending"),
-  getProgramsReject: __buildKey("programs", "getProgramsReject"),
   getProgramsSearch: (request: programsTypes.TGETProgramsSearchReq) =>
     __buildKey("programs", "getProgramsSearch", {
       path: {},
