@@ -45,6 +45,57 @@ class CommentService {
   }
 
   /**
+   * 댓글 작성자 닉네임 조회 (공통 메서드)
+   * @param {string} userId - 사용자 ID
+   * @param {string} communityId - 커뮤니티 ID
+   * @param {string} programType - 프로그램 타입 (TMI, ROUTINE, GATHERING)
+   * @param {string} defaultName - 기본값 (기본: "익명")
+   * @returns {Promise<string>} 작성자 닉네임
+   */
+  async getCommentAuthorName(userId, communityId, programType, defaultName = "익명") {
+    try {
+      // TMI 타입이면 실명 사용
+      if (programType === CommentService.PROGRAM_TYPES.TMI) {
+        const userProfile = await this.firestoreService.getDocument("users", userId);
+        return userProfile?.name || defaultName;
+      }
+
+      // 멤버인지 확인
+      const members = await this.firestoreService.getCollectionWhere(
+        `communities/${communityId}/members`,
+        "userId",
+        "==",
+        userId
+      );
+      const memberData = members && members[0];
+
+      if (memberData && memberData.nickname) {
+        // 멤버이고 닉네임이 있으면 멤버 닉네임 사용
+        return memberData.nickname;
+      }
+
+      // 멤버가 없거나 닉네임이 없으면 전역 닉네임 조회
+      const nicknames = await this.firestoreService.getCollectionWhere(
+        "nicknames",
+        "uid",
+        "==",
+        userId
+      );
+      const nicknameDoc = nicknames && nicknames[0];
+      if (nicknameDoc) {
+        return nicknameDoc.id || nicknameDoc.nickname || defaultName;
+      }
+
+      // nicknames에도 없으면 users의 name 사용
+      const userProfile = await this.firestoreService.getDocument("users", userId);
+      return userProfile?.name || defaultName;
+    } catch (error) {
+      console.warn("[COMMENT] getCommentAuthorName 실패:", error.message);
+      return defaultName;
+    }
+  }
+
+  /**
    * 댓글 생성
    * @param {string} communityId - 커뮤니티 ID
    * @param {string} postId - 게시글 ID
@@ -105,95 +156,17 @@ class CommentService {
         }
       }
 
-      let author = "익명";
-      try {
-        const programType =
-          CommentService.normalizeProgramType(
-            post.programType || community?.programType || post.type,
-          ) || null;
-        const isPrivatePost = post.isPublic === false;
-
-        if (isPrivatePost) {
-          // Admin 사용자는 비공개 게시글에도 댓글 작성 가능
-          const isAdmin = await isAdminUser(userId);
-          
-          if (isAdmin) {
-            // Admin은 members에 없어도 users/nicknames에서 조회
-            if (programType === CommentService.PROGRAM_TYPES.TMI) {
-              const userProfile = await this.firestoreService.getDocument("users", userId);
-              author = userProfile?.name || "익명";
-            } else {
-              const nicknames = await this.firestoreService.getCollectionWhere(
-                "nicknames",
-                "uid",
-                "==",
-                userId
-              );
-              const nicknameDoc = nicknames && nicknames[0];
-              if (nicknameDoc) {
-                author = nicknameDoc.id || nicknameDoc.nickname || "익명";
-              } else {
-                const userProfile = await this.firestoreService.getDocument("users", userId);
-                author = userProfile?.name || "익명";
-              }
-            }
-          } else {
-            // 일반 사용자는 members에서 조회
-            const members = await this.firestoreService.getCollectionWhere(
-              `communities/${communityId}/members`,
-              "userId",
-              "==",
-              userId
-            );
-            const memberData = members && members[0];
-
-            if (programType === CommentService.PROGRAM_TYPES.TMI) {
-              const userProfile = await this.firestoreService.getDocument("users", userId);
-              author =
-                userProfile?.name ||
-                memberData?.nickname ||
-                "익명";
-            } else if (memberData) {
-              author = memberData.nickname || "익명";
-            }
-          }
-        } else {
-          const members = await this.firestoreService.getCollectionWhere(
-            `communities/${communityId}/members`,
-            "userId",
-            "==",
-            userId
-          );
-          const memberData = members && members[0];
-
-          if (memberData) {
-            // 멤버가 있으면 members에서 가져오기
-            if (programType === CommentService.PROGRAM_TYPES.TMI) {
-              const userProfile = await this.firestoreService.getDocument("users", userId);
-              author =
-                userProfile?.name ||
-                memberData?.nickname ||
-                "익명";
-            } else {
-              author = memberData.nickname || "익명";
-            }
-          } else {
-            // 멤버가 없으면 기존 nicknames 로직 사용
-          const nicknames = await this.firestoreService.getCollectionWhere(
-            "nicknames",
-            "uid",
-            "==",
-            userId
-          );
-          const nicknameDoc = nicknames && nicknames[0];
-          if (nicknameDoc) {
-            author = nicknameDoc.id || nicknameDoc.nickname || "익명";
-            }
-          }
-        }
-      } catch (memberError) {
-        console.warn("Failed to get member info for comment creation:", memberError.message);
-      }
+      const programType =
+        CommentService.normalizeProgramType(
+          post.programType || community?.programType || post.type,
+        ) || null;
+      
+      const author = await this.getCommentAuthorName(
+        userId,
+        communityId,
+        programType,
+        "익명"
+      );
 
       // depth 계산: parentId가 있으면 부모의 depth + 1, 없으면 0
       const depth = parentId && parentComment ? (parentComment.depth || 0) + 1 : 0;
@@ -491,28 +464,15 @@ class CommentService {
       if (viewerId) {
         try {
           const programType = CommentService.normalizeProgramType(
-            post.programType || post.type
+            post.programType || community?.programType || post.type
           );
-
-          if (programType === CommentService.PROGRAM_TYPES.TMI) {
-            const userProfile = await this.firestoreService.getDocument("users", viewerId);
-            commentAuthorName = userProfile?.name || null;
-          } else {
-            const members = await this.firestoreService.getCollectionWhere(
-              `communities/${communityId}/members`,
-              "userId",
-              "==",
-              viewerId
-            );
-            const memberData = members && members[0];
-
-            if (memberData && memberData.nickname) {
-              commentAuthorName = memberData.nickname;
-            } else {
-              const userProfile = await this.firestoreService.getDocument("users", viewerId);
-              commentAuthorName = userProfile?.nickname || null;
-            }
-          }
+          
+          commentAuthorName = await this.getCommentAuthorName(
+            viewerId,
+            communityId,
+            programType,
+            null
+          );
         } catch (error) {
           console.warn("[COMMENT] commentAuthorName 조회 실패:", error.message);
           commentAuthorName = null;
