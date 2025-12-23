@@ -28,6 +28,7 @@ interface CommentInputFormProps {
   userData?: Schema.User;
   inputRef: RefObject<HTMLDivElement | HTMLTextAreaElement>;
   isSubmitting?: boolean;
+  commentAuthorName?: string;
 }
 
 /**
@@ -43,11 +44,12 @@ export const CommentInputForm = memo(
     userData,
     inputRef,
     isSubmitting = false,
+    commentAuthorName,
   }: CommentInputFormProps) => {
     const [isGiphyOpen, setIsGiphyOpen] = useState(false);
 
     const userId = userData?.id;
-    const userName = userData?.nickname;
+    const userName = commentAuthorName || userData?.nickname;
     const profileImageUrl = userData?.profileImageUrl;
 
     // 입력 내용 확인 (텍스트 또는 이미지)

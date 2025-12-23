@@ -388,6 +388,7 @@ const CommentsSection = ({
             userData={userData}
             inputRef={inputRef}
             isSubmitting={isPostCommentPending}
+            commentAuthorName={commentsData?.commentAuthorName}
           />
         )}
       </div>
