@@ -479,7 +479,7 @@ class CommentService {
             viewerId,
             communityId,
             programType,
-            null
+            "익명"
           );
         } catch (error) {
           console.warn("[COMMENT] commentAuthorName 조회 실패:", error.message);
