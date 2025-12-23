@@ -52,6 +52,10 @@ class CommentController {
         pagination: result.pagination || {}
       };
       
+      if (result.commentAuthorName !== undefined) {
+        responseData.commentAuthorName = result.commentAuthorName;
+      }
+      
       return res.success(responseData);
     } catch (error) {
       return next(error);

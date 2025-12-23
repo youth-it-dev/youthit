@@ -304,6 +304,11 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                         isLast:
  *                           type: boolean
  *                           example: false
+ *                     commentAuthorName:
+ *                       type: string
+ *                       nullable: true
+ *                       description: 현재 로그인 사용자의 댓글 작성 시 표시될 닉네임 (TMI는 실명, 멤버면 멤버 닉네임, 그 외는 전역 닉네임, 인증된 요청일 때만 포함)
+ *                       example: "멤버닉네임"
  *       404:
  *         description: 게시글을 찾을 수 없음
  *       500:
