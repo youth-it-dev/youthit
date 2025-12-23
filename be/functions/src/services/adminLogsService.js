@@ -337,7 +337,53 @@ class AdminLogsService {
   }
 
 
+  /**
+   * 관리자 로그를 adminLogs 컬렉션에 저장
+   * @param {Object} options - 저장 옵션
+   * @param {string} options.action - 액션 타입 (ADMIN_LOG_ACTIONS)
+   * @param {Object} options.metadata - 저장할 metadata 객체
+   * @param {string} [options.adminId="Notion 관리자"] - 관리자 ID
+   * @param {string} [options.targetId=""] - 대상 ID
+   * @param {Date} [options.timestamp] - 타임스탬프 (기본값: new Date())
+   * @param {string} [options.logMessage] - 로그 메시지 (선택적)
+   * @returns {Promise<void>}
+   */
+  async saveAdminLog({
+    action,
+    metadata,
+    adminId = "Notion 관리자",
+    targetId = "",
+    timestamp = null,
+    logMessage = null
+  }) {
+    try {
+      
+      // metadata 객체 생성 및 logMessage 병합
+      const finalMetadata = {
+        ...(metadata || {}),
+        logMessage: logMessage || ""
+      };
 
+      const logRef = db.collection("adminLogs").doc();
+      await logRef.set({
+        adminId: adminId,
+        action: action,
+        targetId: targetId,
+        timestamp: timestamp || new Date(),
+        metadata: finalMetadata
+      });
+      
+      const syncedCount = metadata?.syncedCount || 0;
+      if (logMessage) {
+        console.log(`[adminLogs] 관리자 로그 저장 완료: ${logMessage}`);
+      } else {
+        console.log(`[adminLogs] 관리자 로그 저장 완료: ${action} (${syncedCount}개)`);
+      }
+    } catch (logError) {
+      console.error("[adminLogs] 로그 저장 실패:", logError);
+      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
+    }
+  }
 
 
 
