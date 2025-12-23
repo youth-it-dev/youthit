@@ -567,6 +567,7 @@ class FirestoreService {
    */
   async getCollectionGroupWithoutCount(collectionId, options = {}) {
     const {
+      page = 0,
       size = 10,
       orderBy = "createdAt",
       orderDirection = "desc",
@@ -591,8 +592,10 @@ class FirestoreService {
       query = query.orderBy(finalOrderBy, finalOrderDirection);
     }
 
+    const safePage = isNaN(page) ? 0 : page;
     const safeSize = isNaN(size) ? 10 : size;
-    const snapshot = await query.limit(safeSize + 1).get();
+    const offset = safePage * safeSize;
+    const snapshot = await query.offset(offset).limit(safeSize + 1).get();
     const documents = [];
 
     snapshot.forEach((doc) => {
@@ -618,13 +621,13 @@ class FirestoreService {
     return {
       content: items,
       pageable: {
-        pageNumber: 0,
+        pageNumber: safePage,
         pageSize: safeSize,
-        totalElements: items.length,
-        totalPages: items.length === 0 ? 0 : 1,
+        totalElements: null, // 알 수 없음 (count 생략)
+        totalPages: null,    // 알 수 없음 (count 생략)
         hasNext,
-        hasPrevious: false,
-        isFirst: true,
+        hasPrevious: safePage > 0,
+        isFirst: safePage === 0,
         isLast: !hasNext,
       },
     };
