@@ -463,9 +463,17 @@ class CommentService {
       let commentAuthorName = null;
       if (viewerId) {
         try {
-          const programType = CommentService.normalizeProgramType(
-            post.programType || community?.programType || post.type
-          );
+          // post에 programType이 없으면 community에서 조회
+          let programType = post.programType || post.type;
+          if (!programType) {
+            const community = await this.firestoreService.getDocument(
+              "communities",
+              communityId
+            );
+            programType = community?.programType;
+          }
+          
+          programType = CommentService.normalizeProgramType(programType);
           
           commentAuthorName = await this.getCommentAuthorName(
             viewerId,
