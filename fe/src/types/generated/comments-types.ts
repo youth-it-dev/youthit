@@ -97,6 +97,7 @@ export type TGETCommentsCommunitiesPostsByTwoIdsRes = {
     isFirst?: boolean;
     isLast?: boolean;
   };
+  commentAuthorName?: string;
 };
 
 export interface TPOSTCommentsCommunitiesPostsByTwoIdsReq {

@@ -111,41 +111,68 @@ export const usePostProgramsApplyById = <
   });
 };
 
-export const useGetProgramsApprove = <TData = any>(
-  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+export const usePostProgramsApprove = <TContext = unknown, TVariables = void>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postProgramsApprove>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
 ) => {
-  return useQuery<any, Error, TData>({
-    queryKey: programsKeys.getProgramsApprove,
-    queryFn: async () => {
-      const response = await Api.getProgramsApprove();
-      return response.data;
-    },
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postProgramsApprove>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) => Api.postProgramsApprove(),
     ...options,
   });
 };
 
-export const useGetProgramsPending = <TData = any>(
-  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+export const usePostProgramsPending = <TContext = unknown, TVariables = void>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postProgramsPending>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
 ) => {
-  return useQuery<any, Error, TData>({
-    queryKey: programsKeys.getProgramsPending,
-    queryFn: async () => {
-      const response = await Api.getProgramsPending();
-      return response.data;
-    },
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postProgramsPending>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) => Api.postProgramsPending(),
     ...options,
   });
 };
 
-export const useGetProgramsReject = <TData = any>(
-  options?: Omit<UseQueryOptions<any, Error, TData>, "queryKey" | "queryFn">
+export const usePostProgramsReject = <TContext = unknown, TVariables = void>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postProgramsReject>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
 ) => {
-  return useQuery<any, Error, TData>({
-    queryKey: programsKeys.getProgramsReject,
-    queryFn: async () => {
-      const response = await Api.getProgramsReject();
-      return response.data;
-    },
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postProgramsReject>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (_variables: TVariables) => Api.postProgramsReject(),
     ...options,
   });
 };
