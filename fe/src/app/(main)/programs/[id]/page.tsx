@@ -14,7 +14,6 @@ import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PROGRAM_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
-import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import {
@@ -195,6 +194,31 @@ const ProgramDetailPage = () => {
   }, [
     programDetailData?.recruitmentStartDate,
     programDetailData?.recruitmentEndDate,
+  ]);
+
+  // 선착순 마감 여부 확인
+  const isFirstComeDeadlineReached = useMemo(() => {
+    if (!programDetailData) return false;
+
+    const isFirstComeEnabled = programDetailData.isFirstComeDeadlineEnabled;
+    const firstComeCapacity = programDetailData.firstComeCapacity;
+    const approvedMembersCount = programDetailData.approvedMembersCount;
+
+    // 선착순 제한이 활성화되어 있고, 승인된 멤버수가 제한 인원 이상인 경우
+    if (
+      isFirstComeEnabled &&
+      firstComeCapacity !== undefined &&
+      approvedMembersCount !== undefined &&
+      approvedMembersCount >= firstComeCapacity
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [
+    programDetailData?.isFirstComeDeadlineEnabled,
+    programDetailData?.firstComeCapacity,
+    programDetailData?.approvedMembersCount,
   ]);
 
   // 현재 프로그램의 신청 상태 확인
@@ -761,12 +785,16 @@ const ProgramDetailPage = () => {
             href={`/programs/${programId}/apply`}
             className={cn(
               "bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white",
-              !isRecruitmentPeriodActive &&
+              (!isRecruitmentPeriodActive || isFirstComeDeadlineReached) &&
                 "pointer-events-none cursor-not-allowed opacity-50"
             )}
           >
             <Typography font="noto" variant="body3R" className="text-white">
-              {isRecruitmentPeriodActive ? "신청하기" : "모집 기간이 아니에요"}
+              {isFirstComeDeadlineReached
+                ? "모집이 마감되었어요"
+                : isRecruitmentPeriodActive
+                  ? "신청하기"
+                  : "모집 기간이 아니에요"}
             </Typography>
           </Link>
         )}
