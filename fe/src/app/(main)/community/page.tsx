@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
   type ChangeEvent,
   Suspense,
@@ -298,6 +299,17 @@ const CommunityPageContent = () => {
 
     const postId = post.id;
     if (postId && communityId) {
+      // 스크롤 위치 저장
+      if (typeof window !== "undefined") {
+        const mainElement = document.querySelector("main");
+        if (mainElement) {
+          sessionStorage.setItem(
+            "community_scroll_position",
+            String(mainElement.scrollTop)
+          );
+        }
+      }
+
       // 현재 필터 상태를 쿼리스트링에 포함하여 상세 페이지로 이동
       const params = new URLSearchParams();
       params.set("communityId", communityId);
@@ -613,6 +625,26 @@ const CommunityPageContent = () => {
     }
     fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  // 스크롤 복원
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedPosition = sessionStorage.getItem("community_scroll_position");
+    if (!savedPosition) return;
+
+    // 데이터 로딩 완료 후 스크롤 복원
+    if (isLoading || posts.length === 0) return;
+
+    const mainElement = document.querySelector("main");
+    if (mainElement) {
+      // DOM 렌더링 완료 후 스크롤 복원
+      requestAnimationFrame(() => {
+        mainElement.scrollTop = Number(savedPosition);
+        sessionStorage.removeItem("community_scroll_position");
+      });
+    }
+  }, [isLoading, posts.length]);
 
   // 에러 상태 처리
   if (error) {

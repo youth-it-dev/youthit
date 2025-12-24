@@ -42,11 +42,33 @@ export default function MainLayout({
   const hideTopBar =
     isMyPage || isMissionPage || isCommunityPage || hideTopBarState;
 
-  // 라우트 변경 시 항상 스크롤 최상단으로 이동 (Next.js 15 스크롤 복원 이슈 대응)
+  // 라우트 변경 시 스크롤 최상단으로 이동
+  // /community 페이지는 자체적으로 스크롤 위치를 관리하므로 제외
+  const prevPathnameRef = useRef(pathname);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (typeof window === "undefined") return;
+
+    const prevPathname = prevPathnameRef.current;
+
+    // 이전 경로와 현재 경로가 같으면 실행하지 않음 (초기 마운트)
+    if (prevPathname === pathname) {
+      return;
     }
+
+    // /community 페이지로 돌아오는 경우 스크롤 리셋하지 않음
+    if (pathname === LINK_URL.COMMUNITY) {
+      prevPathnameRef.current = pathname;
+      return;
+    }
+
+    // 다른 페이지로 이동 시 main 요소의 스크롤을 최상단으로 이동
+    const mainElement = document.querySelector("main");
+    if (mainElement) {
+      mainElement.scrollTop = 0;
+    }
+
+    prevPathnameRef.current = pathname;
   }, [pathname]);
 
   // 홈 페이지일 때만 홈 데이터 로드 여부 확인 (스플래시 표시용)
