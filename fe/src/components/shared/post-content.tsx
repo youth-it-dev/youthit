@@ -4,7 +4,7 @@ interface PostContentProps {
   /**
    * @description 게시글 HTML 콘텐츠
    */
-  content: string;
+  content?: string;
   /**
    * @description 추가 클래스명
    */
@@ -18,11 +18,12 @@ interface PostContentProps {
  * - 이미지, 링크, 첨부파일, 제목 스타일링
  */
 export const PostContent = ({ content, className }: PostContentProps) => {
+  if (!content) return null;
+
   return (
     <div
       className={cn(
-        "prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2",
-        "prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-img:block prose-img:mx-auto prose-img:max-h-[400px] prose-img:object-contain",
+        "post-content prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2",
         "prose-a:text-blue-500 prose-a:underline prose-a:cursor-pointer prose-a:break-all",
         "wrap-break-words w-full max-w-none overflow-x-hidden whitespace-pre-wrap",
         "[&_span[data-attachment='file']]:inline-flex [&_span[data-attachment='file']]:items-center [&_span[data-attachment='file']]:gap-1 [&_span[data-attachment='file']]:select-none",

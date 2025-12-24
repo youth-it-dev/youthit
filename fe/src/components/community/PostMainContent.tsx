@@ -26,7 +26,7 @@ export const PostMainContent = memo<{
     content,
   }) => {
     return (
-      <div className="px-5 py-5">
+      <div className="px-5 pt-5 pb-13">
         <Typography
           as="h1"
           font="noto"
@@ -51,9 +51,7 @@ export const PostMainContent = memo<{
           viewCount={viewCount}
         />
 
-        <div className="py-8">
-          {content && <PostContent content={content} />}
-        </div>
+        <PostContent content={content} />
       </div>
     );
   }

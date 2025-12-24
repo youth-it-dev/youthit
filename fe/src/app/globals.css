@@ -182,3 +182,23 @@
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
 }
+
+/* 게시글 상세 페이지 컨텐츠 스타일 */
+/* 이미지: 전체 너비, 중앙 정렬 제거, 마진 제거, 원본 비율 유지 */
+.post-content img {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  display: block !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin: 8px 0 !important;
+  margin-inline: 0 !important;
+  border-radius: 8px;
+}
+
+/* 텍스트: 양쪽 정렬 */
+.post-content p {
+  text-align: justify !important;
+}

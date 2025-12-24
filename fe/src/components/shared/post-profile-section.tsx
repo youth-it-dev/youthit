@@ -47,7 +47,7 @@ export const PostProfileSection = ({
 
   return (
     <div
-      className={`mb-6 flex items-center border-b border-gray-200 pb-5 ${className || ""}`}
+      className={`mb-8 flex items-center border-b border-gray-200 pb-5 ${className || ""}`}
     >
       {profileImageUrl && !imageLoadError ? (
         <img
