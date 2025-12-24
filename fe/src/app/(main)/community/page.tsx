@@ -26,8 +26,6 @@ import ProgramFilterBottomSheet, {
   type ProgramStateFilter,
 } from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
-import { Typography } from "@/components/shared/typography";
-import HorizontalScrollContainer from "@/components/shared/ui/horizontal-scroll-container";
 import Modal from "@/components/shared/ui/modal";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
@@ -673,102 +671,6 @@ const CommunityPageContent = () => {
             skeletonCount={4}
           />
         </div>
-        {/*
-        {segmentedPosts.top.length > 0 && (
-          <UserImageCarouselSection images={userImages} />
-        )}
-        */}
-
-        {/* 이런 프로그램은 어때요? 섹션 */}
-        {programsData && programsData.length > 0 && (
-          <div className="py-5">
-            <div className="mb-4 flex items-center gap-2">
-              <Typography
-                as="h2"
-                font="noto"
-                variant="title4"
-                className="text-black"
-              >
-                이런 프로그램은 어때요?
-              </Typography>
-              <span className="text-xl">❤️</span>
-            </div>
-            <HorizontalScrollContainer
-              containerClassName="flex gap-3"
-              showGradient={false}
-            >
-              {programsData.slice(0, 10).map((program) => {
-                const getProgramBgColor = (programType?: string): string => {
-                  switch (programType) {
-                    case "ROUTINE":
-                      return "bg-pink-100";
-                    case "TMI":
-                      return "bg-green-100";
-                    case "GATHERING":
-                      return "bg-orange-100";
-                    default:
-                      return "bg-blue-100";
-                  }
-                };
-
-                const getProgramIcon = (programType?: string): string => {
-                  switch (programType) {
-                    case "ROUTINE":
-                      return "🎵";
-                    case "TMI":
-                      return "🍿";
-                    case "GATHERING":
-                      return "✂️";
-                    default:
-                      return "📋";
-                  }
-                };
-
-                return (
-                  <div
-                    key={program.id}
-                    onClick={() => {
-                      if (program.id) {
-                        router.push(`${LINK_URL.PROGRAMS}/${program.id}`);
-                      }
-                    }}
-                    className="flex w-[335px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
-                  >
-                    <div className="flex h-[100px]">
-                      {/* 이미지/일러스트 영역 */}
-                      <div
-                        className={`flex w-[100px] shrink-0 items-center justify-center ${getProgramBgColor(program.programType)}`}
-                      >
-                        <div className="text-4xl">
-                          {getProgramIcon(program.programType)}
-                        </div>
-                      </div>
-                      {/* 텍스트 영역 */}
-                      <div className="flex flex-1 flex-col justify-center px-3 py-2">
-                        <Typography
-                          as="h3"
-                          font="noto"
-                          variant="heading3B"
-                          className="mb-1 line-clamp-1"
-                        >
-                          {program.title || program.programName || "-"}
-                        </Typography>
-                        <Typography
-                          font="noto"
-                          variant="body3R"
-                          className="line-clamp-2 text-gray-600"
-                        >
-                          {program.description || "-"}
-                        </Typography>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </HorizontalScrollContainer>
-          </div>
-        )}
-
         {/* 나머지 포스트 */}
         <div className="mb-6">
           <PostFeed
