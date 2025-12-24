@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState } from "react";
-import Image from "next/image";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { POST_ANONYMOUS_NAME } from "@/constants/shared/_post-constants";
@@ -18,50 +17,34 @@ interface PostFeedProps {
   skeletonCount?: number;
 }
 
+const PostThumbnail = memo(({ src, alt }: { src: string; alt: string }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) return null;
+
+  return (
+    <div className="flex-shrink-0">
+      <div className="relative h-22 w-22 overflow-hidden rounded-lg bg-gray-100">
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setHasError(true)}
+        />
+      </div>
+    </div>
+  );
+});
+
+PostThumbnail.displayName = "PostThumbnail";
+
 const PostFeed = ({
   posts,
   onPostClick,
   isLoading = false,
   skeletonCount = 3,
 }: PostFeedProps) => {
-  // 썸네일 이미지 컴포넌트 (로드 실패 시 아예 렌더링하지 않음)
-  const PostThumbnail = ({ src, alt }: { src: string; alt: string }) => {
-    const [hasError, setHasError] = useState(false);
-
-    if (hasError) return null;
-
-    return (
-      <div className="flex-shrink-0">
-        <div className="relative h-22 w-22 overflow-hidden rounded-lg bg-gray-100">
-          <Image
-            src={src}
-            alt={alt}
-            fill
-            className="object-cover"
-            sizes="88px"
-            onError={() => setHasError(true)}
-          />
-        </div>
-      </div>
-    );
-  };
-
-  const getCategoryColor = (category?: string) => {
-    if (!category) return "bg-gray-100 text-gray-600";
-    switch (category) {
-      case "한끗루틴":
-      case "월간 소모임":
-      case "TMI":
-        return "bg-main-50 text-main-500";
-      // TODO: '내가 참여중인' 이라는 카테고리는 카테고리 데이터로 판별하는게 아니라서 별도로 처리가 필요함
-      //       post 아이템의 community.id로 어느 커뮤니티에 대한 글인지는 파악 가능하나, 클라이언트 수준에서 비교 확인할지 api 구성에서 필터링 조건으로 포함해야할지 고민이 필요함
-      // case "내가 참여중인":
-      //   return "bg-[#E8F2FF] text-[#2B7FFF]";
-      default:
-        return "bg-gray-100 text-gray-600";
-    }
-  };
-
   const handlePostClick = (post: CommunityPostListItem) => {
     onPostClick(post);
   };

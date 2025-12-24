@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState, useEffect } from "react";
-import Image from "next/image";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { cn } from "@/utils/shared/cn";
 import { isValidImageUrl } from "@/utils/shared/url";
@@ -64,11 +63,11 @@ const ProfileImage = ({
         className
       )}
     >
-      <Image
+      <img
         src={imageSrc}
         alt={alt}
-        fill
-        className="object-cover"
+        className="h-full w-full object-cover"
+        loading="lazy"
         onError={handleError}
       />
     </div>
