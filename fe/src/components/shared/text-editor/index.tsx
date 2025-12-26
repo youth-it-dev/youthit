@@ -76,6 +76,8 @@ const TextEditor = ({
   const headingMenuRef = useRef<HTMLDivElement>(null);
   // 사용자가 방금 선택한 색상으로 툴바 스와치를 즉시 고정하기 위한 오버라이드 플래그
   const pendingSelectedColorRef = useRef<string | null>(null);
+  // Blob URL들을 추적하여 메모리 누수 방지
+  const blobUrlsRef = useRef<string[]>([]);
 
   // 상태 관리
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -1421,6 +1423,16 @@ const TextEditor = ({
     };
   }, []);
 
+  // 컴포넌트 언마운트 시 생성된 모든 Blob URL 정리 (메모리 누수 방지)
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+      blobUrlsRef.current = [];
+    };
+  }, []);
+
   /**
    * 외부에서 전달된 초기 콘텐츠를 ref에 반영
    * - 최초 마운트 이후 값이 바뀌어도 반영되도록 의존성 포함
@@ -1664,8 +1676,9 @@ const TextEditor = ({
                   });
                   const clientId = await onImageUpload(file);
 
-                  // Blob URL 생성하여 이미지 삽입
+                  // Blob URL 생성하여 이미지 삽입 (메모리 누수 방지를 위해 추적)
                   const blobUrl = URL.createObjectURL(photo.blob);
+                  blobUrlsRef.current.push(blobUrl);
                   insertImageToEditor(
                     blobUrl,
                     typeof clientId === "string" ? clientId : undefined
