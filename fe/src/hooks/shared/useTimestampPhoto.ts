@@ -226,8 +226,11 @@ export const useTimestampPhoto = ({
         const timestampedBlob = await addTimestampToImage(file);
 
         if (onTimestampPhotoCapture) {
-          // IndexedDB에 저장 (타임스탬프 적용된 이미지)
-          await onTimestampPhotoCapture(file);
+          // IndexedDB에 저장 (타임스탬프 적용된 이미지를 File로 변환하여 전달)
+          const timestampedFile = new File([timestampedBlob], "timestamp.jpg", {
+            type: "image/jpeg",
+          });
+          await onTimestampPhotoCapture(timestampedFile);
         }
 
         // 타임스탬프가 적용된 이미지를 미리보기에 표시
@@ -262,8 +265,11 @@ export const useTimestampPhoto = ({
         const timestampedBlob = await addTimestampToImage(file);
 
         if (onTimestampPhotoCapture) {
-          // IndexedDB에 저장 (타임스탬프 적용된 이미지)
-          await onTimestampPhotoCapture(file);
+          // IndexedDB에 저장 (타임스탬프 적용된 이미지를 File로 변환하여 전달)
+          const timestampedFile = new File([timestampedBlob], "timestamp.jpg", {
+            type: "image/jpeg",
+          });
+          await onTimestampPhotoCapture(timestampedFile);
         }
 
         // 타임스탬프가 적용된 이미지를 미리보기에 표시
@@ -297,11 +303,6 @@ export const useTimestampPhoto = ({
             type: "image/jpeg",
           });
 
-          // IndexedDB에 저장
-          if (onTimestampPhotoCapture) {
-            await onTimestampPhotoCapture(file);
-          }
-
           // clientId 발급받아 텍스트 에디터에 삽입 (게시글 작성 시 API 업로드)
           const clientIdResult = await onImageUpload(file);
           const clientId =
@@ -327,7 +328,6 @@ export const useTimestampPhoto = ({
       timestampPreviewImage,
       timestampPreviewUrl,
       onImageUpload,
-      onTimestampPhotoCapture,
       insertImageToEditor,
     ]
   );
