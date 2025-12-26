@@ -482,3 +482,109 @@ export const elementToHtml = (element: Node, depth = 0): string => {
     return "";
   }
 };
+
+/**
+ * @description 노드가 이미지 요소인지 확인
+ */
+const isImageNode = (node: Node | null): node is HTMLImageElement => {
+  return (
+    node !== null &&
+    node.nodeType === Node.ELEMENT_NODE &&
+    (node as Element).tagName === "IMG"
+  );
+};
+
+/**
+ * @description 텍스트 노드에서 커서 위치 근처의 이미지 찾기
+ */
+const findImageNearTextNode = (
+  textNode: Text,
+  cursorOffset: number,
+  key: string
+): HTMLImageElement | null => {
+  const isAtStart = cursorOffset === 0;
+  const isAtEnd = cursorOffset === textNode.length;
+  const isBackspaceAtStart = isAtStart && key === "Backspace";
+  const isDeleteAtEnd = isAtEnd && key === "Delete";
+
+  if (!isBackspaceAtStart && !isDeleteAtEnd) {
+    return null;
+  }
+
+  const parentElement = textNode.parentElement;
+  if (!parentElement) return null;
+
+  const childNodes = Array.from(parentElement.childNodes);
+  const currentIndex = childNodes.indexOf(textNode);
+
+  if (isBackspaceAtStart && currentIndex > 0) {
+    const prevNode = childNodes[currentIndex - 1];
+    if (isImageNode(prevNode)) {
+      return prevNode;
+    }
+  } else if (isDeleteAtEnd && currentIndex < childNodes.length - 1) {
+    const nextNode = childNodes[currentIndex + 1];
+    if (isImageNode(nextNode)) {
+      return nextNode;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * @description 요소 노드에서 커서 위치 근처의 이미지 찾기
+ */
+const findImageNearElementNode = (
+  elementNode: Element,
+  cursorOffset: number,
+  key: string
+): HTMLImageElement | null => {
+  const isBackspace = key === "Backspace" && cursorOffset > 0;
+  const isDelete =
+    key === "Delete" && cursorOffset < elementNode.childNodes.length;
+
+  if (!isBackspace && !isDelete) {
+    return null;
+  }
+
+  const childNodes = Array.from(elementNode.childNodes);
+
+  if (isBackspace && cursorOffset <= childNodes.length) {
+    const prevNode = childNodes[cursorOffset - 1];
+    if (isImageNode(prevNode)) {
+      return prevNode;
+    }
+  } else if (isDelete) {
+    const nextNode = childNodes[cursorOffset];
+    if (isImageNode(nextNode)) {
+      return nextNode;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * @description 커서 위치 근처의 이미지 요소 찾기
+ * @param range - 현재 선택 영역의 Range
+ * @param key - 누른 키 ("Backspace" 또는 "Delete")
+ * @returns 찾은 이미지 요소 또는 null
+ */
+export const findImageNearCursor = (
+  range: Range,
+  key: string
+): HTMLImageElement | null => {
+  const cursorNode = range.startContainer;
+  const cursorOffset = range.startOffset;
+
+  if (cursorNode.nodeType === Node.TEXT_NODE) {
+    return findImageNearTextNode(cursorNode as Text, cursorOffset, key);
+  }
+
+  if (cursorNode.nodeType === Node.ELEMENT_NODE) {
+    return findImageNearElementNode(cursorNode as Element, cursorOffset, key);
+  }
+
+  return null;
+};
