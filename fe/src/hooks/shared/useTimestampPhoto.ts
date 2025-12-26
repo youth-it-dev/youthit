@@ -48,7 +48,7 @@ interface UseTimestampPhotoReturn {
   handleTimestampLocalGallerySelect: (
     event: ChangeEvent<HTMLInputElement>
   ) => Promise<void>;
-  handleTimestampUpload: () => Promise<void>;
+  handleTimestampUpload: (event?: MouseEvent) => Promise<void>;
   handleTimestampCancel: () => void;
   setShowTimestampGallery: (show: boolean) => void;
   updateTimestampMenuPosition: () => void;
@@ -284,45 +284,53 @@ export const useTimestampPhoto = ({
 
   /**
    * 타임스탬프 사진 업로드 (미리보기에서 업로드 버튼)
+   * IndexedDB에 저장하고, 텍스트 에디터에 삽입 (게시글 작성 시 API 업로드)
    */
-  const handleTimestampUpload = useCallback(async () => {
-    if (timestampPreviewImage && onImageUpload) {
-      try {
-        const file = new File([timestampPreviewImage], "timestamp.jpg", {
-          type: "image/jpeg",
-        });
+  const handleTimestampUpload = useCallback(
+    async (event?: MouseEvent) => {
+      // 이벤트 버블링 방지 (폼 제출 방지)
+      event?.preventDefault();
 
-        // IndexedDB에 저장 (업로드 전에 저장)
-        if (onTimestampPhotoCapture) {
-          await onTimestampPhotoCapture(file);
+      if (timestampPreviewImage && onImageUpload) {
+        try {
+          const file = new File([timestampPreviewImage], "timestamp.jpg", {
+            type: "image/jpeg",
+          });
+
+          // IndexedDB에 저장
+          if (onTimestampPhotoCapture) {
+            await onTimestampPhotoCapture(file);
+          }
+
+          // clientId 발급받아 텍스트 에디터에 삽입 (게시글 작성 시 API 업로드)
+          const clientIdResult = await onImageUpload(file);
+          const clientId =
+            typeof clientIdResult === "string" ? clientIdResult : undefined;
+
+          // Blob URL 생성하여 이미지 삽입 (clientId 포함 - 게시글 작성 시 업로드)
+          const blobUrl = URL.createObjectURL(timestampPreviewImage);
+          insertImageToEditor(blobUrl, clientId);
+
+          // 미리보기 URL 정리
+          if (timestampPreviewUrl) {
+            URL.revokeObjectURL(timestampPreviewUrl);
+            setTimestampPreviewUrl(null);
+          }
+          setShowTimestampPreview(false);
+          setTimestampPreviewImage(null);
+        } catch (error) {
+          debug.error("타임스탬프 사진 업로드 실패:", error);
         }
-
-        const clientIdResult = await onImageUpload(file);
-        const clientId =
-          typeof clientIdResult === "string" ? clientIdResult : undefined;
-
-        // Blob URL 생성하여 이미지 삽입
-        const blobUrl = URL.createObjectURL(timestampPreviewImage);
-        insertImageToEditor(blobUrl, clientId);
-
-        // 미리보기 URL 정리
-        if (timestampPreviewUrl) {
-          URL.revokeObjectURL(timestampPreviewUrl);
-          setTimestampPreviewUrl(null);
-        }
-        setShowTimestampPreview(false);
-        setTimestampPreviewImage(null);
-      } catch (error) {
-        debug.error("타임스탬프 사진 업로드 실패:", error);
       }
-    }
-  }, [
-    timestampPreviewImage,
-    timestampPreviewUrl,
-    onImageUpload,
-    onTimestampPhotoCapture,
-    insertImageToEditor,
-  ]);
+    },
+    [
+      timestampPreviewImage,
+      timestampPreviewUrl,
+      onImageUpload,
+      onTimestampPhotoCapture,
+      insertImageToEditor,
+    ]
+  );
 
   /**
    * 타임스탬프 사진 취소 (미리보기에서 취소 버튼)
