@@ -22,6 +22,7 @@ import {
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { TEXT_EDITOR, getTodayPrefix } from "@/constants/shared/_text-editor";
 import { useGlobalClickOutside } from "@/hooks/shared/useGlobalClickOutside";
+import { useMounted } from "@/hooks/shared/useMounted";
 import { useTimestampPhoto } from "@/hooks/shared/useTimestampPhoto";
 import type {
   TextEditorProps,
@@ -80,6 +81,7 @@ const TextEditor = ({
   const blobUrlsRef = useRef<string[]>([]);
 
   // 상태 관리
+  const mounted = useMounted();
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
   const [isHeadingActive, setIsHeadingActive] = useState(false);
@@ -1609,6 +1611,7 @@ const TextEditor = ({
           </Button>
 
           {showHeadingMenu &&
+            mounted &&
             createPortal(
               <div
                 ref={headingMenuRef}
@@ -1796,6 +1799,7 @@ const TextEditor = ({
 
           {/* Color palette modal */}
           {showColorPicker &&
+            mounted &&
             createPortal(
               <div
                 ref={colorPickerRef}
@@ -1872,6 +1876,7 @@ const TextEditor = ({
           </Button>
 
           {showLinkPopover &&
+            mounted &&
             createPortal(
               <div
                 ref={linkPopoverRef}

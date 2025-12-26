@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/shared/useMounted";
 
 interface TimestampMenuProps {
   isOpen: boolean;
@@ -25,7 +26,9 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
     },
     ref
   ) => {
-    if (!isOpen) return null;
+    const isMounted = useMounted();
+
+    if (!isOpen || !isMounted) return null;
 
     return createPortal(
       <div
