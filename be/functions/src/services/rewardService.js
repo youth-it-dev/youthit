@@ -164,7 +164,7 @@ class RewardService {
 
     let isDuplicate = false;
 
-    await this.firestoreService.runTransaction(async (transaction) => {
+    await db.runTransaction(async (transaction) => {
       // 댓글 일일 제한 체크 (actionTimestamp가 있고, actionKey가 comment인 경우)
       const actionDate = actionTimestamp ? toDate(actionTimestamp) : null;
 
@@ -302,7 +302,7 @@ class RewardService {
     let isDuplicate = false;
     let deducted = 0;
 
-    await this.firestoreService.runTransaction(async (transaction) => {
+    await db.runTransaction(async (transaction) => {
       // 중복 체크
       if (checkDuplicate) {
         const historyDoc = await transaction.get(historyRef);
@@ -565,7 +565,7 @@ class RewardService {
       let expiredCount = 0;
 
       // 트랜잭션으로 일괄 처리 (조회도 트랜잭션 내부에서 수행하여 중복 차감 방지)
-      await this.firestoreService.runTransaction(async (transaction) => {
+      await db.runTransaction(async (transaction) => {
         // 트랜잭션 내에서 만료 대상 조회 (동시성 문제 방지)
         const snapshot = await transaction.get(rewardsHistoryRef
           .where('changeType', '==', 'add')
