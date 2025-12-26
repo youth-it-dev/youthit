@@ -9,7 +9,7 @@ import { debug } from "@/utils/shared/debugger";
 /**
  * IndexedDB 데이터베이스 연결 및 초기화
  */
-class MissionPhotoDB {
+class PhotoDB {
   private db: IDBDatabase | null = null;
 
   /**
@@ -262,14 +262,14 @@ class MissionPhotoDB {
 }
 
 // 싱글톤 인스턴스
-let dbInstance: MissionPhotoDB | null = null;
+let dbInstance: PhotoDB | null = null;
 
 /**
- * MissionPhotoDB 인스턴스 가져오기
+ * PhotoDB 인스턴스 가져오기
  */
-export const getMissionPhotoDB = async (): Promise<MissionPhotoDB> => {
+export const getPhotoDB = async (): Promise<PhotoDB> => {
   if (!dbInstance) {
-    dbInstance = new MissionPhotoDB();
+    dbInstance = new PhotoDB();
     await dbInstance.init();
   }
   return dbInstance;
@@ -291,7 +291,7 @@ export const isStorageAvailable = async (): Promise<boolean> => {
       return false;
     }
 
-    const db = await getMissionPhotoDB();
+    const db = await getPhotoDB();
     await db.getAllPhotos();
     return true;
   } catch (error) {
