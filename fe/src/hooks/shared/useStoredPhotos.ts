@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { StoredPhoto } from "@/types/shared/_photo-storage-types";
 import { debug } from "@/utils/shared/debugger";
-import { addTimestampToImage } from "@/utils/shared/image-timestamp";
-import {
-  getMissionPhotoDB,
-  isStorageAvailable,
-} from "@/utils/shared/indexed-db";
+import { getPhotoDB, isStorageAvailable } from "@/utils/shared/indexed-db";
 
 export interface UseStoredPhotosReturn {
   /** 저장된 사진 목록 */
@@ -60,7 +56,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
         return;
       }
 
-      const db = await getMissionPhotoDB();
+      const db = await getPhotoDB();
       const allPhotos = await db.getAllPhotos();
       const storageData = await db.getStorageInfo();
 
@@ -91,20 +87,17 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
           throw new Error("저장소가 지원되지 않습니다");
         }
 
-        // 타임스탬프 추가 및 압축
-        const timestampedBlob = await addTimestampToImage(file);
-
-        // 저장할 사진 데이터 생성
+        // 전달된 파일을 그대로 저장 (호출자가 필요한 경우 타임스탬프 적용)
         const photo: StoredPhoto = {
           id: uuidv4(),
-          blob: timestampedBlob,
+          blob: file,
           timestamp: Date.now(),
           originalFileName: file.name,
-          size: timestampedBlob.size,
+          size: file.size,
         };
 
         // DB에 저장
-        const db = await getMissionPhotoDB();
+        const db = await getPhotoDB();
         await db.savePhoto(photo);
 
         // 저장소 제한 확인
@@ -135,7 +128,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
           throw new Error("저장소가 지원되지 않습니다");
         }
 
-        const db = await getMissionPhotoDB();
+        const db = await getPhotoDB();
         await db.deletePhoto(id);
 
         // 목록 새로고침
@@ -162,7 +155,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
         throw new Error("저장소가 지원되지 않습니다");
       }
 
-      const db = await getMissionPhotoDB();
+      const db = await getPhotoDB();
       const allPhotos = await db.getAllPhotos();
 
       // 모든 사진 삭제
@@ -199,7 +192,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
 
     const cleanupInterval = setInterval(async () => {
       try {
-        const db = await getMissionPhotoDB();
+        const db = await getPhotoDB();
         await db.cleanupOldPhotos();
         await loadPhotos(); // 정리 후 목록 새로고침
       } catch (err) {

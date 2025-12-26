@@ -1,6 +1,6 @@
 // IndexedDB 설정
 export const DB_CONFIG = {
-  NAME: "mission-photos",
+  NAME: "timestamp-photo-storage",
   VERSION: 1,
   STORE_NAME: "photos",
 } as const;
