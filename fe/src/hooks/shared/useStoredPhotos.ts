@@ -83,7 +83,9 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
       try {
         setError(null);
 
-        if (!isStorageSupported) {
+        // 저장소 지원 여부를 실시간으로 확인
+        const available = await isStorageAvailable();
+        if (!available) {
           throw new Error("저장소가 지원되지 않습니다");
         }
 
@@ -115,7 +117,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
         throw err;
       }
     },
-    [isStorageSupported, loadPhotos]
+    [loadPhotos]
   );
 
   // 사진 삭제
@@ -124,7 +126,9 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
       try {
         setError(null);
 
-        if (!isStorageSupported) {
+        // 저장소 지원 여부를 실시간으로 확인
+        const available = await isStorageAvailable();
+        if (!available) {
           throw new Error("저장소가 지원되지 않습니다");
         }
 
@@ -143,7 +147,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
         throw err;
       }
     },
-    [isStorageSupported, loadPhotos]
+    [loadPhotos]
   );
 
   // 모든 사진 삭제
@@ -151,7 +155,9 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
     try {
       setError(null);
 
-      if (!isStorageSupported) {
+      // 저장소 지원 여부를 실시간으로 확인
+      const available = await isStorageAvailable();
+      if (!available) {
         throw new Error("저장소가 지원되지 않습니다");
       }
 
@@ -174,7 +180,7 @@ export const useStoredPhotos = (): UseStoredPhotosReturn => {
       debug.error("모든 사진 삭제 실패:", err);
       throw err;
     }
-  }, [isStorageSupported, loadPhotos]);
+  }, [loadPhotos]);
 
   // 사진 새로고침
   const refreshPhotos = useCallback(async () => {
