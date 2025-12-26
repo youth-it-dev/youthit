@@ -23,6 +23,11 @@ export interface TextEditorProps {
    * 실제 업로드는 제출 시 한 번에 수행하고, 그 응답의 fileUrl을 매칭시켜 href로 교체합니다.
    */
   onFileUpload?: (file: File) => Promise<string> | string;
+  /**
+   * 타임스탬프 사진 촬영 핸들러
+   * - 사진 촬영 시 타임스탬프를 추가하여 IndexedDB에 저장
+   */
+  onTimestampPhotoCapture?: (file: File) => Promise<void>;
   onTitleChange?: (title: string) => void;
   onContentChange?: (content: string) => void;
 }
