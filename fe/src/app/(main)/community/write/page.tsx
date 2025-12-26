@@ -23,12 +23,14 @@ import { MIN_POST_TEXT_LENGTH } from "@/constants/shared/_post-constants";
 import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
+import { useStoredPhotos } from "@/hooks/shared/useStoredPhotos";
 import useToggle from "@/hooks/shared/useToggle";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { WriteFormValues } from "@/types/community/_write-types";
 import type { Program } from "@/types/generated/api-schema";
 import type * as CommunityTypes from "@/types/generated/communities-types";
+import type { StoredPhoto } from "@/types/shared/_photo-storage-types";
 import { hasAuthCookie, removeAuthCookie } from "@/utils/auth/auth-cookie";
 import {
   replaceEditorFileHrefWithUploadedUrls,
@@ -41,6 +43,8 @@ import {
 } from "@/utils/community/file-utils";
 import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { getCurrentDateTime } from "@/utils/shared/date";
+import { debug } from "@/utils/shared/debugger";
+import { getMissionPhotoDB } from "@/utils/shared/indexed-db";
 import {
   extractTextFromHtml,
   checkPostTextLength,
@@ -76,6 +80,10 @@ const WritePageContent = () => {
     communityId: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [selectedPhotos, setSelectedPhotos] = useState<StoredPhoto[]>([]);
+
+  // IndexedDB 사진 저장소 훅
+  const { savePhoto } = useStoredPhotos();
 
   // 이미지 개수 초과 모달
   const {
@@ -208,6 +216,74 @@ const WritePageContent = () => {
       return [...prev, { clientId, file }];
     });
     return clientId;
+  };
+
+  /**
+   * 사진 촬영/선택 핸들러
+   * 타임스탬프를 추가하고 IndexedDB에 저장
+   */
+  const handlePhotoCapture = async (file: File) => {
+    try {
+      // IndexedDB에 저장 (타임스탬프 추가 및 압축 포함)
+      await savePhoto(file);
+
+      // 토스트 메시지 표시 (추후 구현)
+      debug.log("사진이 앱 앨범에 저장되었습니다");
+    } catch (error) {
+      debug.error("사진 저장 실패:", error);
+      setErrorMessage("사진 저장에 실패했습니다");
+      openErrorModal();
+    }
+  };
+
+  /**
+   * 선택된 사진들을 TextEditor에 삽입
+   */
+  const insertPhotosToEditor = (photos: StoredPhoto[]) => {
+    // 선택된 사진들을 imageQueue에 추가하여 TextEditor에 삽입
+    const newImages = photos.map((photo) => ({
+      clientId: crypto.randomUUID(),
+      file: new File([photo.blob], photo.originalFileName, {
+        type: photo.blob.type,
+      }),
+    }));
+
+    setImageQueue((prev) => {
+      if (prev.length + newImages.length > MAX_FILES) {
+        openImageLimitModal();
+        return prev;
+      }
+      return [...prev, ...newImages];
+    });
+    setSelectedPhotos(photos);
+  };
+
+  /**
+   * 에디터 내용과 사진 큐 동기화
+   * 에디터에 실제로 존재하는 이미지들의 clientId를 기준으로 selectedPhotos와 imageQueue 정리
+   */
+  const syncPhotosWithEditorContent = (content: string) => {
+    try {
+      // HTML에서 이미지 태그의 clientId들 추출
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = content;
+      const imagesInEditor = tempDiv.querySelectorAll("img[data-client-id]");
+
+      const editorClientIds = Array.from(imagesInEditor)
+        .map((img) => img.getAttribute("data-client-id"))
+        .filter(Boolean) as string[];
+
+      // imageQueue를 에디터의 clientId들에 맞게 필터링
+      setImageQueue((prev) =>
+        prev.filter((item) => editorClientIds.includes(item.clientId))
+      );
+
+      debug.log(
+        `사진 큐 동기화: 에디터 ${editorClientIds.length}장, 남은 큐 항목들 정리됨`
+      );
+    } catch (error) {
+      debug.error("사진 큐 동기화 실패:", error);
+    }
   };
 
   /**
@@ -466,6 +542,21 @@ const WritePageContent = () => {
         category: "한끗루틴",
         isPublic: false,
       });
+
+      // IndexedDB에서 사용된 사진들 삭제
+      if (selectedPhotos.length > 0) {
+        try {
+          const db = await getMissionPhotoDB();
+          for (const photo of selectedPhotos) {
+            await db.deletePhoto(photo.id);
+          }
+          setSelectedPhotos([]);
+          debug.log(`업로드 완료로 ${selectedPhotos.length}장 사진 삭제`);
+        } catch (error) {
+          debug.error("사진 삭제 실패:", error);
+          // 삭제 실패해도 진행 계속
+        }
+      }
 
       // 성공 모달 표시
       setSuccessPostData({
@@ -726,46 +817,23 @@ const WritePageContent = () => {
           </>
         )}
       </div>
+
       <TextEditor
         onImageUpload={registerImage}
         onFileUpload={addAttachFile}
+        onTimestampPhotoCapture={handlePhotoCapture}
         onTitleChange={(title) =>
           setValue("title", title, { shouldDirty: true, shouldValidate: true })
         }
-        onContentChange={(content) =>
+        onContentChange={(content) => {
           setValue("content", content, {
             shouldDirty: true,
             shouldValidate: false,
-          })
-        }
+          });
+          // 에디터 내용 변경 시 사진 개수 동기화
+          syncPhotosWithEditorContent(content);
+        }}
       />
-
-      {/* Content 실시간 확인 데모 컴포넌트 */}
-      {/* <div className="fixed right-4 bottom-20 z-50 max-h-[400px] w-[400px] overflow-auto rounded-lg border-2 border-blue-500 bg-white p-4 shadow-lg">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-800">
-            Request Body Content (임시)
-          </h3>
-          <button
-            onClick={() => {
-              const content = getValues("content");
-              navigator.clipboard.writeText(content);
-              alert("Content가 클립보드에 복사되었습니다!");
-            }}
-            className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600"
-          >
-            복사
-          </button>
-        </div>
-        <div className="mb-2 text-xs text-gray-500">
-          길이: {watch("content")?.length || 0}자
-        </div>
-        <div className="rounded border border-gray-200 bg-gray-50 p-2">
-          <pre className="text-xs break-words whitespace-pre-wrap">
-            {watch("content") || "(비어있음)"}
-          </pre>
-        </div>
-      </div> */}
 
       {/* 뒤로가기 컨펌 모달 */}
       <Modal
