@@ -12,6 +12,7 @@ import {
   AlignCenter,
   AlignRight,
   Link,
+  Clock,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
@@ -21,6 +22,7 @@ import {
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { TEXT_EDITOR, getTodayPrefix } from "@/constants/shared/_text-editor";
 import { useGlobalClickOutside } from "@/hooks/shared/useGlobalClickOutside";
+import { useTimestampPhoto } from "@/hooks/shared/useTimestampPhoto";
 import type {
   TextEditorProps,
   FormatCommand,
@@ -38,7 +40,11 @@ import {
   normalizeUrl,
   elementToHtml,
   normalizeBrTags,
+  findImageNearCursor,
 } from "@/utils/shared/text-editor";
+import { TimestampGalleryPortal } from "../timestamp-gallery-portal";
+import { TimestampMenu } from "../timestamp-menu";
+import { TimestampPreviewModal } from "../timestamp-preview-modal";
 import { Typography } from "../typography";
 import { Button } from "../ui/button";
 import Icon from "../ui/icon";
@@ -54,6 +60,7 @@ const TextEditor = ({
   initialContentHtml,
   onImageUpload,
   onFileUpload,
+  onTimestampPhotoCapture,
   onTitleChange,
   onContentChange,
 }: TextEditorProps) => {
@@ -1013,6 +1020,15 @@ const TextEditor = ({
     handleContentInput();
   };
 
+  // 타임스탬프 사진 관련 로직을 커스텀 훅으로 분리
+  const timestampPhoto = useTimestampPhoto({
+    getToolbarRect,
+    clampPopoverPosition,
+    onImageUpload,
+    onTimestampPhotoCapture,
+    insertImageToEditor,
+  });
+
   /**
    * 에디터에 파일 링크 삽입
    * @param fileName - 파일명
@@ -1218,6 +1234,17 @@ const TextEditor = ({
       const textContent = contentRef.current.textContent?.trim() || "";
 
       if (hasSelection) {
+        // 선택된 요소가 이미지인지 확인
+        const selectedElement = selection.getRangeAt(0).commonAncestorContainer;
+        const isImageSelected =
+          selectedElement.nodeType === Node.ELEMENT_NODE &&
+          (selectedElement as Element).tagName === "IMG";
+
+        if (isImageSelected) {
+          // 이미지 선택 삭제: 기본 동작 허용
+          return;
+        }
+
         // 삭제 후 내용이 비어질지 확인
         const willBeEmpty = (() => {
           const selectedText = selection.toString();
@@ -1241,11 +1268,25 @@ const TextEditor = ({
           return;
         }
         // 삭제 후 비어있지 않으면 일반 동작 허용
-      } else if (textContent === "") {
-        // 빈 내용: 제목으로 이동
+      } else if (textContent === "" && contentRef.current?.innerHTML === "") {
+        // 정말 빈 내용일 때만 제목으로 이동 (이미지 등의 요소가 없어야 함)
         e.preventDefault();
         moveFocusToTitle();
         return;
+      } else {
+        // 선택이 없지만 커서가 이미지 근처에 있을 때 이미지 삭제 처리
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0 && selection.isCollapsed) {
+          const range = selection.getRangeAt(0);
+          const targetImage = findImageNearCursor(range, e.key);
+
+          if (targetImage) {
+            e.preventDefault();
+            targetImage.remove();
+            handleContentInput();
+            return;
+          }
+        }
       }
     }
 
@@ -1423,14 +1464,88 @@ const TextEditor = ({
   }, [initialContentHtml]);
 
   useGlobalClickOutside(
-    showColorPicker || showHeadingMenu || showLinkPopover,
+    showColorPicker ||
+      showHeadingMenu ||
+      showLinkPopover ||
+      timestampPhoto.showTimestampMenu,
     [
       { ref: colorPickerRef, onOutside: () => setShowColorPicker(false) },
       { ref: headingMenuRef, onOutside: () => setShowHeadingMenu(false) },
       { ref: linkPopoverRef, onOutside: () => setShowLinkPopover(false) },
+      {
+        ref: timestampPhoto.timestampMenuRef,
+        onOutside: timestampPhoto.handleTimestampMenuToggle,
+      },
     ],
     "mousedown"
   );
+
+  // 타임스탬프 메뉴가 표시될 때 위치 업데이트
+  useEffect(() => {
+    if (timestampPhoto.showTimestampMenu) {
+      // 메뉴가 표시될 때 위치 계산
+      requestAnimationFrame(() => {
+        timestampPhoto.updateTimestampMenuPosition();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timestampPhoto.showTimestampMenu]);
+
+  // 타임스탬프 갤러리가 표시될 때 위치 업데이트
+  useEffect(() => {
+    if (timestampPhoto.showTimestampGallery) {
+      requestAnimationFrame(() => {
+        timestampPhoto.updateTimestampGalleryPosition();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timestampPhoto.showTimestampGallery]);
+
+  // 타임스탬프 메뉴가 표시되는 동안 스크롤 이벤트로 위치 업데이트
+  useEffect(() => {
+    if (!timestampPhoto.showTimestampMenu) return;
+
+    const handleScroll = () => {
+      timestampPhoto.updateTimestampMenuPosition();
+    };
+
+    const handleResize = () => {
+      timestampPhoto.updateTimestampMenuPosition();
+    };
+
+    // 스크롤과 리사이즈 이벤트 리스너 추가
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timestampPhoto.showTimestampMenu]);
+
+  // 타임스탬프 갤러리가 표시되는 동안 스크롤 이벤트로 위치 업데이트
+  useEffect(() => {
+    if (!timestampPhoto.showTimestampGallery) return;
+
+    const handleScroll = () => {
+      timestampPhoto.updateTimestampGalleryPosition();
+    };
+
+    const handleResize = () => {
+      timestampPhoto.updateTimestampGalleryPosition();
+    };
+
+    // 스크롤과 리사이즈 이벤트 리스너 추가
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timestampPhoto.showTimestampGallery]);
 
   const AlignIcon = alignIconMap[currentAlign] || AlignLeft;
 
@@ -1523,6 +1638,58 @@ const TextEditor = ({
               document.body
             )}
         </div>
+
+        {/* Timestamp menu */}
+        <TimestampMenu
+          ref={timestampPhoto.timestampMenuRef}
+          isOpen={timestampPhoto.showTimestampMenu}
+          position={timestampPhoto.timestampMenuPosition}
+          onCameraClick={timestampPhoto.handleTimestampCameraClick}
+          onLocalGalleryClick={timestampPhoto.handleTimestampLocalGalleryClick}
+          onUsitGalleryClick={timestampPhoto.handleTimestampGalleryClick}
+        />
+
+        {/* Timestamp gallery */}
+        <TimestampGalleryPortal
+          isOpen={timestampPhoto.showTimestampGallery}
+          position={timestampPhoto.timestampGalleryPosition}
+          onPhotoSelect={async (photos) => {
+            // 선택된 사진들을 텍스트 에디터에 삽입
+            for (const photo of photos) {
+              if (onImageUpload) {
+                try {
+                  // Blob을 File로 변환하여 clientId 발급
+                  const file = new File([photo.blob], photo.originalFileName, {
+                    type: photo.blob.type,
+                  });
+                  const clientId = await onImageUpload(file);
+
+                  // Blob URL 생성하여 이미지 삽입
+                  const blobUrl = URL.createObjectURL(photo.blob);
+                  insertImageToEditor(
+                    blobUrl,
+                    typeof clientId === "string" ? clientId : undefined
+                  );
+                } catch (error) {
+                  debug.error("타임스탬프 사진 삽입 실패:", error);
+                }
+              }
+            }
+            timestampPhoto.setShowTimestampGallery(false);
+          }}
+          onClose={() => timestampPhoto.setShowTimestampGallery(false)}
+        />
+
+        {/* Timestamp preview modal */}
+        <TimestampPreviewModal
+          isOpen={
+            timestampPhoto.showTimestampPreview &&
+            !!timestampPhoto.timestampPreviewImage
+          }
+          previewUrl={timestampPhoto.timestampPreviewUrl}
+          onConfirm={timestampPhoto.handleTimestampUpload}
+          onClose={timestampPhoto.handleTimestampCancel}
+        />
 
         {/* Format buttons */}
         <ToolbarButton
@@ -1805,6 +1972,27 @@ const TextEditor = ({
             )}
           />
         </ToolbarButton>
+
+        {/* Timestamp button */}
+        <ToolbarButton
+          ref={timestampPhoto.timestampButtonRef}
+          onClick={timestampPhoto.handleTimestampMenuToggle}
+          ariaLabel="타임스탬프 사진"
+          disabled={activeEditor === "title"}
+          onMouseDown={(e) => {
+            if (activeEditor !== "title") {
+              saveSelection();
+            }
+            e.preventDefault();
+          }}
+        >
+          <Clock
+            className={cn(
+              "size-5",
+              activeEditor === "title" ? "text-gray-300" : "text-gray-400"
+            )}
+          />
+        </ToolbarButton>
       </div>
 
       {/* Hidden file inputs */}
@@ -1823,6 +2011,23 @@ const TextEditor = ({
         className="hidden"
         onChange={handleFileChange}
         aria-label="파일 업로드"
+      />
+      <input
+        ref={timestampPhoto.timestampCameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={timestampPhoto.handleTimestampCameraCapture}
+        aria-label="타임스탬프 사진 촬영"
+      />
+      <input
+        ref={timestampPhoto.timestampGalleryInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={timestampPhoto.handleTimestampLocalGallerySelect}
+        aria-label="타임스탬프 로컬 갤러리 선택"
       />
 
       {/* Editor Content Container */}
