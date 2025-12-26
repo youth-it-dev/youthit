@@ -52,6 +52,7 @@
     "react-notion-x": "7.7.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
+    "uuid": "^13.0.0",
     "workbox-webpack-plugin": "^7.3.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.8"
