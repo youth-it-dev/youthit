@@ -29,8 +29,16 @@ class PhotoDB {
       const request = indexedDB.open(DB_CONFIG.NAME, DB_CONFIG.VERSION);
 
       request.onerror = () => {
-        debug.error("IndexedDB 초기화 실패:", request.error);
-        reject(new Error("IndexedDB를 초기화할 수 없습니다"));
+        const error = request.error;
+        debug.error("IndexedDB 초기화 실패:", error);
+
+        // VersionError인 경우 데이터베이스를 삭제하고 다시 시도
+        if (error && error.name === "VersionError") {
+          debug.log("IndexedDB 버전 충돌 감지, 데이터베이스 삭제 후 재시도");
+          this.deleteAndRetry().then(resolve).catch(reject);
+        } else {
+          reject(new Error("IndexedDB를 초기화할 수 없습니다"));
+        }
       };
 
       request.onsuccess = () => {
@@ -58,6 +66,34 @@ class PhotoDB {
         });
 
         debug.log("IndexedDB 스토어 생성 완료");
+      };
+    });
+  }
+
+  /**
+   * 데이터베이스 삭제 후 재시도
+   */
+  private deleteAndRetry(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const deleteRequest = indexedDB.deleteDatabase(DB_CONFIG.NAME);
+
+      deleteRequest.onsuccess = () => {
+        debug.log("IndexedDB 데이터베이스 삭제 완료, 재초기화 시도");
+        // 삭제 후 다시 초기화
+        this.init().then(resolve).catch(reject);
+      };
+
+      deleteRequest.onerror = () => {
+        debug.error("IndexedDB 데이터베이스 삭제 실패:", deleteRequest.error);
+        reject(new Error("IndexedDB를 재초기화할 수 없습니다"));
+      };
+
+      deleteRequest.onblocked = () => {
+        debug.warn("IndexedDB 삭제가 차단됨 - 다른 연결이 열려있음");
+        // 잠시 후 다시 시도
+        setTimeout(() => {
+          this.deleteAndRetry().then(resolve).catch(reject);
+        }, 100);
       };
     });
   }
@@ -321,6 +357,13 @@ export const isStorageAvailable = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     debug.error("저장소 사용 불가:", error);
+
+    // IndexedDB 초기화 실패 시 인스턴스 클리어하여 재시도 가능하도록 함
+    if (error instanceof Error && error.message.includes("IndexedDB")) {
+      dbInstance = null;
+      dbInstancePromise = null;
+    }
+
     return false;
   }
 };
