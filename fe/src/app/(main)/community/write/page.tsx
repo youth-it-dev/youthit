@@ -44,7 +44,7 @@ import {
 import { uploadFileQueue } from "@/utils/community/upload-utils";
 import { getCurrentDateTime } from "@/utils/shared/date";
 import { debug } from "@/utils/shared/debugger";
-import { getMissionPhotoDB } from "@/utils/shared/indexed-db";
+import { getPhotoDB } from "@/utils/shared/indexed-db";
 import {
   extractTextFromHtml,
   checkPostTextLength,
@@ -546,7 +546,7 @@ const WritePageContent = () => {
       // IndexedDB에서 사용된 사진들 삭제
       if (selectedPhotos.length > 0) {
         try {
-          const db = await getMissionPhotoDB();
+          const db = await getPhotoDB();
           for (const photo of selectedPhotos) {
             await db.deletePhoto(photo.id);
           }
