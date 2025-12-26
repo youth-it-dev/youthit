@@ -159,7 +159,51 @@ class NotionRewardHistoryService {
       // 2. Notion에 있는 기존 리워드 히스토리 목록 가져오기 (중복 체크용)
       const notionRewardHistories = await this.getNotionRewardHistories(this.notionRewardHistoryDB);
 
-      // 3. Notion 회원 관리 DB에서 전체 사용자 정보 미리 조회 (성능 개선)
+      // 3. Firestore에서 사용자 정보 미리 조회 (사용자 ID, 이름, 닉네임)
+      const userIds = new Set();
+      rewardsHistorySnapshot.docs.forEach((doc) => {
+        const pathParts = doc.ref.path.split('/');
+        const userId = pathParts[1];
+        if (userId) {
+          userIds.add(userId);
+        }
+      });
+
+      let firestoreUsersMap = {};
+      try {
+        const uniqueUserIds = Array.from(userIds);
+        console.log(`[성능 개선] ${uniqueUserIds.length}명의 사용자 정보를 Firestore에서 조회합니다.`);
+
+        // Firestore 'in' 쿼리는 최대 10개만 지원하므로 청크로 나누어 처리
+        const chunks = [];
+        for (let i = 0; i < uniqueUserIds.length; i += 10) {
+          chunks.push(uniqueUserIds.slice(i, i + 10));
+        }
+
+        const userResults = await Promise.all(
+          chunks.map(async (chunk) => {
+            const userDocs = await db.collection('users')
+              .where('__name__', 'in', chunk)
+              .get();
+            return userDocs.docs;
+          })
+        );
+
+        userResults.flat().forEach((userDoc) => {
+          const userData = userDoc.data();
+          firestoreUsersMap[userDoc.id] = {
+            userId: userDoc.id,
+            name: userData.name || '',
+            nickname: userData.nickname || '',
+          };
+        });
+
+        console.log(`[성능 개선] ${Object.keys(firestoreUsersMap).length}명의 사용자 정보를 Firestore에서 조회했습니다.`);
+      } catch (error) {
+        console.warn(`[WARN] Firestore 사용자 정보 조회 실패:`, error.message);
+      }
+
+      // 4. Notion 회원 관리 DB에서 전체 사용자 정보 미리 조회 (성능 개선)
       let notionUsersMap = {};
       try {
         const userDbId = this.notionUserAccountDB;
@@ -217,9 +261,9 @@ class NotionRewardHistoryService {
             notionUsersMap[userId] = { pageId: page.id };
           }
         }
-        console.log(`[성능 개선] ${Object.keys(notionUsersMap).length}명의 사용자 정보를 미리 조회했습니다.`);
+        console.log(`[성능 개선] ${Object.keys(notionUsersMap).length}명의 Notion 사용자 정보를 미리 조회했습니다.`);
       } catch (error) {
-        console.warn(`[WARN] 사용자 정보 미리 조회 실패:`, error.message);
+        console.warn(`[WARN] Notion 사용자 정보 미리 조회 실패:`, error.message);
       }
 
       let syncedCount = 0;
@@ -227,7 +271,7 @@ class NotionRewardHistoryService {
       const syncedHistoryIds = [];
       const failedHistoryIds = [];
 
-      // 4. 배치 처리로 Notion에 동기화
+      // 5. 배치 처리로 Notion에 동기화
       for (let i = 0; i < rewardsHistorySnapshot.docs.length; i += BATCH_SIZE) {
         const batch = rewardsHistorySnapshot.docs.slice(i, i + BATCH_SIZE);
         console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(rewardsHistorySnapshot.docs.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, rewardsHistorySnapshot.docs.length)}번째)`);
@@ -251,6 +295,9 @@ class NotionRewardHistoryService {
 
             // Notion 회원 관리 DB에서 사용자 pageId 조회
             const notionUser = notionUsersMap[userId] || null;
+
+            // Firestore에서 사용자 정보 조회
+            const firestoreUser = firestoreUsersMap[userId] || null;
 
             // 리워드 타입 결정
             let rewardTypeRelation = [];
@@ -306,6 +353,19 @@ class NotionRewardHistoryService {
             if (notionUser && notionUser.pageId) {
               notionPage['회원'] = {
                 relation: [{ id: notionUser.pageId }]
+              };
+            }
+
+            // 사용자 ID, 이름, 닉네임 필드 추가
+            if (firestoreUser) {
+              notionPage['사용자 ID'] = {
+                rich_text: firestoreUser.userId ? [{ text: { content: firestoreUser.userId } }] : []
+              };
+              notionPage['사용자 이름'] = {
+                rich_text: firestoreUser.name ? [{ text: { content: firestoreUser.name } }] : []
+              };
+              notionPage['사용자 닉네임'] = {
+                rich_text: firestoreUser.nickname ? [{ text: { content: firestoreUser.nickname } }] : []
               };
             }
 
