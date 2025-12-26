@@ -13,6 +13,15 @@ class PhotoDB {
   private db: IDBDatabase | null = null;
 
   /**
+   * PhotoDB 인스턴스 생성 및 초기화
+   */
+  static async create(): Promise<PhotoDB> {
+    const db = new PhotoDB();
+    await db.init();
+    return db;
+  }
+
+  /**
    * 데이터베이스 초기화
    */
   init(): Promise<void> {
@@ -263,17 +272,33 @@ class PhotoDB {
 
 // 싱글톤 인스턴스
 let dbInstance: PhotoDB | null = null;
+let dbInstancePromise: Promise<PhotoDB> | null = null;
 
 /**
  * PhotoDB 인스턴스 가져오기
+ * 동시 호출 시 동일한 초기화 프로미스를 공유하여 경쟁 조건 방지
  */
-export const getPhotoDB = async (): Promise<PhotoDB> => {
-  if (!dbInstance) {
-    dbInstance = new PhotoDB();
-    await dbInstance.init();
+export async function getPhotoDB(): Promise<PhotoDB> {
+  // 이미 초기화된 인스턴스가 있으면 바로 반환
+  if (dbInstance) {
+    return dbInstance;
   }
+
+  // 초기화 중인 프로미스가 있으면 동일한 프로미스를 기다림
+  if (dbInstancePromise) {
+    return dbInstancePromise;
+  }
+
+  // 새로운 초기화 프로미스 생성 및 공유
+  dbInstancePromise = PhotoDB.create().finally(() => {
+    // 성공/실패 여부와 관계없이 프로미스 클리어
+    dbInstancePromise = null;
+  });
+
+  // 초기화 완료 대기 후 인스턴스 설정 및 반환
+  dbInstance = await dbInstancePromise;
   return dbInstance;
-};
+}
 
 /**
  * IndexedDB 지원 여부 확인
