@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/shared/useMounted";
 import type { StoredPhoto } from "@/types/shared/_photo-storage-types";
 import { TimestampGallery } from "../timestamp-gallery";
 
@@ -20,7 +21,9 @@ export const TimestampGalleryPortal = ({
   onPhotoSelect,
   onClose,
 }: TimestampGalleryPortalProps) => {
-  if (!isOpen) return null;
+  const isMounted = useMounted();
+
+  if (!isOpen || !isMounted) return null;
 
   return createPortal(
     <div
