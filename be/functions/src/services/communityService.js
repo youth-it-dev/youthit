@@ -1843,6 +1843,100 @@ class CommunityService {
           );
           await Promise.all(deletePromises);
         }
+
+        // 제거된 원본의 썸네일 찾아서 삭제
+        if (filesToDelete.length > 0) {
+          try {
+            const thumbnailsToDelete = await fileService.findThumbnailsByOriginalPaths(filesToDelete);
+            if (thumbnailsToDelete.length > 0) {
+              const thumbnailDeletePromises = thumbnailsToDelete.map(thumbnailFile => 
+                fileService.deleteFile(thumbnailFile.filePath, userId)
+              );
+              await Promise.all(thumbnailDeletePromises);
+            }
+          } catch (error) {
+            console.warn("[COMMUNITY][updatePost] 제거된 썸네일 삭제 실패:", error);
+          }
+        }
+
+        // 추가된 원본의 썸네일 찾기
+        let newThumbnailFiles = [];
+        let newThumbnailMedia = [];
+        let newThumbnailUrl = null;
+        
+        if (newFiles.length > 0) {
+          try {
+            newThumbnailFiles = await fileService.findThumbnailsByOriginalPaths(newFiles);
+            newThumbnailMedia = newThumbnailFiles.map(thumb => thumb.filePath);
+            
+            if (newThumbnailFiles.length > 0 && newThumbnailFiles[0].fileUrl) {
+              newThumbnailUrl = newThumbnailFiles[0].fileUrl;
+            }
+          } catch (error) {
+            console.warn("[COMMUNITY][updatePost] 새 썸네일 조회 실패:", error);
+          }
+        }
+
+        // 기존 썸네일 중 유지할 썸네일 찾기 (제거되지 않은 원본의 썸네일)
+        const currentThumbnailMedia = post.thumbnailMedia || [];
+        const existingThumbnailMedia = [];
+        
+        if (currentThumbnailMedia.length > 0) {
+          // 각 기존 썸네일의 originalFilePath 확인
+          const thumbnailCheckPromises = currentThumbnailMedia.map(async (thumbPath) => {
+            try {
+              const thumbFiles = await fileService.firestoreService.getWhere(
+                "filePath",
+                "==",
+                thumbPath
+              );
+              if (thumbFiles && thumbFiles.length > 0) {
+                const originalFilePath = thumbFiles[0].originalFilePath;
+                // originalFilePath가 제거 대상에 없으면 유지
+                if (originalFilePath && !filesToDelete.includes(originalFilePath)) {
+                  return thumbPath;
+                }
+              }
+              return null;
+            } catch (error) {
+              console.warn(`[COMMUNITY][updatePost] 썸네일 확인 실패 (${thumbPath}):`, error);
+              return null;
+            }
+          });
+          
+          const checkedThumbnails = await Promise.all(thumbnailCheckPromises);
+          existingThumbnailMedia.push(...checkedThumbnails.filter(thumb => thumb !== null));
+        }
+
+        // 최종 썸네일 배열: 기존 유지 + 새로 추가
+        const finalThumbnailMedia = [...existingThumbnailMedia, ...newThumbnailMedia];
+        
+        // thumbnailUrl 업데이트 (첫 번째 썸네일)
+        if (finalThumbnailMedia.length > 0) {
+          try {
+            const firstThumbnailPath = finalThumbnailMedia[0];
+            const firstThumbnailFiles = await fileService.firestoreService.getWhere(
+              "filePath",
+              "==",
+              firstThumbnailPath
+            );
+            if (firstThumbnailFiles && firstThumbnailFiles.length > 0 && firstThumbnailFiles[0].fileUrl) {
+              updateData.thumbnailUrl = firstThumbnailFiles[0].fileUrl;
+            } else if (newThumbnailUrl) {
+              updateData.thumbnailUrl = newThumbnailUrl;
+            } else {
+              updateData.thumbnailUrl = post.thumbnailUrl || null;
+            }
+          } catch (error) {
+            console.warn("[COMMUNITY][updatePost] 썸네일 URL 조회 실패:", error);
+            updateData.thumbnailUrl = newThumbnailUrl || post.thumbnailUrl || null;
+          }
+        } else {
+          updateData.thumbnailUrl = null;
+        }
+
+        updateData.thumbnailMedia = finalThumbnailMedia.length > 0 ? finalThumbnailMedia : null;
+        updateData._newThumbnailFiles = newThumbnailFiles; // 트랜잭션에서 사용
         
         updateData._newFilesToAttach = validatedNewFiles;
       }
@@ -1864,6 +1958,10 @@ class CommunityService {
       const newFilesToAttach = updateData._newFilesToAttach || [];
       delete updateData._newFilesToAttach; // Firestore에 저장하지 않도록 제거
 
+      // 새로 추가된 썸네일 파일 추출 (트랜잭션에서 사용)
+      const newThumbnailFiles = updateData._newThumbnailFiles || [];
+      delete updateData._newThumbnailFiles; // Firestore에 저장하지 않도록 제거
+
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
@@ -1879,6 +1977,11 @@ class CommunityService {
         // 새로 추가된 파일 연결
         if (newFilesToAttach.length > 0) {
           fileService.attachFilesToPostInTransaction(newFilesToAttach, postId, transaction);
+        }
+
+        // 새로 추가된 썸네일 파일 isUsed 업데이트
+        if (newThumbnailFiles.length > 0) {
+          fileService.attachThumbnailsToPostInTransaction(newThumbnailFiles, postId, transaction);
         }
       });
       
@@ -1942,6 +2045,18 @@ class CommunityService {
           }
         });
         await Promise.all(deletePromises);
+      }
+
+      // 썸네일 파일 삭제
+      if (post.thumbnailMedia && Array.isArray(post.thumbnailMedia) && post.thumbnailMedia.length > 0) {
+        const thumbnailDeletePromises = post.thumbnailMedia.map(async (thumbnailPath) => {
+          try {
+            await fileService.deleteFile(thumbnailPath, userId);
+          } catch (error) {
+            console.warn(`썸네일 파일 삭제 실패 (${thumbnailPath}):`, error.message);
+          }
+        });
+        await Promise.all(thumbnailDeletePromises);
       }
 
       await this._deleteCommentsByPost(communityId, postId);
