@@ -126,6 +126,8 @@ const TextEditor = ({
   const [showNoTimestampPhotosModal, setShowNoTimestampPhotosModal] =
     useState(false);
   const [showImageSizeErrorModal, setShowImageSizeErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState<string>("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // 팝오버 뷰포트 경계 제한 상수
   const POPOVER_WIDTH = 280;
@@ -1102,13 +1104,15 @@ const TextEditor = ({
 
     // 파일 크기 검증
     if (file.size > MAX_EDITOR_IMAGE_SIZE_BYTES) {
-      setShowImageSizeErrorModal(true);
+      setErrorModalMessage("파일 크기가 너무 큽니다");
+      setShowErrorModal(true);
       return;
     }
 
     // 파일 타입 검증
     if (!file.type.startsWith("image/")) {
-      setShowImageSizeErrorModal(true);
+      setErrorModalMessage("잘못된 파일 형식입니다");
+      setShowErrorModal(true);
       return;
     }
 
@@ -1758,6 +1762,17 @@ const TextEditor = ({
           confirmText="확인"
           onClose={() => setShowImageSizeErrorModal(false)}
           onConfirm={() => setShowImageSizeErrorModal(false)}
+          variant="primary"
+        />
+
+        {/* Generic error modal */}
+        <Modal
+          isOpen={showErrorModal}
+          title="업로드 오류"
+          description={errorModalMessage}
+          confirmText="확인"
+          onClose={() => setShowErrorModal(false)}
+          onConfirm={() => setShowErrorModal(false)}
           variant="primary"
         />
 
