@@ -352,12 +352,13 @@ class FileService {
       const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
 
       // 이미지 파일인지 확인 (썸네일 생성 대상)
-      // SVG는 벡터 이미지, HEIC/HEIF는 sharp가 제대로 지원하지 않으므로 썸네일 생성 제외
       const isImageFile = validatedMimeType && validatedMimeType.startsWith("image/") && 
                          validatedMimeType !== "image/svg+xml" &&
                          validatedMimeType !== "image/heic" &&
                          validatedMimeType !== "image/heif" &&
-                         validatedMimeType !== "image/heix";
+                         validatedMimeType !== "image/heix" &&
+                         validatedMimeType !== "image/x-icon" &&
+                         validatedMimeType !== "image/vnd.microsoft.icon";
 
       const file = this.bucket.file(uniqueFileName);
 
