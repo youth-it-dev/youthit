@@ -2,6 +2,7 @@ const {admin, db, FieldValue} = require("../config/database");
 const {nanoid} = require("../utils/helpers");
 const FirestoreService = require("./firestoreService");
 const fileTypeFromBufferPromise = import("file-type").then((module) => module.fileTypeFromBuffer);
+const sharp = require("sharp");
 
 // 파일 형식 검증 관련 상수
 const ALLOWED_EXTENSIONS = [
@@ -497,8 +498,6 @@ class FileService {
    */
   async createAndUploadThumbnail(originalBuffer, originalFilePath, mimeType, userId) {
     try {
-      const sharp = require("sharp");
-
       // 썸네일 생성 (300x300, fit: inside, quality: 80)
       const thumbnailBuffer = await sharp(originalBuffer)
         .resize(300, 300, {
@@ -509,11 +508,13 @@ class FileService {
         .toBuffer();
 
       // 썸네일 파일 경로 생성
+      // 첫 번째 폴더명을 "thumbnails"로 교체 (예: "files/user123/image.jpg" -> "thumbnails/user123/image.jpg")
       const pathParts = originalFilePath.split("/");
       const fileName = pathParts[pathParts.length - 1];
-      const folderParts = pathParts.slice(0, -1);
-      const thumbnailFolder = folderParts.join("/").replace(/^files\//, "thumbnails/");
-      const thumbnailFileName = `${thumbnailFolder}/${fileName}`;
+      if (pathParts.length > 1) {
+        pathParts[0] = "thumbnails";
+      }
+      const thumbnailFileName = pathParts.join("/");
 
       // 썸네일 파일 업로드
       const thumbnailFile = this.bucket.file(thumbnailFileName);
