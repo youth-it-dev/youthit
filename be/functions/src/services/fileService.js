@@ -1031,6 +1031,67 @@ class FileService {
   }
 
   /**
+   * 원본 파일 경로 배열로 썸네일 파일 찾기
+   * @param {Array<string>} originalFilePaths - 원본 파일 경로 배열
+   * @returns {Promise<Array<Object>>} 썸네일 파일 문서 배열
+   */
+  async findThumbnailsByOriginalPaths(originalFilePaths) {
+    if (!Array.isArray(originalFilePaths) || originalFilePaths.length === 0) {
+      return [];
+    }
+
+    try {
+      const thumbnailPromises = originalFilePaths.map(async (originalPath) => {
+        try {
+          const thumbnails = await this.firestoreService.getWhere(
+            "originalFilePath",
+            "==",
+            originalPath
+          );
+          
+          // 첫 번째 썸네일만 반환 (일반적으로 1개)
+          return thumbnails && thumbnails.length > 0 ? thumbnails[0] : null;
+        } catch (error) {
+          console.error(`썸네일 조회 실패 (originalPath: ${originalPath}):`, error);
+          return null;
+        }
+      });
+
+      const thumbnails = await Promise.all(thumbnailPromises);
+      return thumbnails.filter(thumbnail => thumbnail !== null);
+    } catch (error) {
+      console.error("썸네일 조회 중 오류:", error);
+      return [];
+    }
+  }
+
+  /**
+   * 썸네일 파일들을 게시글에 연결 (isUsed만 업데이트)
+   * @param {Array<Object>} thumbnailFiles - 썸네일 파일 문서 배열
+   * @param {string} postId - 게시글 ID
+   * @param {Object} transaction - Firestore 트랜잭션
+   */
+  attachThumbnailsToPostInTransaction(thumbnailFiles, postId, transaction) {
+    if (!thumbnailFiles || thumbnailFiles.length === 0) {
+      return;
+    }
+
+    if (!postId) {
+      const error = new Error("게시글 ID가 필요합니다");
+      error.code = "BAD_REQUEST";
+      throw error;
+    }
+
+    thumbnailFiles.forEach((thumbnailFile) => {
+      const thumbnailRef = db.collection("files").doc(thumbnailFile.id);
+      transaction.update(thumbnailRef, {
+        isUsed: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  /**
    * 파일 삭제
    * @param {string} fileName - Cloud Storage 내 파일명 (경로 포함)
    * @param {string} userId - 요청한 사용자 ID (소유자 확인용)
