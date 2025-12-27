@@ -2025,7 +2025,7 @@ class CommunityService {
           }
           
           if (Object.keys(authoredPostUpdate).length > 0) {
-            transaction.update(authoredPostRef, authoredPostUpdate);
+            transaction.set(authoredPostRef, authoredPostUpdate, { merge: true });
           }
         }
       });
