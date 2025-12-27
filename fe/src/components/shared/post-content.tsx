@@ -31,6 +31,7 @@ export const PostContent = ({ content, className }: PostContentProps) => {
         "[&_span[data-heading='2']]:text-[16px] [&_span[data-heading='2']]:leading-snug [&_span[data-heading='2']]:font-bold",
         "[&_span[data-heading='3']]:text-[16px] [&_span[data-heading='3']]:leading-snug [&_span[data-heading='3']]:font-medium",
         "[&_span[data-heading='4']]:text-[14px] [&_span[data-heading='4']]:leading-snug [&_span[data-heading='4']]:font-medium",
+        "[&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-full [&_img]:rounded-lg",
         className
       )}
       dangerouslySetInnerHTML={{ __html: content }}
