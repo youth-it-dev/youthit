@@ -1945,6 +1945,24 @@ class CommunityService {
         updateData._newThumbnailFiles = newThumbnailFiles; // 트랜잭션에서 사용
         
         updateData._newFilesToAttach = validatedNewFiles;
+        
+        let newOriginalImageUrl = null;
+        if (requestedMedia.length > 0) {
+          try {
+            const firstMediaPath = requestedMedia[0];
+            const originalFiles = await fileService.firestoreService.getWhere(
+              "filePath",
+              "==",
+              firstMediaPath
+            );
+            if (originalFiles && originalFiles.length > 0 && originalFiles[0].fileUrl) {
+              newOriginalImageUrl = originalFiles[0].fileUrl;
+            }
+          } catch (error) {
+            console.warn("[COMMUNITY][updatePost] 원본 이미지 URL 조회 실패:", error);
+          }
+        }
+        updateData._originalImageUrl = newOriginalImageUrl;
       }
 
       const needsPreviewUpdate = 
@@ -1967,13 +1985,16 @@ class CommunityService {
       // 새로 추가된 썸네일 파일 추출 (트랜잭션에서 사용)
       const newThumbnailFiles = updateData._newThumbnailFiles || [];
       delete updateData._newThumbnailFiles; // Firestore에 저장하지 않도록 제거
+      
+      const originalImageUrl = updateData._originalImageUrl;
+      delete updateData._originalImageUrl;
 
       const updatedData = {
         ...updateData,
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      // 트랜잭션으로 게시글 업데이트 + 새 파일 연결
+      // 트랜잭션으로 게시글 업데이트 + 새 파일 연결 + authoredPosts 업데이트
       await this.firestoreService.runTransaction(async (transaction) => {
         const postRef = this.firestoreService.db
           .collection(`communities/${communityId}/posts`)
@@ -1988,6 +2009,24 @@ class CommunityService {
         // 새로 추가된 썸네일 파일 isUsed 업데이트
         if (newThumbnailFiles.length > 0) {
           fileService.attachThumbnailsToPostInTransaction(newThumbnailFiles, postId, transaction);
+        }
+        
+        if (Object.prototype.hasOwnProperty.call(updateData, "thumbnailUrl") || originalImageUrl !== undefined) {
+          const authoredPostRef = this.firestoreService.db
+            .collection(`users/${userId}/authoredPosts`)
+            .doc(postId);
+          
+          const authoredPostUpdate = {};
+          if (Object.prototype.hasOwnProperty.call(updateData, "thumbnailUrl")) {
+            authoredPostUpdate.thumbnailUrl = updateData.thumbnailUrl;
+          }
+          if (originalImageUrl !== undefined) {
+            authoredPostUpdate.originalImageUrl = originalImageUrl;
+          }
+          
+          if (Object.keys(authoredPostUpdate).length > 0) {
+            transaction.update(authoredPostRef, authoredPostUpdate);
+          }
         }
       });
       
