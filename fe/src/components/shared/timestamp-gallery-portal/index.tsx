@@ -10,6 +10,7 @@ interface TimestampGalleryPortalProps {
   position: { top: number; left: number };
   onPhotoSelect: (photos: StoredPhoto[]) => void;
   onClose: () => void;
+  onNoPhotos?: () => void;
 }
 
 /**
@@ -20,6 +21,7 @@ export const TimestampGalleryPortal = ({
   position,
   onPhotoSelect,
   onClose,
+  onNoPhotos,
 }: TimestampGalleryPortalProps) => {
   const isMounted = useMounted();
 
@@ -33,7 +35,14 @@ export const TimestampGalleryPortal = ({
         left: `${position.left}px`,
       }}
     >
-      <TimestampGallery onPhotoSelect={onPhotoSelect} onClose={onClose} />
+      <TimestampGallery
+        onPhotoSelect={onPhotoSelect}
+        onClose={onClose}
+        onNoPhotos={() => {
+          onNoPhotos?.();
+          onClose();
+        }}
+      />
     </div>,
     document.body
   );

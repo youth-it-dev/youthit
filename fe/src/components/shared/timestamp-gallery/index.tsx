@@ -7,6 +7,7 @@ import type { StoredPhoto } from "@/types/shared/_photo-storage-types";
 interface TimestampGalleryProps {
   onPhotoSelect: (photos: StoredPhoto[]) => void;
   onClose: () => void;
+  onNoPhotos?: () => void;
 }
 
 /**
@@ -15,6 +16,7 @@ interface TimestampGalleryProps {
 export const TimestampGallery = ({
   onPhotoSelect,
   onClose,
+  onNoPhotos,
 }: TimestampGalleryProps) => {
   const [selectedPhoto, setSelectedPhoto] = useState<StoredPhoto | null>(null);
   const { photos, isLoading, isStorageAvailable, error } = useStoredPhotos();
@@ -35,6 +37,13 @@ export const TimestampGallery = ({
       photoUrls.forEach(({ url }) => URL.revokeObjectURL(url));
     };
   }, [photoUrls]);
+
+  // 사진이 없는 경우 콜백 호출
+  useEffect(() => {
+    if (!isLoading && photos.length === 0 && onNoPhotos) {
+      onNoPhotos();
+    }
+  }, [isLoading, photos.length, onNoPhotos]);
 
   const handlePhotoSelect = (photo: StoredPhoto) => {
     setSelectedPhoto(photo);
@@ -63,11 +72,7 @@ export const TimestampGallery = ({
   }
 
   if (photos.length === 0) {
-    return (
-      <div className="py-4 text-center text-gray-500">
-        저장된 타임스탬프 사진이 없습니다
-      </div>
-    );
+    return <div className="py-4 text-center text-gray-500">로딩 중...</div>;
   }
 
   return (
@@ -105,7 +110,7 @@ export const TimestampGallery = ({
               <img
                 src={photo.url}
                 alt={photo.originalFileName}
-                className="h-full w-full object-cover"
+                className="h-full w-full max-w-full object-contain"
               />
               {isSelected && (
                 <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
