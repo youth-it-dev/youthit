@@ -4,7 +4,6 @@ const FirestoreService = require("./firestoreService");
 const fileTypeFromBufferPromise = import("file-type").then((module) => module.fileTypeFromBuffer);
 const sharp = require("sharp");
 
-// 파일 형식 검증 관련 상수
 const ALLOWED_EXTENSIONS = [
   "jpg", "jpeg", "png", "gif", "webp", "svg", "pdf", "heic", "heif", "heix", "avif", "bmp", "tiff", "tif", "ico"
 ];
