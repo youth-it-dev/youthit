@@ -351,6 +351,14 @@ class FileService {
       const randomFolder = nanoid(12);
       const uniqueFileName = `${folder}/${randomFolder}/${baseName}_${uniqueId}.${fileExtension}`;
 
+      // 이미지 파일인지 확인 (썸네일 생성 대상)
+      // SVG는 벡터 이미지, HEIC/HEIF는 sharp가 제대로 지원하지 않으므로 썸네일 생성 제외
+      const isImageFile = validatedMimeType && validatedMimeType.startsWith("image/") && 
+                         validatedMimeType !== "image/svg+xml" &&
+                         validatedMimeType !== "image/heic" &&
+                         validatedMimeType !== "image/heif" &&
+                         validatedMimeType !== "image/heix";
+
       const file = this.bucket.file(uniqueFileName);
 
       const writeStream = file.createWriteStream({
@@ -398,8 +406,9 @@ class FileService {
               path: uniqueFileName,
             };
 
+            let originalFileDocId = null;
             try {
-              await this.createFileDocument(
+              const fileDocResult = await this.createFileDocument(
                 {
                   filePath: uniqueFileName,
                   fileUrl: publicUrl,
@@ -409,6 +418,8 @@ class FileService {
                 },
                 userId
               );
+              originalFileDocId = fileDocResult.id;
+              console.log(`[FILE_UPLOAD] 원본 파일 문서 생성 완료: ${originalFileDocId} (${uniqueFileName})`);
             } catch (docError) {
               console.error("파일 문서 생성 실패 (Storage 업로드는 성공):", docError);
               try {
@@ -418,6 +429,29 @@ class FileService {
               }
               reject(new Error(`파일 메타데이터 저장 중 오류가 발생했습니다: ${docError.message}`));
               return;
+            }
+
+            // 이미지 파일인 경우 썸네일 생성 및 업로드
+            let thumbnailResult = null;
+            if (isImageFile) {
+              try {
+                thumbnailResult = await this.createAndUploadThumbnail(
+                  fullBuffer,
+                  uniqueFileName,
+                  validatedMimeType,
+                  userId
+                );
+              } catch (thumbnailError) {
+                // 썸네일 생성 실패해도 원본 업로드는 성공으로 처리 (로그만 남김)
+                console.error(`썸네일 생성 실패 (원본 파일은 업로드됨): ${uniqueFileName}`, thumbnailError);
+              }
+            }
+
+            // 응답에 썸네일 정보 포함 (있을 경우)
+            if (thumbnailResult) {
+              uploadResult.thumbnailUrl = thumbnailResult.fileUrl;
+              uploadResult.thumbnailFileName = thumbnailResult.filePath;
+              uploadResult.thumbnailSize = thumbnailResult.size;
             }
 
             resolve(uploadResult);
@@ -450,6 +484,97 @@ class FileService {
         success: false,
         error: error.message || "파일 업로드 중 오류가 발생했습니다",
       };
+    }
+  }
+
+  /**
+   * 썸네일 생성 및 업로드
+   * @param {Buffer} originalBuffer - 원본 이미지 버퍼
+   * @param {string} originalFilePath - 원본 파일 경로
+   * @param {string} mimeType - MIME 타입
+   * @param {string} userId - 사용자 ID
+   * @returns {Promise<Object>} 썸네일 업로드 결과
+   */
+  async createAndUploadThumbnail(originalBuffer, originalFilePath, mimeType, userId) {
+    try {
+      const sharp = require("sharp");
+
+      // 썸네일 생성 (300x300, fit: inside, quality: 80)
+      const thumbnailBuffer = await sharp(originalBuffer)
+        .resize(300, 300, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+
+      // 썸네일 파일 경로 생성
+      const pathParts = originalFilePath.split("/");
+      const fileName = pathParts[pathParts.length - 1];
+      const folderParts = pathParts.slice(0, -1);
+      const thumbnailFolder = folderParts.join("/").replace(/^files\//, "thumbnails/");
+      const thumbnailFileName = `${thumbnailFolder}/${fileName}`;
+
+      // 썸네일 파일 업로드
+      const thumbnailFile = this.bucket.file(thumbnailFileName);
+      const thumbnailWriteStream = thumbnailFile.createWriteStream({
+        metadata: {
+          contentType: "image/jpeg",
+          metadata: {
+            originalFileName: fileName,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: userId || "anonymous",
+          },
+        },
+        resumable: false,
+        validation: false,
+        public: true,
+      });
+
+      const thumbnailUploadPromise = new Promise((resolve, reject) => {
+        thumbnailWriteStream.on("error", (error) => {
+          console.error("썸네일 업로드 스트림 오류:", error);
+          reject(new Error(`썸네일 업로드 중 오류가 발생했습니다: ${error.message}`));
+        });
+
+        thumbnailWriteStream.on("finish", async () => {
+          try {
+            const [meta] = await thumbnailFile.getMetadata();
+            const thumbnailSize = Number(meta.size) || thumbnailBuffer.length;
+            const thumbnailUrl = `https://storage.googleapis.com/${this.bucket.name}/${thumbnailFileName}`;
+
+            // 썸네일 문서 생성
+            const thumbnailDocResult = await this.createFileDocument(
+              {
+                filePath: thumbnailFileName,
+                fileUrl: thumbnailUrl,
+                originalFileName: fileName,
+                mimeType: "image/jpeg",
+                size: thumbnailSize,
+                originalFilePath: originalFilePath, // 원본 파일 경로 연결
+                isUsed: false, // 게시글 연결 시 true로 변경됨
+              },
+              userId
+            );
+
+            console.log(`[FILE_UPLOAD] 썸네일 파일 문서 생성 완료: ${thumbnailDocResult.id} (${thumbnailFileName})`);
+
+            resolve({
+              filePath: thumbnailFileName,
+              fileUrl: thumbnailUrl,
+              size: thumbnailSize,
+            });
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      thumbnailWriteStream.end(thumbnailBuffer);
+      return await thumbnailUploadPromise;
+    } catch (error) {
+      console.error("썸네일 생성/업로드 오류:", error);
+      throw error;
     }
   }
 
@@ -583,7 +708,7 @@ class FileService {
    */
   async createFileDocument(fileData, userId) {
     try {
-      const {filePath, fileUrl, originalFileName, mimeType, size} = fileData;
+      const {filePath, fileUrl, originalFileName, mimeType, size, originalFilePath, isUsed} = fileData;
 
       if (!filePath) {
         const error = new Error("파일 경로가 필요합니다");
@@ -605,9 +730,14 @@ class FileService {
         size: size || 0,
         uploadedBy: userId,
         attachedTo: null,
-        isUsed: false,
+        isUsed: isUsed !== undefined ? isUsed : false,
         createdAt: FieldValue.serverTimestamp(),
       };
+
+      // 썸네일인 경우 originalFilePath 추가
+      if (originalFilePath) {
+        fileDoc.originalFilePath = originalFilePath;
+      }
 
       const result = await this.firestoreService.create(fileDoc);
       return result;

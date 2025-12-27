@@ -461,6 +461,21 @@ const options = {
                             description: "파일 경로",
                             example: "files/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
                           },
+                          thumbnailUrl: {
+                            type: "string",
+                            description: "썸네일 이미지 URL (이미지 파일인 경우에만 존재)",
+                            example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
+                          },
+                          thumbnailFileName: {
+                            type: "string",
+                            description: "썸네일 파일 경로 (이미지 파일인 경우에만 존재)",
+                            example: "thumbnails/yzNfPCrnmwbqMV7ryNaAhQITjcC2/qr_ZFC_nDZJL_Fv.png",
+                          },
+                          thumbnailSize: {
+                            type: "number",
+                            description: "썸네일 파일 크기 (바이트, 이미지 파일인 경우에만 존재)",
+                            example: 45678,
+                          },
                         },
                       },
                     },
