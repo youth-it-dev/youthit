@@ -3,6 +3,8 @@
 import { forwardRef } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/hooks/shared/useMounted";
+import { cn } from "@/utils/shared/cn";
+import { isMobileDevice } from "@/utils/shared/device";
 
 interface TimestampMenuProps {
   isOpen: boolean;
@@ -27,6 +29,7 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
     ref
   ) => {
     const isMounted = useMounted();
+    const isMobile = isMobileDevice();
 
     if (!isOpen || !isMounted) return null;
 
@@ -41,8 +44,17 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
       >
         <button
           type="button"
-          className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-          onClick={onCameraClick}
+          className={cn(
+            "flex w-full items-center gap-2 px-3 py-2 text-left",
+            isMobile
+              ? "hover:bg-gray-50"
+              : "cursor-not-allowed text-gray-400 opacity-50"
+          )}
+          onClick={isMobile ? onCameraClick : undefined}
+          disabled={!isMobile}
+          aria-label={
+            isMobile ? "사진 촬영" : "사진 촬영 (PC에서는 지원하지 않습니다)"
+          }
         >
           <span className="text-sm">사진 촬영</span>
         </button>
