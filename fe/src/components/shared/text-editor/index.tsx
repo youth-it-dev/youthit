@@ -20,6 +20,10 @@ import {
   ACCEPT_IMAGE_EXTENSIONS,
 } from "@/constants/community/_write-constants";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
+import {
+  MAX_EDITOR_IMAGE_SIZE_BYTES,
+  FILE_UPLOAD_MESSAGES,
+} from "@/constants/shared/_photo-storage";
 import { TEXT_EDITOR, getTodayPrefix } from "@/constants/shared/_text-editor";
 import { useGlobalClickOutside } from "@/hooks/shared/useGlobalClickOutside";
 import { useMounted } from "@/hooks/shared/useMounted";
@@ -34,6 +38,7 @@ import type {
 } from "@/types/shared/text-editor";
 import { cn } from "@/utils/shared/cn";
 import { debug } from "@/utils/shared/debugger";
+import { getCameraCaptureValue, isIOSDevice } from "@/utils/shared/device";
 import {
   rgbToHex,
   isElementEmpty,
@@ -120,6 +125,7 @@ const TextEditor = ({
   const [showDatePrefix, setShowDatePrefix] = useState(false);
   const [showNoTimestampPhotosModal, setShowNoTimestampPhotosModal] =
     useState(false);
+  const [showImageSizeErrorModal, setShowImageSizeErrorModal] = useState(false);
 
   // 팝오버 뷰포트 경계 제한 상수
   const POPOVER_WIDTH = 280;
@@ -1081,7 +1087,30 @@ const TextEditor = ({
 
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      // input 초기화
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+      return;
+    }
+
+    // input 초기화 (에러 발생 시에도 정리하기 위해 먼저 실행)
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+
+    // 파일 크기 검증
+    if (file.size > MAX_EDITOR_IMAGE_SIZE_BYTES) {
+      setShowImageSizeErrorModal(true);
+      return;
+    }
+
+    // 파일 타입 검증
+    if (!file.type.startsWith("image/")) {
+      setShowImageSizeErrorModal(true);
+      return;
+    }
 
     try {
       // 즉시 업로드는 하지 않고, clientId만 발급 받아 data-client-id로 심어 둠
@@ -1094,10 +1123,9 @@ const TextEditor = ({
 
       const previewUrl = URL.createObjectURL(file);
       insertImageToEditor(previewUrl, clientId);
-    } finally {
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
+    } catch (error) {
+      debug.error("이미지 업로드 실패:", error);
+      setShowImageSizeErrorModal(true);
     }
   };
 
@@ -1722,6 +1750,33 @@ const TextEditor = ({
           variant="primary"
         />
 
+        {/* Image size error modal */}
+        <Modal
+          isOpen={showImageSizeErrorModal}
+          title="이미지 크기 초과"
+          description={FILE_UPLOAD_MESSAGES.SIZE_EXCEEDED(5)}
+          confirmText="확인"
+          onClose={() => setShowImageSizeErrorModal(false)}
+          onConfirm={() => setShowImageSizeErrorModal(false)}
+          variant="primary"
+        />
+
+        {/* Camera error modal */}
+        <Modal
+          isOpen={timestampPhoto.showCameraErrorModal}
+          title="카메라 촬영 실패"
+          description={timestampPhoto.cameraErrorMessage}
+          cancelText="취소"
+          confirmText="갤러리에서 선택"
+          onClose={timestampPhoto.handleCameraErrorModalClose}
+          onConfirm={() => {
+            timestampPhoto.handleCameraErrorModalClose();
+            // 갤러리 선택으로 폴백
+            timestampPhoto.handleTimestampLocalGalleryClick();
+          }}
+          variant="primary"
+        />
+
         {/* Format buttons */}
         <ToolbarButton
           onClick={() => handleFormat("bold")}
@@ -2048,16 +2103,22 @@ const TextEditor = ({
       <input
         ref={timestampPhoto.timestampCameraInputRef}
         type="file"
-        accept="image/*"
-        capture="environment"
+        accept={ACCEPT_IMAGE_EXTENSIONS}
+        capture={getCameraCaptureValue()}
         className="hidden"
         onChange={timestampPhoto.handleTimestampCameraCapture}
-        aria-label="타임스탬프 사진 촬영"
+        aria-label="카메라로 사진 촬영"
+        {...(typeof window !== "undefined" && isIOSDevice()
+          ? {
+              // iOS Safari에서는 capture 속성으로 인한 문제를 방지하기 위해 추가 속성
+              style: { WebkitAppearance: "none" },
+            }
+          : {})}
       />
       <input
         ref={timestampPhoto.timestampGalleryInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGE_EXTENSIONS}
         className="hidden"
         onChange={timestampPhoto.handleTimestampLocalGallerySelect}
         aria-label="타임스탬프 로컬 갤러리 선택"
