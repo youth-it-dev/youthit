@@ -1121,6 +1121,20 @@ class UserService {
       };
 
       processedPost.preview = post.preview || communityService.createPreview(post);
+      
+      // thumbnailUrl이 있으면 preview의 thumbnail URL을 썸네일로 교체
+      if (post.thumbnailUrl && processedPost.preview && processedPost.preview.thumbnail) {
+        processedPost.preview.thumbnail.url = post.thumbnailUrl;
+      } else if (post.thumbnailUrl && processedPost.preview) {
+        // preview에 thumbnail이 없으면 생성
+        processedPost.preview.thumbnail = {
+          url: post.thumbnailUrl,
+          width: null,
+          height: null,
+          blurHash: null,
+        };
+      }
+      
       delete processedPost.content;
       delete processedPost.media;
       delete processedPost.communityId;
