@@ -1302,6 +1302,44 @@ class CommunityService {
         isPublic = requestIsPublic;
       }
 
+      // 썸네일 찾기 (원본 파일 경로로) - 트랜잭션 전에 처리
+      let thumbnailMedia = [];
+      let thumbnailUrl = null;
+      let originalImageUrl = null;
+      let thumbnailFilesForUpdate = [];
+      
+      if (postMedia && postMedia.length > 0) {
+        try {
+          const thumbnailFiles = await fileService.findThumbnailsByOriginalPaths(postMedia);
+          thumbnailMedia = thumbnailFiles.map(thumb => thumb.filePath);
+          thumbnailFilesForUpdate = thumbnailFiles; 
+          
+          if (thumbnailFiles.length > 0 && thumbnailFiles[0].fileUrl) {
+            thumbnailUrl = thumbnailFiles[0].fileUrl;
+          }
+          
+          if (validatedFiles.length > 0 && validatedFiles[0].fileUrl) {
+            originalImageUrl = validatedFiles[0].fileUrl;
+          } else {
+            const firstMediaPath = postMedia[0];
+            try {
+              const originalFiles = await fileService.firestoreService.getWhere(
+                "filePath",
+                "==",
+                firstMediaPath
+              );
+              if (originalFiles && originalFiles.length > 0 && originalFiles[0].fileUrl) {
+                originalImageUrl = originalFiles[0].fileUrl;
+              }
+            } catch (error) {
+              console.warn("[COMMUNITY][createPost] 원본 이미지 URL 조회 실패:", error);
+            }
+          }
+        } catch (error) {
+          console.warn("[COMMUNITY][createPost] 썸네일 조회 실패 (계속 진행):", error);
+        }
+      }
+
       const newPost = {
         communityId,
         authorId: userId,
@@ -1309,6 +1347,8 @@ class CommunityService {
         title,
         content: sanitizedContent,
         media: postMedia,
+        thumbnailMedia: thumbnailMedia.length > 0 ? thumbnailMedia : null,
+        thumbnailUrl: thumbnailUrl || null,
         preview,
         type: resolvedType,
         programType: resolvedProgramType,
@@ -1341,12 +1381,24 @@ class CommunityService {
           fileService.attachFilesToPostInTransaction(validatedFiles, postRef.id, transaction);
         }
         
+        // 썸네일 파일 isUsed 업데이트 (트랜잭션 전에 조회한 파일들 사용)
+        if (thumbnailFilesForUpdate.length > 0) {
+          fileService.attachThumbnailsToPostInTransaction(
+            thumbnailFilesForUpdate,
+            postRef.id,
+            transaction
+          );
+        }
+        
         const authoredPostRef = this.firestoreService.db
           .collection(`users/${userId}/authoredPosts`)
           .doc(postRef.id);
         transaction.set(authoredPostRef, {
           postId: postRef.id,
           communityId,
+          thumbnailUrl: thumbnailUrl || null,
+          originalImageUrl: originalImageUrl || null,
+          programType: resolvedProgramType || null,
           createdAt: FieldValue.serverTimestamp(),
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
