@@ -1,11 +1,33 @@
-/**
- * 이미지에 타임스탬프를 추가하는 유틸리티 함수들
- * 미션 사진 저장용으로 최적화됨
- */
-
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { formatTimestampTwoLines } from "@/utils/shared/date";
 import { compressImage } from "@/utils/shared/image-compress";
+
+/**
+ * 타임스탬프 추가 실패 시 에러 메시지 생성
+ * @param error - 에러 객체
+ * @returns 사용자 친화적인 에러 메시지
+ */
+export const getTimestampErrorMessage = (error: unknown): string => {
+  if (!(error instanceof Error)) {
+    return "타임스탬프를 추가하는 중 오류가 발생했습니다.";
+  }
+
+  const message = error.message;
+  if (message.includes("로고 이미지")) {
+    return "로고 이미지를 불러올 수 없습니다. 네트워크 연결을 확인해주세요.";
+  }
+  if (message.includes("이미지 로드")) {
+    return "이미지를 처리할 수 없습니다. 다른 이미지를 선택해주세요.";
+  }
+  if (message.includes("Canvas")) {
+    return "이미지 처리에 실패했습니다. 브라우저를 새로고침한 후 다시 시도해주세요.";
+  }
+  if (message.includes("변환")) {
+    return "이미지 변환에 실패했습니다. 파일 형식을 확인해주세요.";
+  }
+
+  return error.message || "타임스탬프를 추가하는 중 오류가 발생했습니다.";
+};
 
 // 타임스탬프는 항상 좌측 하단, 흰색으로 고정
 
