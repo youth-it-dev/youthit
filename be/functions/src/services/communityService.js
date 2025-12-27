@@ -943,6 +943,20 @@ class CommunityService {
         processed.isReview = resolvedIsReview;
 
         processed.preview = post.preview || this.createPreview(post);
+        
+        // thumbnailUrl이 있으면 preview의 thumbnail URL을 썸네일로 교체
+        if (post.thumbnailUrl && processed.preview && processed.preview.thumbnail) {
+          processed.preview.thumbnail.url = post.thumbnailUrl;
+        } else if (post.thumbnailUrl && processed.preview) {
+          // preview에 thumbnail이 없으면 생성
+          processed.preview.thumbnail = {
+            url: post.thumbnailUrl,
+            width: null,
+            height: null,
+            blurHash: null,
+          };
+        }
+        
         processed.isPublic = resolveIsPublic(post);
 
         return processed;
@@ -1044,6 +1058,20 @@ class CommunityService {
 
       // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
       processedPost.preview = post.preview || communityService.createPreview(post);
+      
+      // thumbnailUrl이 있으면 preview의 thumbnail URL을 썸네일로 교체
+      if (post.thumbnailUrl && processedPost.preview && processedPost.preview.thumbnail) {
+        processedPost.preview.thumbnail.url = post.thumbnailUrl;
+      } else if (post.thumbnailUrl && processedPost.preview) {
+        // preview에 thumbnail이 없으면 생성
+        processedPost.preview.thumbnail = {
+          url: post.thumbnailUrl,
+          width: null,
+          height: null,
+          blurHash: null,
+        };
+      }
+      
       delete processedPost.content;
       delete processedPost.media;
       delete processedPost.communityId;
