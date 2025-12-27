@@ -172,6 +172,18 @@
   object-fit: contain;
 }
 
+/* 텍스트 에디터 이미지 스타일 (댓글 스타일 제외) */
+[contenteditable="true"] img,
+[contenteditable="true"].prose img,
+.prose[contenteditable="true"] img {
+  max-height: none !important;
+  object-fit: unset !important;
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 0.5rem !important;
+  display: block !important;
+}
+
 /* iOS PWA에서 댓글 컨테이너 최적화 */
 /* 화면 변화 시 리플로우 최소화 */
 .prose,
