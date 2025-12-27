@@ -231,3 +231,93 @@ export const isMobileDevice = (): boolean => {
     typeof window.innerWidth === "number" ? window.innerWidth : 0;
   return isMobile || (hasTouchScreen && viewportWidth <= 1024);
 };
+
+/**
+ * 브라우저별 카메라 에러 메시지를 반환
+ * @param error - 선택적 에러 객체 (에러 타입에 따른 구체적인 메시지 제공)
+ * @returns 사용자 친화적인 에러 메시지
+ */
+export const getCameraErrorMessage = (error?: unknown): string => {
+  // 에러 객체가 제공된 경우 구체적인 메시지 반환
+  if (error instanceof Error) {
+    const errorMessageLower = error.message.toLowerCase();
+    const errorNameLower = error.name.toLowerCase();
+
+    // 권한 관련 에러
+    if (
+      errorMessageLower.includes("user denied") ||
+      errorMessageLower.includes("permission denied") ||
+      errorNameLower.includes("notallowederror")
+    ) {
+      return "카메라 권한이 거부되었습니다. 브라우저 설정에서 카메라 권한을 허용해주세요.";
+    }
+
+    // 카메라 차단 에러 (권한 관련과 중복되지만 명시적으로 처리)
+    if (
+      errorMessageLower.includes("not allowed") ||
+      errorNameLower.includes("notallowederror")
+    ) {
+      return "카메라 접근이 차단되었습니다. 브라우저 설정에서 권한을 확인해주세요.";
+    }
+
+    // 카메라 없음 에러
+    if (
+      errorMessageLower.includes("notfounderror") ||
+      errorMessageLower.includes("not found") ||
+      errorNameLower.includes("notfounderror")
+    ) {
+      return "카메라를 찾을 수 없습니다. 카메라가 연결되어 있는지 확인해주세요.";
+    }
+
+    // 카메라 사용 중 에러
+    if (
+      errorMessageLower.includes("notreadableerror") ||
+      errorMessageLower.includes("not readable") ||
+      errorNameLower.includes("notreadableerror")
+    ) {
+      return "카메라를 사용할 수 없습니다. 다른 앱에서 카메라를 사용 중인지 확인해주세요.";
+    }
+  }
+
+  // 브라우저별 기본 메시지
+  if (typeof navigator === "undefined") {
+    return "카메라를 사용할 수 없습니다.";
+  }
+
+  const userAgent = navigator.userAgent || "";
+  const isIOS = isIOSDevice();
+  const isAndroid = /Android/.test(userAgent);
+
+  // iOS Safari
+  if (isIOS && userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+    return "Safari에서 카메라를 사용할 수 없습니다. 설정 > 개인정보 보호 및 보안 > 카메라 권한을 확인하거나, Chrome 브라우저를 사용해 보세요.";
+  }
+
+  // iOS Chrome
+  if (isIOS && userAgent.includes("CriOS")) {
+    return "iOS Chrome에서 카메라 권한을 허용해주세요. 설정 > 개인정보 보호 > 카메라에서 Chrome을 허용하세요.";
+  }
+
+  // Samsung Internet
+  if (userAgent.includes("SamsungBrowser")) {
+    return "삼성 인터넷에서는 카메라 접근이 제한적일 수 있습니다. Chrome 브라우저를 사용하거나 갤러리에서 사진을 선택해 보세요.";
+  }
+
+  // Android Chrome
+  if (isAndroid && userAgent.includes("Chrome")) {
+    return "Chrome에서 카메라 권한을 허용해주세요. 주소창 왼쪽의 잠금 아이콘을 터치하여 권한을 허용하세요.";
+  }
+
+  // Firefox Mobile
+  if (userAgent.includes("Firefox") && /Mobile|Tablet/.test(userAgent)) {
+    return "Firefox에서 카메라 권한을 허용해주세요. 주소창 왼쪽의 방패 아이콘을 터치하여 권한을 설정하세요.";
+  }
+
+  // 일반 모바일 브라우저
+  if (isIOS || isAndroid) {
+    return "카메라 권한을 허용해주세요. 브라우저 설정에서 카메라 접근 권한을 확인하세요.";
+  }
+
+  // 데스크톱 브라우저
+  return "카메라가 연결되어 있는지 확인해주세요. 웹캠 권한을 허용한 후 다시 시도하세요.";
+};
