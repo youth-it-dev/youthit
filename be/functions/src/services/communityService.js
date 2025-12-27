@@ -958,6 +958,9 @@ class CommunityService {
         }
         
         processed.isPublic = resolveIsPublic(post);
+        
+        // imageCount 추가 (media 배열의 길이)
+        processed.imageCount = Array.isArray(post.media) ? post.media.length : 0;
 
         return processed;
       };
@@ -1071,6 +1074,9 @@ class CommunityService {
           blurHash: null,
         };
       }
+      
+      // imageCount 추가 (media 배열의 길이)
+      processedPost.imageCount = Array.isArray(post.media) ? post.media.length : 0;
       
       delete processedPost.content;
       delete processedPost.media;

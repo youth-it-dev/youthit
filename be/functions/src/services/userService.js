@@ -1135,6 +1135,9 @@ class UserService {
         };
       }
       
+      // imageCount 추가 (media 배열의 길이, media 삭제 전에 계산)
+      processedPost.imageCount = Array.isArray(post.media) ? post.media.length : 0;
+      
       delete processedPost.content;
       delete processedPost.media;
       delete processedPost.communityId;
