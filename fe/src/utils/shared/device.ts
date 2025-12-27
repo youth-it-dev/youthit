@@ -225,11 +225,15 @@ export const isMobileDevice = (): boolean => {
     (typeof navigator.maxTouchPoints === "number" &&
       navigator.maxTouchPoints > 0);
 
-  // 모바일 OS이거나, 터치 지원 + 작은 화면 크기인 경우
-  // window.innerWidth는 모든 브라우저에서 지원 (안전하게 체크)
+  // 모바일 OS이거나, 터치 지원 + 매우 작은 화면 크기인 경우만 모바일로 판단
+  // PC의 큰 터치스크린은 제외하기 위해 768px로 제한 (태블릿 사이즈)
   const viewportWidth =
     typeof window.innerWidth === "number" ? window.innerWidth : 0;
-  return isMobile || (hasTouchScreen && viewportWidth <= 1024);
+
+  // 터치스크린이 있는 경우에도 화면 크기가 작아야 모바일로 판단
+  const isSmallTouchScreen = hasTouchScreen && viewportWidth <= 768;
+
+  return isMobile || isSmallTouchScreen;
 };
 
 /**
@@ -288,13 +292,22 @@ export const getCameraErrorMessage = (error?: unknown): string => {
   const isIOS = isIOSDevice();
   const isAndroid = /Android/.test(userAgent);
 
-  // iOS Safari
-  if (isIOS && userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+  // iOS Safari (CriOS 제외 - CriOS는 iOS Chrome)
+  if (
+    isIOS &&
+    userAgent.includes("Safari") &&
+    !userAgent.includes("Chrome") &&
+    !userAgent.includes("CriOS")
+  ) {
     return "Safari에서 카메라를 사용할 수 없습니다. 설정 > 개인정보 보호 및 보안 > 카메라 권한을 확인하거나, Chrome 브라우저를 사용해 보세요.";
   }
 
   // iOS Chrome
-  if (isIOS && userAgent.includes("CriOS")) {
+  if (
+    isIOS &&
+    (userAgent.includes("CriOS") ||
+      (userAgent.includes("Chrome") && userAgent.includes("Safari")))
+  ) {
     return "iOS Chrome에서 카메라 권한을 허용해주세요. 설정 > 개인정보 보호 > 카메라에서 Chrome을 허용하세요.";
   }
 
