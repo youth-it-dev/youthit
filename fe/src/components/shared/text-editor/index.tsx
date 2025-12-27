@@ -49,6 +49,7 @@ import { TimestampPreviewModal } from "../timestamp-preview-modal";
 import { Typography } from "../typography";
 import { Button } from "../ui/button";
 import Icon from "../ui/icon";
+import Modal from "../ui/modal";
 import { ToolbarButton } from "./toolbar-button";
 
 /**
@@ -117,6 +118,8 @@ const TextEditor = ({
   const [linkError, setLinkError] = useState<string>("");
   const linkPopoverRef = useRef<HTMLDivElement>(null);
   const [showDatePrefix, setShowDatePrefix] = useState(false);
+  const [showNoTimestampPhotosModal, setShowNoTimestampPhotosModal] =
+    useState(false);
 
   // 팝오버 뷰포트 경계 제한 상수
   const POPOVER_WIDTH = 280;
@@ -1015,7 +1018,7 @@ const TextEditor = ({
     }
 
     const clientAttr = clientId ? ` data-client-id="${clientId}"` : "";
-    const img = `<img src="${imageUrl}" alt="업로드된 이미지" class="max-w-full h-auto w-auto block mx-auto"${clientAttr} />`;
+    const img = `<div style="width: calc(100% + 2rem);"><img src="${imageUrl}" alt="업로드된 이미지" style="width: 100% !important; height: auto !important; max-height: none !important; border-radius: 0.5rem !important; display: block !important; object-fit: unset !important;"${clientAttr} /></div>`;
     const ok = document.execCommand("insertHTML", false, img);
     if (!ok && contentRef.current) {
       // execCommand 실패 시 직접 삽입 (빈 편집기 첫 삽입 등 브라우저 이슈 대비)
@@ -1668,6 +1671,7 @@ const TextEditor = ({
         <TimestampGalleryPortal
           isOpen={timestampPhoto.showTimestampGallery}
           position={timestampPhoto.timestampGalleryPosition}
+          onNoPhotos={() => setShowNoTimestampPhotosModal(true)}
           onPhotoSelect={async (photos) => {
             // 선택된 사진들을 텍스트 에디터에 삽입
             for (const photo of photos) {
@@ -1705,6 +1709,17 @@ const TextEditor = ({
           previewUrl={timestampPhoto.timestampPreviewUrl}
           onConfirm={timestampPhoto.handleTimestampUpload}
           onClose={timestampPhoto.handleTimestampCancel}
+        />
+
+        {/* No timestamp photos modal */}
+        <Modal
+          isOpen={showNoTimestampPhotosModal}
+          title="저장된 타임스탬프 사진이 없습니다"
+          description="먼저 타임스탬프 사진을 촬영하거나 저장해주세요."
+          confirmText="확인"
+          onClose={() => setShowNoTimestampPhotosModal(false)}
+          onConfirm={() => setShowNoTimestampPhotosModal(false)}
+          variant="primary"
         />
 
         {/* Format buttons */}
@@ -2113,17 +2128,18 @@ const TextEditor = ({
           contentEditable
           suppressContentEditableWarning
           className={cn(
-            "prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-img:block prose-img:mx-auto prose-a:text-blue-500 prose-a:underline prose-a:cursor-pointer prose-a:break-all prose-a:overflow-wrap-break-word w-full max-w-none overflow-x-hidden overflow-y-auto p-4 outline-none",
+            "prose prose-sm prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-a:text-blue-500 prose-a:underline prose-a:cursor-pointer prose-a:break-all prose-a:overflow-wrap-break-word w-full max-w-none overflow-x-hidden overflow-y-auto p-4 outline-none",
             "[&:empty]:before:text-sm [&:empty]:before:leading-[150%] [&:empty]:before:font-normal [&:empty]:before:text-gray-400 [&:empty]:before:content-[attr(data-placeholder)]",
             "word-break-break-word overflow-wrap-break-word break-words whitespace-pre-wrap",
             "touch-manipulation",
             "overscroll-contain",
             "[&_*]:max-w-full [&_*]:overflow-hidden [&_*]:break-words",
+            "[&_img]:!block [&_img]:!h-auto [&_img]:!w-full [&_img]:!rounded-lg",
             "[&_a]:cursor-pointer [&_a]:text-blue-500 [&_a]:underline"
           )}
           style={{
             minHeight: `${minHeight}px`,
-            maxHeight: `${minHeight}px`,
+            maxHeight: "40vh",
           }}
           onInput={handleContentInput}
           onFocus={handleContentFocus}
