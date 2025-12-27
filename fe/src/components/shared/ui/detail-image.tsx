@@ -26,7 +26,13 @@ const DetailImage = ({ imageUrl, alt, className }: DetailImageProps) => {
     <div
       className={cn("relative aspect-square w-full overflow-hidden", className)}
     >
-      <Image src={imageUrl} alt={alt} fill className="object-cover" priority />
+      <Image
+        src={imageUrl}
+        alt={alt}
+        fill
+        className="object-contain"
+        priority
+      />
     </div>
   );
 };
