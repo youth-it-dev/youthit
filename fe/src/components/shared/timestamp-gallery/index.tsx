@@ -72,7 +72,9 @@ export const TimestampGallery = ({
   }
 
   if (photos.length === 0) {
-    return <div className="py-4 text-center text-gray-500">로딩 중...</div>;
+    return (
+      <div className="py-4 text-center text-gray-500">사진이 없습니다</div>
+    );
   }
 
   return (
