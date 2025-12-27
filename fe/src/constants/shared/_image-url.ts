@@ -39,7 +39,7 @@ const ICON = {
   },
   logo: {
     youthIt: {
-      url: "/icons/logo/lg-youth-it.svg",
+      url: "/icons/logo/lg-youth-it.png",
       alt: "유스잇 로고",
     },
     kakao: {
