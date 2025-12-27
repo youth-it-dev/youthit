@@ -1395,6 +1395,29 @@ const options = {
                 },
               },
             },
+            media: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "미디어 파일 경로 목록",
+              example: ["files/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"],
+            },
+            thumbnailMedia: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              nullable: true,
+              description: "썸네일 파일 경로 목록",
+              example: ["thumbnails/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"],
+            },
+            thumbnailUrl: {
+              type: "string",
+              nullable: true,
+              description: "첫 번째 썸네일 이미지 URL",
+              example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png",
+            },
             mediaCount: {
               type: "integer",
               description: "미디어 개수",
@@ -1516,6 +1539,21 @@ const options = {
               },
               description: "미디어 파일 경로 목록",
               example: ["files/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"],
+            },
+            thumbnailMedia: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              nullable: true,
+              description: "썸네일 파일 경로 목록",
+              example: ["thumbnails/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png"],
+            },
+            thumbnailUrl: {
+              type: "string",
+              nullable: true,
+              description: "첫 번째 썸네일 이미지 URL",
+              example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png",
             },
             channel: {
               type: "string",
