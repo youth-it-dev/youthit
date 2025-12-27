@@ -106,6 +106,24 @@ const rewardHandler = require("../middleware/rewardHandler");
  *           type: integer
  *           description: 조회수
  *           example: 0
+ *         media:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: 미디어 파일 경로 목록
+ *           example: ["files/user123/image_abc123.jpg"]
+ *         thumbnailMedia:
+ *           type: array
+ *           items:
+ *             type: string
+ *           nullable: true
+ *           description: 썸네일 파일 경로 목록
+ *           example: ["thumbnails/user123/image_abc123.jpg"]
+ *         thumbnailUrl:
+ *           type: string
+ *           nullable: true
+ *           description: 첫 번째 썸네일 이미지 URL
+ *           example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -332,6 +350,9 @@ router.get("/", communityController.getCommunities);
  *                               width: 1080
  *                               height: 1080
  *                               blurHash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+ *                           media: ["files/user123/image_abc123.jpg"]
+ *                           thumbnailMedia: ["thumbnails/user123/image_abc123.jpg"]
+ *                           thumbnailUrl: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
@@ -642,6 +663,24 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                           type: boolean
  *                           description: 후기 글 여부
  *                           example: false
+ *                         media:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           description: 미디어 파일 경로 목록
+ *                           example: ["files/user123/image_abc123.jpg"]
+ *                         thumbnailMedia:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           nullable: true
+ *                           description: 썸네일 파일 경로 목록
+ *                           example: ["thumbnails/user123/image_abc123.jpg"]
+ *                         thumbnailUrl:
+ *                           type: string
+ *                           nullable: true
+ *                           description: 첫 번째 썸네일 이미지 URL
+ *                           example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
  *                         reportsCount:
  *                           type: integer
  *                           description: 신고 횟수
