@@ -1555,6 +1555,11 @@ const options = {
               description: "첫 번째 썸네일 이미지 URL",
               example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/eVyK7rI0-_PM/qr_x4WtsPDPmozu.png",
             },
+            imageCount: {
+              type: "integer",
+              description: "미디어 이미지 개수",
+              example: 3,
+            },
             channel: {
               type: "string",
               description: "채널명",

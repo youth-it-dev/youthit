@@ -124,6 +124,10 @@ const rewardHandler = require("../middleware/rewardHandler");
  *           nullable: true
  *           description: 첫 번째 썸네일 이미지 URL
  *           example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
+ *         imageCount:
+ *           type: integer
+ *           description: 미디어 이미지 개수
+ *           example: 3
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -353,6 +357,7 @@ router.get("/", communityController.getCommunities);
  *                           media: ["files/user123/image_abc123.jpg"]
  *                           thumbnailMedia: ["thumbnails/user123/image_abc123.jpg"]
  *                           thumbnailUrl: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
+ *                           imageCount: 1
  *                           channel: "TMI 자아탐색"
  *                           category: "string"
  *                           scheduledDate: "2025-10-03T17:15:04.882Z"
@@ -681,6 +686,10 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                           nullable: true
  *                           description: 첫 번째 썸네일 이미지 URL
  *                           example: "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/thumbnails/user123/image_abc123.jpg"
+ *                         imageCount:
+ *                           type: integer
+ *                           description: 미디어 이미지 개수
+ *                           example: 3
  *                         reportsCount:
  *                           type: integer
  *                           description: 신고 횟수
