@@ -177,7 +177,7 @@
 [contenteditable="true"].prose img,
 .prose[contenteditable="true"] img {
   max-height: none !important;
-  object-fit: unset !important;
+  object-fit: contain !important;
   width: 100% !important;
   height: auto !important;
   border-radius: 0.5rem !important;
