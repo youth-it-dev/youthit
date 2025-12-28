@@ -102,6 +102,38 @@ class UserService {
           newProfileImageUrl = existing.profileImageUrl || requestedProfileUrl;
         }
       } else {
+        let thumbnailFile = null;
+        try {
+          const thumbnailFiles = await fileService.findThumbnailsByOriginalPaths([requestedProfilePath]);
+          if (thumbnailFiles && thumbnailFiles.length > 0) {
+            thumbnailFile = thumbnailFiles[0];
+          }
+        } catch (thumbnailError) {
+          console.warn("[USER][updateOnboarding] 썸네일 조회 실패 (원본 사용):", thumbnailError);
+        }
+
+        if (thumbnailFile && thumbnailFile.fileUrl) {
+          newProfileImagePath = thumbnailFile.filePath;
+          newProfileImageUrl = thumbnailFile.fileUrl;
+          
+          try {
+            await fileService.firestoreService.update(thumbnailFile.id, {
+              profileOwner: uid,
+              isUsed: true,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          } catch (thumbnailUpdateError) {
+            console.error("[USER][updateOnboarding] 썸네일 파일 메타데이터 업데이트 실패", thumbnailUpdateError);
+            throw thumbnailUpdateError;
+          }
+
+          try {
+            await fileService.deleteFile(requestedProfilePath, uid);
+            console.log(`[USER][updateOnboarding] 원본 프로필 이미지 삭제 완료: ${requestedProfilePath}`);
+          } catch (deleteError) {
+            console.warn("[USER][updateOnboarding] 원본 프로필 이미지 삭제 실패 (계속 진행):", deleteError.message);
+          }
+        } else {
         newProfileImagePath = profileFileDoc.filePath;
         if (newProfileImageUrl === null || newProfileImageUrl === requestedProfileUrl) {
           newProfileImageUrl = profileFileDoc.fileUrl || profileFileDoc.url || requestedProfileUrl;
@@ -116,6 +148,7 @@ class UserService {
         } catch (fileUpdateError) {
           console.error("[USER][updateOnboarding] 프로필 파일 메타데이터 업데이트 실패", fileUpdateError);
           throw fileUpdateError;
+          }
         }
       }
     }
