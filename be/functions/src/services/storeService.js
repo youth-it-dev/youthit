@@ -60,6 +60,7 @@ const PURCHASE_FIELDS = {
   DELIVERY_COMPLETED: "지급 완료 여부",
   ORDER_DATE: "주문 완료 일시",
   REQUIRED_POINTS_ROLLUP: "필요한 나다움", // rollup 타입
+  PRODUCT_IMAGE_ROLLUP: "상품 이미지", // rollup 타입
 };
 
 /**
@@ -877,6 +878,9 @@ class StoreService {
       requiredPoints = Number(requiredPointsRollup.value);
     }
 
+    // Rollup 필드 추출 (상품 이미지) - 파일 배열
+    const productImage = getFileUrls(props[PURCHASE_FIELDS.PRODUCT_IMAGE_ROLLUP]);
+
     return {
       purchaseId: page.id,
       title: getTitleValue(props[PURCHASE_FIELDS.TITLE]),
@@ -885,6 +889,7 @@ class StoreService {
       productId: productId,
       quantity: getNumberValue(props[PURCHASE_FIELDS.QUANTITY]) || 1,
       requiredPoints: requiredPoints, // 상품의 필요한 나다움 (rollup)
+      productImage: productImage, // 상품 이미지 (rollup)
       recipientName: getTextContent(props[PURCHASE_FIELDS.RECIPIENT_NAME]),
       recipientPhone: getPhoneNumberValue(props[PURCHASE_FIELDS.RECIPIENT_PHONE]),
       deliveryCompleted: getCheckboxValue(props[PURCHASE_FIELDS.DELIVERY_COMPLETED]),
