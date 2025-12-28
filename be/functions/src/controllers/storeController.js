@@ -155,7 +155,6 @@ class StoreController {
       return res.success({
         message: "스토어 구매신청내역을 성공적으로 조회했습니다.",
         purchasesByDate: result.purchasesByDate,
-        totalCount: result.totalCount,
         pagination: {
           hasMore: result.hasMore,
           nextCursor: result.nextCursor

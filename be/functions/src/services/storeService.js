@@ -824,7 +824,6 @@ class StoreService {
 
       return {
         purchasesByDate: groupedByDate,
-        totalCount: purchases.length,
         hasMore: data.has_more,
         nextCursor: data.next_cursor,
       };
@@ -860,9 +859,10 @@ class StoreService {
   groupPurchasesByDate(purchases) {
     // orderDate 기준으로 그룹핑 (Map 사용)
     const groupMap = new Map();
+    const KST_OFFSET = 9 * 60 * 60 * 1000; // UTC+9 (한국 표준시)
 
     purchases.forEach((purchase) => {
-      // orderDate를 YYYY-MM-DD 형식으로 변환
+      // orderDate를 YYYY-MM-DD 형식으로 변환 (KST 기준)
       const orderDate = purchase.orderDate ? new Date(purchase.orderDate) : null;
       if (!orderDate || isNaN(orderDate.getTime())) {
         // 유효하지 않은 날짜는 "날짜 없음" 그룹으로
@@ -874,7 +874,10 @@ class StoreService {
         return;
       }
 
-      const dateKey = orderDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      // KST 기준 날짜로 변환
+      const kstDate = new Date(orderDate.getTime() + KST_OFFSET);
+      const dateKey = kstDate.toISOString().split('T')[0]; // YYYY-MM-DD (KST)
+      
       if (!groupMap.has(dateKey)) {
         groupMap.set(dateKey, []);
       }

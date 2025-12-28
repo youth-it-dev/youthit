@@ -624,10 +624,6 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             description: 구매신청 목록 (해당 날짜, 최신순 정렬)
  *                             items:
  *                               $ref: '#/components/schemas/StorePurchase'
- *                     totalCount:
- *                       type: integer
- *                       description: 전체 구매신청 개수
- *                       example: 10
  *                     pagination:
  *                       type: object
  *                       properties:
