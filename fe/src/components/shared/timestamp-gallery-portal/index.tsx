@@ -28,22 +28,37 @@ export const TimestampGalleryPortal = ({
   if (!isOpen || !isMounted) return null;
 
   return createPortal(
-    <div
-      className="fixed z-[10000] max-h-[calc(100vh-100px)] w-[600px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-lg border border-gray-300 bg-white p-4 shadow-2xl"
-      style={{
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-      }}
-    >
-      <TimestampGallery
-        onPhotoSelect={onPhotoSelect}
-        onClose={onClose}
-        onNoPhotos={() => {
-          onNoPhotos?.();
-          onClose();
-        }}
+    <>
+      {/* 오버레이: 뒤의 요소 클릭 방지 */}
+      <div
+        className="fixed inset-0 z-[9999] bg-black/20"
+        onClick={onClose}
+        aria-hidden="true"
       />
-    </div>,
+      {/* 갤러리 컨텐츠 */}
+      <div
+        data-timestamp-gallery
+        className="fixed z-[10000] max-h-[calc(100vh-100px)] w-full max-w-[440px] overflow-y-auto rounded-lg border border-gray-300 bg-white p-4 shadow-2xl"
+        style={{
+          top: `${position.top}px`,
+          left: `${
+            typeof window !== "undefined"
+              ? Math.max(16, Math.min(position.left, window.innerWidth - 16))
+              : position.left
+          }px`,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <TimestampGallery
+          onPhotoSelect={onPhotoSelect}
+          onClose={onClose}
+          onNoPhotos={() => {
+            onClose();
+            onNoPhotos?.();
+          }}
+        />
+      </div>
+    </>,
     document.body
   );
 };
