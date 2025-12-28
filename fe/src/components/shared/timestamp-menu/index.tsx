@@ -3,22 +3,35 @@
 import { forwardRef } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/hooks/shared/useMounted";
+import { isAndroidDevice } from "@/utils/shared/device";
 
 interface TimestampMenuProps {
   isOpen: boolean;
   position: { top: number; left: number };
   onLocalGalleryClick: () => void;
   onUsitGalleryClick: () => void;
+  onCameraClick?: () => void;
 }
 
 /**
  * @description 타임스탬프 메뉴 컴포넌트
- * 갤러리 선택 버튼으로 사진 촬영과 로컬 갤러리 선택을 모두 처리합니다.
- * iOS와 안드로이드 모두에서 capture 속성이 제거되어 사용자가 직접 선택할 수 있습니다.
+ * 플랫폼별로 최적화된 사진 선택 방식을 제공합니다.
+ * - 안드로이드: 사진 촬영과 갤러리 선택을 명확히 구분하여 제공
+ * - iOS: 시스템 기본 선택지를 활용
  */
 export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
-  ({ isOpen, position, onLocalGalleryClick, onUsitGalleryClick }, ref) => {
+  (
+    {
+      isOpen,
+      position,
+      onLocalGalleryClick,
+      onUsitGalleryClick,
+      onCameraClick,
+    },
+    ref
+  ) => {
     const isMounted = useMounted();
+    const isAndroid = isAndroidDevice();
 
     if (!isOpen || !isMounted) return null;
 
@@ -31,6 +44,16 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
           left: `${position.left}px`,
         }}
       >
+        {isAndroid && onCameraClick && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+            onClick={onCameraClick}
+            aria-label="사진 촬영"
+          >
+            <span className="text-sm">사진 촬영</span>
+          </button>
+        )}
         <button
           type="button"
           className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
