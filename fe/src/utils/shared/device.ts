@@ -87,7 +87,12 @@ export const isStandalone = (): boolean => {
 /**
  * @description 브라우저별 카메라 capture 속성 값 반환
  * 각 브라우저와 기기의 카메라 지원 상태를 고려하여 최적의 capture 값 반환
- * 2025년 12월 기준 최신 브라우저 버전 반영
+ *
+ * 참고: MDN Web Docs 및 W3C Media Capture and Streams 사양 기반
+ * - HTML input capture 속성은 모바일 브라우저에서 주로 지원됨
+ * - iOS Safari는 capture 속성 지원이 제한적 (사용자에게 카메라/갤러리 선택 제공)
+ * - Android Chrome은 capture="environment" 완벽 지원
+ *
  * @returns {"environment" | "user" | undefined} 카메라 capture 속성 값
  */
 export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
@@ -98,26 +103,26 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
   const userAgent = navigator.userAgent || "";
   const isIOS = isIOSDevice();
 
-  // iOS Safari (Safari 26.1+) - capture 속성 지원이 제한적
-  // iOS 26+에서도 여전히 capture 속성을 사용하지 않고 사용자에게 직접 선택하도록 함
+  // iOS Safari - capture 속성 지원이 제한적
+  // iOS에서는 capture 속성을 사용하지 않고 사용자에게 직접 카메라/갤러리 선택지 제공
   if (isIOS && userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
     return undefined; // capture 속성 제거하여 카메라/갤러리 선택지 제공
   }
 
   // iOS Chrome (CriOS) - iOS에서는 Safari와 동일하게 처리
-  // iOS 18.2+에서 기본 브라우저로 변경 가능하지만 동작은 동일
+  // iOS 16.4+에서 기본 브라우저로 변경 가능하지만 동작은 Safari와 동일
   if (isIOS && userAgent.includes("CriOS")) {
     return undefined; // iOS Chrome도 capture 속성 제거
   }
 
-  // Samsung Internet (최신 버전) - capture="environment"가 제대로 동작하지 않음
+  // Samsung Internet - capture="environment"가 제대로 동작하지 않음
   // 삼성 브라우저는 최신 Chromium 엔진을 사용하지만 capture 속성 지원이 불안정
   if (userAgent.includes("SamsungBrowser")) {
     return undefined; // capture 속성 제거하여 기본 카메라 앱 사용
   }
 
-  // Chrome Mobile (Android, Chrome 143+) - capture 속성 완벽 지원
-  // Android Chrome은 capture="environment"를 완벽하게 지원
+  // Chrome Mobile (Android) - capture 속성 완벽 지원
+  // Android Chrome은 capture="environment"를 완벽하게 지원 (후면 카메라 우선)
   if (userAgent.includes("Chrome") && userAgent.includes("Mobile") && !isIOS) {
     return "environment"; // 후면 카메라 우선
   }
@@ -138,8 +143,17 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
 
 /**
  * @description 카메라 API 지원 여부 확인
- * 지원 브라우저: Chrome 53+, Firefox 36+, Safari 11+, Edge 12+, Samsung Internet 4.0+
+ *
+ * 참고: MDN Web Docs 및 W3C Media Capture and Streams 사양 기반
+ * 지원 브라우저:
+ * - Chrome 53+ (Android, Desktop)
+ * - Firefox 36+ (Android, Desktop)
+ * - Safari 11+ (iOS, macOS)
+ * - Edge 12+ (Legacy), Edge 79+ (Chromium)
+ * - Samsung Internet 4.0+ (Android)
+ *
  * 구 버전 브라우저: mediaDevices 미지원 시 false 반환 (안전한 폴백)
+ *
  * @returns {boolean} 카메라 API 지원 여부
  */
 export const isCameraAPISupported = (): boolean => {
@@ -237,6 +251,27 @@ export const isMobileDevice = (): boolean => {
 };
 
 /**
+ * @description 카메라 촬영 버튼을 표시할지 여부를 결정
+ *
+ * 일관된 UX 제공: 모든 모바일 플랫폼에서 동일한 버튼을 표시
+ * - 모바일 기기이고 카메라 API를 지원하면 버튼 표시
+ * - 내부적으로는 플랫폼에 맞게 처리:
+ *   - iOS: capture 속성이 무시되지만, 사용자가 '사진 촬영' 클릭 시 iOS가 자동으로 카메라/갤러리 선택 제공
+ *   - Android: capture="environment"로 후면 카메라 직접 접근
+ *
+ * @returns {boolean} 카메라 촬영 버튼을 표시할지 여부
+ */
+export const shouldShowCameraButton = (): boolean => {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+
+  // 모바일 기기이고 카메라 API를 지원하면 버튼 표시
+  // 모든 플랫폼에서 일관된 UX 제공
+  return isMobileDevice() && isCameraAPISupported();
+};
+
+/**
  * 브라우저별 카메라 에러 메시지를 반환
  * @param error - 선택적 에러 객체 (에러 타입에 따른 구체적인 메시지 제공)
  * @returns 사용자 친화적인 에러 메시지
@@ -292,23 +327,21 @@ export const getCameraErrorMessage = (error?: unknown): string => {
   const isIOS = isIOSDevice();
   const isAndroid = /Android/.test(userAgent);
 
-  // iOS Safari (CriOS 제외 - CriOS는 iOS Chrome)
-  if (
-    isIOS &&
-    userAgent.includes("Safari") &&
-    !userAgent.includes("Chrome") &&
-    !userAgent.includes("CriOS")
-  ) {
-    return "Safari에서 카메라를 사용할 수 없습니다. 설정 > 개인정보 보호 및 보안 > 카메라 권한을 확인하거나, Chrome 브라우저를 사용해 보세요.";
-  }
+  // Chrome 브라우저를 먼저 체크 (데스크톱/모바일 모두)
+  // Chrome의 userAgent에는 "Safari"도 포함되어 있으므로 Chrome을 우선 체크해야 함
+  const isChrome = userAgent.includes("Chrome") || userAgent.includes("CriOS");
 
-  // iOS Chrome
-  if (
-    isIOS &&
-    (userAgent.includes("CriOS") ||
-      (userAgent.includes("Chrome") && userAgent.includes("Safari")))
-  ) {
-    return "iOS Chrome에서 카메라 권한을 허용해주세요. 설정 > 개인정보 보호 > 카메라에서 Chrome을 허용하세요.";
+  if (isChrome) {
+    // iOS Chrome
+    if (isIOS) {
+      return "iOS Chrome에서 카메라 권한을 허용해주세요. 설정 > 개인정보 보호 > 카메라에서 Chrome을 허용하세요.";
+    }
+    // Android Chrome
+    if (isAndroid) {
+      return "Chrome에서 카메라 권한을 허용해주세요. 주소창 왼쪽의 잠금 아이콘을 터치하여 권한을 허용하세요.";
+    }
+    // 데스크톱 Chrome
+    return "Chrome에서 카메라 권한을 허용해주세요. 주소창 왼쪽의 잠금 아이콘을 클릭하여 권한을 허용하세요.";
   }
 
   // Samsung Internet
@@ -316,9 +349,9 @@ export const getCameraErrorMessage = (error?: unknown): string => {
     return "삼성 인터넷에서는 카메라 접근이 제한적일 수 있습니다. Chrome 브라우저를 사용하거나 갤러리에서 사진을 선택해 보세요.";
   }
 
-  // Android Chrome
-  if (isAndroid && userAgent.includes("Chrome")) {
-    return "Chrome에서 카메라 권한을 허용해주세요. 주소창 왼쪽의 잠금 아이콘을 터치하여 권한을 허용하세요.";
+  // iOS Safari (Chrome이 아닌 경우만)
+  if (isIOS && userAgent.includes("Safari") && !userAgent.includes("CriOS")) {
+    return "Safari에서 카메라를 사용할 수 없습니다. 설정 > 개인정보 보호 및 보안 > 카메라 권한을 확인하거나, Chrome 브라우저를 사용해 보세요.";
   }
 
   // Firefox Mobile
