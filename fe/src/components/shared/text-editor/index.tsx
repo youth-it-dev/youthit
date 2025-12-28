@@ -1695,7 +1695,6 @@ const TextEditor = ({
           ref={timestampPhoto.timestampMenuRef}
           isOpen={timestampPhoto.showTimestampMenu}
           position={timestampPhoto.timestampMenuPosition}
-          onCameraClick={timestampPhoto.handleTimestampCameraClick}
           onLocalGalleryClick={timestampPhoto.handleTimestampLocalGalleryClick}
           onUsitGalleryClick={timestampPhoto.handleTimestampGalleryClick}
         />
@@ -2156,9 +2155,25 @@ const TextEditor = ({
         ref={timestampPhoto.timestampGalleryInputRef}
         type="file"
         accept={ACCEPT_IMAGE_EXTENSIONS}
+        capture={getCameraCaptureValue()}
         className="hidden"
         onChange={timestampPhoto.handleTimestampLocalGallerySelect}
-        aria-label="타임스탬프 로컬 갤러리 선택"
+        aria-label="타임스탬프 사진 촬영 또는 갤러리 선택"
+        {...(typeof window !== "undefined" && isIOSDevice()
+          ? {
+              // iOS Safari에서는 capture 속성으로 인한 문제를 방지하기 위해 추가 속성
+              style: {
+                WebkitAppearance: "none",
+                position: "fixed",
+                top: "0",
+                left: "0",
+                width: "1px",
+                height: "1px",
+                opacity: "0",
+                pointerEvents: "none",
+              },
+            }
+          : {})}
       />
 
       {/* Editor Content Container */}
