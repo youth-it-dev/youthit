@@ -200,6 +200,22 @@ const authGuard = require("../middleware/authGuard");
  *           nullable: true
  *           description: 상품의 필요한 나다움 포인트 (Rollup 필드)
  *           example: 500
+ *         productImage:
+ *           type: array
+ *           nullable: true
+ *           description: 상품 이미지 배열 (Rollup 필드)
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 파일명
+ *               url:
+ *                 type: string
+ *                 description: 이미지 URL
+ *               type:
+ *                 type: string
+ *                 description: 파일 타입 (external/file)
  *         recipientName:
  *           type: string
  *           description: 수령인 이름
@@ -619,6 +635,22 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                             nullable: true
  *                             description: 상품의 필요한 나다움 포인트 (Rollup 필드)
  *                             example: 500
+ *                           productImage:
+ *                             type: array
+ *                             nullable: true
+ *                             description: 상품 이미지 배열 (Rollup 필드)
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 name:
+ *                                   type: string
+ *                                   description: 파일명
+ *                                 url:
+ *                                   type: string
+ *                                   description: 이미지 URL
+ *                                 type:
+ *                                   type: string
+ *                                   description: 파일 타입 (external/file)
  *                           recipientName:
  *                             type: string
  *                             description: 수령인 이름
