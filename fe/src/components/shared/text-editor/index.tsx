@@ -1611,7 +1611,7 @@ const TextEditor = ({
       <div
         ref={toolbarRef}
         data-toolbar="editor"
-        className="sticky top-0 z-40 flex w-full touch-manipulation items-center gap-2 overflow-x-auto border-b border-gray-300 bg-white px-5 pt-2 pb-2"
+        className="sticky top-0 z-40 flex w-full touch-manipulation items-center gap-2 overflow-x-auto border-b border-gray-300 bg-white px-2 pt-2 pb-2"
       >
         {/* Heading (H1~H3) - Toolbar 가장 왼쪽 */}
         <div className="relative flex items-center justify-center">
