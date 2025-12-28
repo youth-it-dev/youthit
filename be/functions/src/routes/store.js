@@ -566,8 +566,8 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  * /store/purchases:
  *   get:
  *     tags: [Store]
- *     summary: 스토어 구매신청내역 조회
- *     description: 본인의 스토어 구매신청내역을 조회 (Notion DB 기반)
+ *     summary: 스토어 구매신청내역 조회 (날짜별 그룹핑)
+ *     description: 본인의 스토어 구매신청내역을 날짜별로 그룹핑하여 조회 (Notion DB 기반, 타임라인 형태)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -586,7 +586,7 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *         description: 페이지네이션 커서 (다음 페이지 조회 시 사용)
  *     responses:
  *       200:
- *         description: 구매신청내역 조회 성공
+ *         description: 구매신청내역 조회 성공 (날짜별 그룹핑)
  *         content:
  *           application/json:
  *             schema:
@@ -600,79 +600,34 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                   properties:
  *                     message:
  *                       type: string
- *                       example: "스토어 구매신청내역을 성공적으로 조회했습니다."
- *                     purchases:
+ *                       example: "날짜별 스토어 구매신청내역을 성공적으로 조회했습니다."
+ *                     purchasesByDate:
  *                       type: array
+ *                       description: 날짜별로 그룹핑된 구매신청 내역
  *                       items:
  *                         type: object
  *                         properties:
- *                           purchaseId:
+ *                           date:
  *                             type: string
- *                             description: 구매신청 ID
- *                             example: "2a31f705-fa4a-805f-a163-000b30ce4dd4"
- *                           title:
+ *                             description: 날짜 (YYYY-MM-DD 형식)
+ *                             example: "2025-12-28"
+ *                           dateLabel:
  *                             type: string
- *                             description: 구매신청 제목 (상품명 - 주문자닉네임 - 주문일시)
- *                             example: "친환경 텀블러 - 나다움123 - 2025. 11. 20."
- *                           userId:
- *                             type: string
- *                             description: 사용자 ID
- *                             example: "firebase-uid-123"
- *                           userNickname:
- *                             type: string
- *                             description: 주문자 닉네임
- *                             example: "나다움123"
- *                           productId:
- *                             type: string
- *                             description: 상품 ID
- *                             example: "29f1f705-fa4a-803c-9fdd-000b02c4884f"
- *                           quantity:
+ *                             description: 날짜 라벨 (한글)
+ *                             example: "2025년 12월 28일"
+ *                           count:
  *                             type: integer
- *                             description: 구매 개수
- *                             example: 2
- *                           requiredPoints:
- *                             type: number
- *                             nullable: true
- *                             description: 상품의 필요한 나다움 포인트 (Rollup 필드)
- *                             example: 500
- *                           productImage:
+ *                             description: 해당 날짜의 구매신청 개수
+ *                             example: 3
+ *                           items:
  *                             type: array
- *                             nullable: true
- *                             description: 상품 이미지 배열 (Rollup 필드)
+ *                             description: 구매신청 목록 (해당 날짜, 최신순 정렬)
  *                             items:
- *                               type: object
- *                               properties:
- *                                 name:
- *                                   type: string
- *                                   description: 파일명
- *                                 url:
- *                                   type: string
- *                                   description: 이미지 URL
- *                                 type:
- *                                   type: string
- *                                   description: 파일 타입 (external/file)
- *                           recipientName:
- *                             type: string
- *                             description: 수령인 이름
- *                             example: "홍길동"
- *                           recipientPhone:
- *                             type: string
- *                             description: 수령인 전화번호
- *                             example: "010-1234-5678"
- *                           deliveryCompleted:
- *                             type: boolean
- *                             description: 지급 완료 여부
- *                             example: false
- *                           orderDate:
- *                             type: string
- *                             format: date-time
- *                             description: 주문 완료 일시
- *                             example: "2025-11-06T15:28:00.000Z"
- *                           lastEditedTime:
- *                             type: string
- *                             format: date-time
- *                             description: 마지막 수정 일시
- *                             example: "2025-11-06T15:30:00.000Z"
+ *                               $ref: '#/components/schemas/StorePurchase'
+ *                     totalCount:
+ *                       type: integer
+ *                       description: 전체 구매신청 개수
+ *                       example: 10
  *                     pagination:
  *                       type: object
  *                       properties:
@@ -685,10 +640,6 @@ router.post("/purchases", authGuard, storeController.createStorePurchase);
  *                           nullable: true
  *                           description: 다음 페이지 커서
  *                           example: null
- *                         currentPageCount:
- *                           type: integer
- *                           description: 현재 페이지 항목 수
- *                           example: 5
  *       400:
  *         description: 잘못된 요청
  *         content:

@@ -777,11 +777,11 @@ class StoreService {
   }
 
   /**
-   * 스토어 구매신청내역 조회 (Notion DB에서 조회)
+   * 스토어 구매신청내역 조회 (Notion DB에서 조회 - 날짜별 그룹핑)
    * @param {string} userId - 사용자 ID (Firebase UID)
    * @param {number} [pageSize=20] - 페이지 크기
    * @param {string} [startCursor] - 페이지네이션 커서
-   * @return {Promise<Object>} 구매신청내역 목록
+   * @return {Promise<Object>} 날짜별 그룹핑된 구매신청내역 목록
    */
   async getStorePurchases(userId, pageSize = DEFAULT_PAGE_SIZE, startCursor = null) {
     try {
@@ -819,11 +819,14 @@ class StoreService {
 
       const purchases = data.results.map((page) => this.formatPurchaseData(page));
 
+      // 날짜별 그룹핑 (orderDate 기준)
+      const groupedByDate = this.groupPurchasesByDate(purchases);
+
       return {
-        purchases,
+        purchasesByDate: groupedByDate,
+        totalCount: purchases.length,
         hasMore: data.has_more,
         nextCursor: data.next_cursor,
-        currentPageCount: data.results.length,
       };
     } catch (error) {
       console.error("[StoreService] 스토어 구매신청내역 조회 오류:", error.message);
@@ -846,6 +849,76 @@ class StoreService {
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       throw serviceError;
     }
+  }
+
+  /**
+   * 구매신청 목록을 날짜별로 그룹핑
+   * @private
+   * @param {Array} purchases - 구매신청 목록
+   * @return {Array} 날짜별로 그룹핑된 배열
+   */
+  groupPurchasesByDate(purchases) {
+    // orderDate 기준으로 그룹핑 (Map 사용)
+    const groupMap = new Map();
+
+    purchases.forEach((purchase) => {
+      // orderDate를 YYYY-MM-DD 형식으로 변환
+      const orderDate = purchase.orderDate ? new Date(purchase.orderDate) : null;
+      if (!orderDate || isNaN(orderDate.getTime())) {
+        // 유효하지 않은 날짜는 "날짜 없음" 그룹으로
+        const unknownKey = "unknown";
+        if (!groupMap.has(unknownKey)) {
+          groupMap.set(unknownKey, []);
+        }
+        groupMap.get(unknownKey).push(purchase);
+        return;
+      }
+
+      const dateKey = orderDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      if (!groupMap.has(dateKey)) {
+        groupMap.set(dateKey, []);
+      }
+      groupMap.get(dateKey).push(purchase);
+    });
+
+    // Map을 배열로 변환하고 정렬
+    const groupedArray = Array.from(groupMap.entries())
+        .map(([dateKey, items]) => {
+          // 각 그룹 내에서도 최신순 정렬 (orderDate 기준)
+          const sortedItems = items.sort((a, b) => {
+            const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+            const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+            return dateB - dateA; // 최신순
+          });
+
+          // 날짜 라벨 생성
+          let dateLabel;
+          if (dateKey === "unknown") {
+            dateLabel = "날짜 없음";
+          } else {
+            const date = new Date(dateKey + 'T00:00:00Z');
+            const year = date.getUTCFullYear();
+            const month = date.getUTCMonth() + 1;
+            const day = date.getUTCDate();
+            dateLabel = `${year}년 ${month}월 ${day}일`;
+          }
+
+          return {
+            date: dateKey,
+            dateLabel: dateLabel,
+            items: sortedItems,
+            count: sortedItems.length,
+          };
+        })
+        .sort((a, b) => {
+          // "날짜 없음"은 맨 뒤로
+          if (a.date === "unknown") return 1;
+          if (b.date === "unknown") return -1;
+          // 날짜별 최신순 정렬
+          return b.date.localeCompare(a.date);
+        });
+
+    return groupedArray;
   }
 
   /**
