@@ -208,15 +208,15 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
     return undefined; // capture 속성 제거하여 기본 카메라 앱 사용
   }
 
-  // Android Chrome - 사용자가 선택할 수 있도록 capture 속성 제거
-  // iOS처럼 카메라/갤러리 선택지를 제공하여 UX 일관성 확보
+  // Android Chrome - capture 속성 유지하여 카메라 우선 실행
+  // 안드로이드에서는 capture 속성이 있어야 카메라/갤러리 선택지가 나타남
   if (
     userAgent.includes("Chrome") &&
     userAgent.includes("Mobile") &&
     !isIOS &&
     /Android/i.test(userAgent)
   ) {
-    return undefined; // capture 속성 제거하여 사용자 선택 제공
+    return "environment"; // 후면 카메라 우선
   }
 
   // Firefox Mobile - capture 속성 지원하지만 신뢰성이 낮음
@@ -224,9 +224,9 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
     return undefined; // capture 속성 제거하여 안정성 확보
   }
 
-  // 그 외 모바일 브라우저 (Android 기반) - 사용자가 선택할 수 있도록 capture 속성 제거
+  // 그 외 모바일 브라우저 (Android 기반) - 후면 카메라 우선
   if (/Android|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) && !isIOS) {
-    return undefined; // capture 속성 제거하여 사용자 선택 제공
+    return "environment"; // 후면 카메라 우선
   }
 
   // 데스크톱 브라우저에서는 capture 속성 불필요

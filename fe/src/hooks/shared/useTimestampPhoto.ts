@@ -6,10 +6,15 @@ import {
   type ChangeEvent,
 } from "react";
 import type { RefObject } from "react";
+import { FILE_UPLOAD_MESSAGES } from "@/constants/shared/_photo-storage";
 import useToggle from "@/hooks/shared/useToggle";
 import type { ColorPickerPosition } from "@/types/shared/text-editor";
 import { debug } from "@/utils/shared/debugger";
-import { getCameraErrorMessage } from "@/utils/shared/device";
+import {
+  getCameraErrorMessage,
+  getCameraPermissionStatus,
+  isCameraAPISupported,
+} from "@/utils/shared/device";
 import {
   addTimestampToImage,
   getTimestampErrorMessage,
@@ -41,13 +46,18 @@ interface UseTimestampPhotoReturn {
 
   // Refs
   timestampButtonRef: RefObject<HTMLButtonElement | null>;
+  timestampCameraInputRef: RefObject<HTMLInputElement | null>;
   timestampGalleryInputRef: RefObject<HTMLInputElement | null>;
   timestampMenuRef: RefObject<HTMLDivElement | null>;
 
   // 핸들러
   handleTimestampMenuToggle: () => void;
+  handleTimestampCameraClick: () => void;
   handleTimestampLocalGalleryClick: () => void;
   handleTimestampGalleryClick: () => void;
+  handleTimestampCameraCapture: (
+    event: ChangeEvent<HTMLInputElement>
+  ) => Promise<void>;
   handleTimestampLocalGallerySelect: (
     event: ChangeEvent<HTMLInputElement>
   ) => Promise<void>;
@@ -100,6 +110,7 @@ export const useTimestampPhoto = ({
 
   // Refs
   const timestampButtonRef = useRef<HTMLButtonElement>(null);
+  const timestampCameraInputRef = useRef<HTMLInputElement>(null);
   const timestampGalleryInputRef = useRef<HTMLInputElement>(null);
   const timestampMenuRef = useRef<HTMLDivElement>(null);
 
@@ -207,6 +218,65 @@ export const useTimestampPhoto = ({
   }, [showTimestampMenu, updateTimestampMenuPosition]);
 
   /**
+   * 타임스탬프 사진 촬영
+   * - 카메라 API 지원 확인
+   * - 카메라 권한 상태 확인 (가능한 경우)
+   * - 카메라 input 클릭
+   */
+  const handleTimestampCameraClick = useCallback(async () => {
+    setShowTimestampMenu(false);
+
+    try {
+      debug.log("카메라 촬영 버튼 클릭");
+
+      // 카메라 API 지원 확인
+      if (!isCameraAPISupported()) {
+        debug.warn("카메라 API 미지원");
+        showCameraError(FILE_UPLOAD_MESSAGES.CAMERA_NOT_SUPPORTED);
+        return;
+      }
+
+      // 카메라 권한 상태 확인 (가능한 경우)
+      try {
+        const permissionStatus = await getCameraPermissionStatus();
+        if (permissionStatus === "denied") {
+          debug.warn("카메라 권한 거부됨");
+          const errorMessage = getCameraErrorMessage();
+          showCameraError(errorMessage);
+          return;
+        }
+        // "prompt" 상태는 사용자가 직접 권한을 허용할 수 있도록 진행
+        // "granted" 상태는 바로 진행
+        if (permissionStatus === "granted") {
+          debug.log("카메라 권한 허용됨");
+        } else if (permissionStatus === "prompt") {
+          debug.log("카메라 권한 확인 대기 중");
+        }
+      } catch (permissionError) {
+        // Permissions API 미지원 또는 에러 발생 시에도 진행
+        // (일부 브라우저에서는 Permissions API를 지원하지 않을 수 있음)
+        debug.warn("카메라 권한 확인 실패, 계속 진행:", permissionError);
+      }
+
+      // 카메라 input 클릭
+      if (!timestampCameraInputRef.current) {
+        debug.error("카메라 input ref가 없습니다");
+        showCameraError(
+          "카메라를 시작할 수 없습니다. 페이지를 새로고침한 후 다시 시도해주세요."
+        );
+        return;
+      }
+
+      debug.log("카메라 input 클릭");
+      timestampCameraInputRef.current.click();
+    } catch (error) {
+      debug.error("카메라 접근 준비 실패:", error);
+      const errorMessage = getCameraErrorMessage(error);
+      showCameraError(errorMessage);
+    }
+  }, [showCameraError]);
+
+  /**
    * 타임스탬프 로컬 갤러리 선택
    */
   const handleTimestampLocalGalleryClick = useCallback(() => {
@@ -225,6 +295,112 @@ export const useTimestampPhoto = ({
       updateTimestampGalleryPosition();
     });
   }, [updateTimestampGalleryPosition]);
+
+  /**
+   * 타임스탬프 사진 촬영 후 처리
+   */
+  const handleTimestampCameraCapture = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        // 파일이 선택되지 않은 경우 (사용자가 취소한 경우)
+        debug.log("카메라 촬영 취소됨");
+        return;
+      }
+
+      // input 초기화 (에러 발생 시에도 정리하기 위해 먼저 실행)
+      event.target.value = "";
+
+      let timestampedBlob: Blob | null = null;
+      let blobUrl: string | null = null;
+
+      try {
+        // 파일 검증
+        const validationError = validateImageFile(file);
+        if (validationError) {
+          showCameraError(validationError);
+          return;
+        }
+
+        debug.log("카메라 촬영 파일 처리 시작:", {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+
+        // 타임스탬프를 적용한 이미지 생성
+        try {
+          timestampedBlob = await addTimestampToImage(file);
+        } catch (timestampError) {
+          debug.error("타임스탬프 추가 실패:", timestampError);
+          showCameraError(getTimestampErrorMessage(timestampError));
+          return;
+        }
+
+        // IndexedDB에 저장 (타임스탬프 적용된 이미지를 File로 변환하여 전달)
+        if (onTimestampPhotoCapture && timestampedBlob) {
+          try {
+            const timestampedFile = new File(
+              [timestampedBlob],
+              "timestamp.jpg",
+              {
+                type: "image/jpeg",
+              }
+            );
+            await onTimestampPhotoCapture(timestampedFile);
+          } catch (storageError) {
+            debug.error("IndexedDB 저장 실패:", storageError);
+            // 저장 실패해도 미리보기는 표시 (사용자가 업로드할 수 있도록)
+            // 에러는 로그만 남기고 계속 진행
+          }
+        }
+
+        // Blob URL 생성
+        try {
+          blobUrl = URL.createObjectURL(timestampedBlob);
+        } catch (urlError) {
+          debug.error("Blob URL 생성 실패:", urlError);
+          // Blob URL 생성 실패 시 메모리 부족 가능성
+          showCameraError(
+            "이미지를 표시할 수 없습니다. 메모리가 부족할 수 있습니다. 브라우저를 새로고침한 후 다시 시도해주세요."
+          );
+          return;
+        }
+
+        // 타임스탬프가 적용된 이미지를 미리보기에 표시
+        setTimestampPreviewImage(timestampedBlob);
+        setTimestampPreviewUrl(blobUrl);
+        setShowTimestampPreview(true);
+
+        debug.log("카메라 촬영 처리 완료");
+      } catch (error) {
+        debug.error("타임스탬프 사진 촬영 실패:", error);
+
+        // 생성된 리소스 정리
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl);
+        }
+
+        // 에러 타입에 따른 구체적인 메시지
+        let errorMessage = getCameraErrorMessage(error);
+
+        // 메모리 관련 에러는 별도 처리
+        if (error instanceof Error) {
+          const errorMessageLower = error.message.toLowerCase();
+          if (
+            errorMessageLower.includes("quota") ||
+            errorMessageLower.includes("memory")
+          ) {
+            errorMessage =
+              "메모리가 부족합니다. 다른 이미지를 삭제한 후 다시 시도해주세요.";
+          }
+        }
+
+        showCameraError(errorMessage);
+      }
+    },
+    [onTimestampPhotoCapture, showCameraError]
+  );
 
   /**
    * 타임스탬프 로컬 갤러리 선택 후 처리
@@ -536,13 +712,16 @@ export const useTimestampPhoto = ({
 
     // Refs
     timestampButtonRef,
+    timestampCameraInputRef,
     timestampGalleryInputRef,
     timestampMenuRef,
 
     // 핸들러
     handleTimestampMenuToggle,
+    handleTimestampCameraClick,
     handleTimestampLocalGalleryClick,
     handleTimestampGalleryClick,
+    handleTimestampCameraCapture,
     handleTimestampLocalGallerySelect,
     handleTimestampUpload,
     handleTimestampCancel,
