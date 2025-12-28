@@ -853,6 +853,11 @@ export interface StorePurchase {
   productId?: string;
   quantity?: number;
   requiredPoints?: number;
+  productImage?: {
+    name?: string;
+    url?: string;
+    type?: string;
+  }[];
   recipientName?: string;
   recipientPhone?: string;
   deliveryCompleted?: boolean;

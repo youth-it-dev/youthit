@@ -37,24 +37,15 @@ export interface TGETStorePurchasesReq {
 
 export type TGETStorePurchasesRes = {
   message?: string;
-  purchases?: {
-    purchaseId?: string;
-    title?: string;
-    userId?: string;
-    userNickname?: string;
-    productId?: string;
-    quantity?: number;
-    requiredPoints?: number;
-    recipientName?: string;
-    recipientPhone?: string;
-    deliveryCompleted?: boolean;
-    orderDate?: string;
-    lastEditedTime?: string;
+  purchasesByDate?: {
+    date?: string;
+    dateLabel?: string;
+    count?: number;
+    items?: Schema.StorePurchase[];
   }[];
   pagination?: {
     hasMore?: boolean;
     nextCursor?: string;
-    currentPageCount?: number;
   };
 };
 
