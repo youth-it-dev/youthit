@@ -3,8 +3,13 @@
 import { useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { Package } from "lucide-react";
+import * as Api from "@/api/generated/store-api";
 import { Typography } from "@/components/shared/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeKeys } from "@/constants/generated/query-keys";
@@ -38,7 +43,7 @@ const StoreHistoryDetailPage = () => {
     queryClient.getQueryData<InfiniteData<TGETStorePurchasesRes>>(queryKey);
 
   // 모든 페이지에서 해당 purchaseId 찾기
-  const currentPurchase = useMemo<StorePurchase | null>(() => {
+  const currentPurchaseFromCache = useMemo<StorePurchase | null>(() => {
     if (!purchasesPagesData?.pages) return null;
 
     for (const page of purchasesPagesData.pages) {
@@ -56,6 +61,37 @@ const StoreHistoryDetailPage = () => {
     return null;
   }, [purchasesPagesData, purchaseId]);
 
+  // 캐시에 없을 때만 API 호출 (목록 API를 사용하여 특정 purchaseId 찾기)
+  const { data: fetchedPurchasesData, isLoading } = useQuery({
+    queryKey: ["store", "getStorePurchases", "byId", purchaseId],
+    queryFn: async () => {
+      const response = await Api.getStorePurchases({
+        pageSize: 100, // 충분히 큰 값으로 설정하여 모든 데이터 조회
+      });
+      return response.data;
+    },
+    enabled: !currentPurchaseFromCache, // 캐시에 없을 때만 호출
+  });
+
+  // API 응답에서 해당 purchaseId 찾기
+  const currentPurchaseFromApi = useMemo<StorePurchase | null>(() => {
+    if (!fetchedPurchasesData?.purchasesByDate) return null;
+
+    for (const section of fetchedPurchasesData.purchasesByDate) {
+      if (!section.items) continue;
+      const found = section.items.find(
+        (item) => item.purchaseId === purchaseId
+      );
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }, [fetchedPurchasesData, purchaseId]);
+
+  // 캐시에서 먼저 찾고, 없으면 API 응답에서 찾기
+  const currentPurchase = currentPurchaseFromCache || currentPurchaseFromApi;
+
   // 총 사용 나다움 계산 (개별 아이템의 requiredPoints * quantity)
   const totalRequiredPoints = currentPurchase
     ? (currentPurchase.requiredPoints || 0) * (currentPurchase.quantity || 1)
@@ -68,8 +104,8 @@ const StoreHistoryDetailPage = () => {
     };
   }, [setTitle]);
 
-  // 로딩 상태 (캐시에 데이터가 없을 때)
-  if (!purchasesPagesData) {
+  // 로딩 상태 (캐시에 데이터가 없고 API 호출 중일 때)
+  if (!currentPurchaseFromCache && isLoading) {
     return (
       <div className="min-h-screen bg-white pt-12">
         <div className="px-4 py-6">
