@@ -68,7 +68,7 @@ const TextEditor = ({
   onImageUpload,
   onFileUpload,
   onTimestampPhotoCapture,
-  showTimestampButton = false,
+  showTimestampButton = true,
   onTitleChange,
   onContentChange,
 }: TextEditorProps) => {
