@@ -28,6 +28,12 @@ export interface TextEditorProps {
    * - 사진 촬영 시 타임스탬프를 추가하여 IndexedDB에 저장
    */
   onTimestampPhotoCapture?: (file: File) => Promise<void>;
+  /**
+   * 타임스탬프 버튼 표시 여부
+   * - 기본값: false (프로덕션에서는 숨김)
+   * - 테스트 페이지 등에서 true로 설정하여 활성화
+   */
+  showTimestampButton?: boolean;
   onTitleChange?: (title: string) => void;
   onContentChange?: (content: string) => void;
 }
