@@ -15,11 +15,47 @@ import {
   getCameraPermissionStatus,
   isCameraAPISupported,
 } from "@/utils/shared/device";
-import {
-  addTimestampToImage,
-  getTimestampErrorMessage,
-} from "@/utils/shared/image-timestamp";
+import { addTimestampToImage } from "@/utils/shared/image-timestamp";
 import { validateImageFile } from "@/utils/shared/image-validation";
+
+// 1:1 비율로 가운데 크롭하는 함수
+const cropImageToSquare = (img: HTMLImageElement): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      reject(new Error("Canvas context not available"));
+      return;
+    }
+
+    // 정사각형 크기 결정 (가로/세로 중 작은 값 사용)
+    const size = Math.min(img.width, img.height);
+
+    // 캔버스 크기 설정
+    canvas.width = size;
+    canvas.height = size;
+
+    // 가운데에서 크롭할 영역 계산
+    const startX = (img.width - size) / 2;
+    const startY = (img.height - size) / 2;
+
+    // 이미지 그리기 (크롭)
+    ctx.drawImage(img, startX, startY, size, size, 0, 0, size, size);
+
+    // Blob으로 변환
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Failed to create blob"));
+        }
+      },
+      "image/jpeg",
+      0.9
+    );
+  });
+};
 
 interface UseTimestampPhotoOptions {
   getToolbarRect: () => DOMRect | null;
@@ -41,6 +77,7 @@ interface UseTimestampPhotoReturn {
   cameraErrorMessage: string;
   timestampPreviewImage: Blob | null;
   timestampPreviewUrl: string | null;
+  timestampCroppedImage: Blob | null;
   timestampMenuPosition: ColorPickerPosition;
   timestampGalleryPosition: ColorPickerPosition;
 
@@ -61,12 +98,16 @@ interface UseTimestampPhotoReturn {
   handleTimestampLocalGallerySelect: (
     event: ChangeEvent<HTMLInputElement>
   ) => Promise<void>;
-  handleTimestampUpload: (event?: MouseEvent) => Promise<void>;
+  handleTimestampUpload: (
+    croppedImage?: Blob,
+    event?: MouseEvent
+  ) => Promise<void>;
   handleTimestampCancel: () => void;
   handleCameraErrorModalClose: () => void;
   setShowTimestampGallery: (show: boolean) => void;
   updateTimestampMenuPosition: () => void;
   updateTimestampGalleryPosition: () => void;
+  setTimestampCroppedImage: (image: Blob | null) => void;
 }
 
 const TIMESTAMP_MENU_WIDTH = 160;
@@ -97,6 +138,8 @@ export const useTimestampPhoto = ({
   const [timestampPreviewUrl, setTimestampPreviewUrl] = useState<string | null>(
     null
   );
+  const [timestampCroppedImage, setTimestampCroppedImage] =
+    useState<Blob | null>(null);
   const [timestampMenuPosition, setTimestampMenuPosition] =
     useState<ColorPickerPosition>({
       top: 0,
@@ -328,31 +371,43 @@ export const useTimestampPhoto = ({
           type: file.type,
         });
 
-        // 타임스탬프를 적용한 이미지 생성
-        try {
-          timestampedBlob = await addTimestampToImage(file);
-        } catch (timestampError) {
-          debug.error("타임스탬프 추가 실패:", timestampError);
-          showCameraError(getTimestampErrorMessage(timestampError));
-          return;
-        }
+        // 1. 이미지를 로드하여 크롭 준비
+        const img = new Image();
+        const imageLoaded = new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("이미지 로드 실패"));
+          img.src = URL.createObjectURL(file);
+        });
 
-        // IndexedDB에 저장 (타임스탬프 적용된 이미지를 File로 변환하여 전달)
-        if (onTimestampPhotoCapture && timestampedBlob) {
-          try {
-            const timestampedFile = new File(
-              [timestampedBlob],
-              "timestamp.jpg",
-              {
+        try {
+          await imageLoaded;
+
+          // 2. 1:1 비율로 크롭
+          const croppedBlob = await cropImageToSquare(img);
+
+          // 3. 크롭된 이미지에 타임스탬프 추가
+          const croppedFile = new File([croppedBlob], "cropped.jpg", {
+            type: "image/jpeg",
+          });
+          timestampedBlob = await addTimestampToImage(croppedFile);
+
+          // 4. IndexedDB에 저장 (크롭 + 타임스탬프 적용된 이미지)
+          if (onTimestampPhotoCapture && timestampedBlob) {
+            try {
+              const finalFile = new File([timestampedBlob], "timestamp.jpg", {
                 type: "image/jpeg",
-              }
-            );
-            await onTimestampPhotoCapture(timestampedFile);
-          } catch (storageError) {
-            debug.error("IndexedDB 저장 실패:", storageError);
-            // 저장 실패해도 미리보기는 표시 (사용자가 업로드할 수 있도록)
-            // 에러는 로그만 남기고 계속 진행
+              });
+              await onTimestampPhotoCapture(finalFile);
+            } catch (storageError) {
+              debug.error("IndexedDB 저장 실패:", storageError);
+              // 저장 실패해도 미리보기는 표시 (사용자가 업로드할 수 있도록)
+              // 에러는 로그만 남기고 계속 진행
+            }
           }
+        } catch (processError) {
+          debug.error("이미지 크롭/타임스탬프 처리 실패:", processError);
+          showCameraError("이미지 처리를 실패했습니다. 다시 시도해주세요.");
+          return;
         }
 
         // Blob URL 생성
@@ -463,13 +518,28 @@ export const useTimestampPhoto = ({
           return;
         }
 
-        // 타임스탬프를 적용한 이미지 생성
+        // 1. 이미지를 로드하여 크롭 준비
+        const img = new Image();
+        const imageLoaded = new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("이미지 로드 실패"));
+          img.src = URL.createObjectURL(file);
+        });
+
         try {
-          timestampedBlob = await addTimestampToImage(file);
-          debug.log("타임스탬프 적용 완료");
-        } catch (timestampError) {
-          debug.error("타임스탬프 추가 실패:", timestampError);
-          showCameraError(getTimestampErrorMessage(timestampError));
+          await imageLoaded;
+
+          // 2. 1:1 비율로 크롭
+          const croppedBlob = await cropImageToSquare(img);
+
+          // 3. 크롭된 이미지에 타임스탬프 추가
+          const croppedFile = new File([croppedBlob], "cropped.jpg", {
+            type: "image/jpeg",
+          });
+          timestampedBlob = await addTimestampToImage(croppedFile);
+        } catch (processError) {
+          debug.error("이미지 크롭/타임스탬프 처리 실패:", processError);
+          showCameraError("이미지 처리를 실패했습니다. 다시 시도해주세요.");
           return;
         }
 
@@ -554,11 +624,14 @@ export const useTimestampPhoto = ({
    * 주의: onImageUpload 실패 시에도 이미지는 삽입됨 (나중에 업로드 가능하도록)
    */
   const handleTimestampUpload = useCallback(
-    async (event?: MouseEvent) => {
+    async (croppedImage?: Blob, event?: MouseEvent) => {
       // 이벤트 버블링 방지 (폼 제출 방지)
       event?.preventDefault();
 
-      if (!timestampPreviewImage) {
+      // 크롭된 이미지가 파라미터로 전달되면 그것을 사용, 아니면 기존 로직 사용
+      const imageToUpload =
+        croppedImage || timestampCroppedImage || timestampPreviewImage;
+      if (!imageToUpload) {
         debug.warn("업로드할 이미지가 없습니다");
         return;
       }
@@ -574,7 +647,7 @@ export const useTimestampPhoto = ({
       try {
         debug.log("타임스탬프 사진 업로드 시작");
 
-        const file = new File([timestampPreviewImage], "timestamp.jpg", {
+        const file = new File([imageToUpload], "timestamp.jpg", {
           type: "image/jpeg",
         });
 
@@ -597,7 +670,7 @@ export const useTimestampPhoto = ({
 
         // Blob URL 생성하여 이미지 삽입 (clientId 포함 - 게시글 작성 시 업로드)
         try {
-          blobUrl = URL.createObjectURL(timestampPreviewImage);
+          blobUrl = URL.createObjectURL(imageToUpload);
           insertImageToEditor(blobUrl, clientId);
           debug.log("이미지 에디터 삽입 완료", { hasClientId: !!clientId });
         } catch (urlError) {
@@ -662,6 +735,7 @@ export const useTimestampPhoto = ({
     [
       timestampPreviewImage,
       timestampPreviewUrl,
+      timestampCroppedImage,
       onImageUpload,
       insertImageToEditor,
       showCameraError,
@@ -707,6 +781,7 @@ export const useTimestampPhoto = ({
     cameraErrorMessage,
     timestampPreviewImage,
     timestampPreviewUrl,
+    timestampCroppedImage,
     timestampMenuPosition,
     timestampGalleryPosition,
 
@@ -729,5 +804,6 @@ export const useTimestampPhoto = ({
     setShowTimestampGallery,
     updateTimestampMenuPosition,
     updateTimestampGalleryPosition,
+    setTimestampCroppedImage,
   };
 };

@@ -9,6 +9,9 @@ import { useForm } from "react-hook-form";
 import MissionCertificationStatusCard from "@/components/mission/mission-certification-status-card";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor/index";
+import { TimestampGalleryPortal } from "@/components/shared/timestamp-gallery-portal";
+import { TimestampMenu } from "@/components/shared/timestamp-menu";
+import { TimestampPreviewModal } from "@/components/shared/timestamp-preview-modal";
 import { Typography } from "@/components/shared/typography";
 import { LoadingOverlay } from "@/components/shared/ui/loading-overlay";
 import Modal from "@/components/shared/ui/modal";
@@ -24,6 +27,7 @@ import { useRequireAuth } from "@/hooks/auth/useRequireAuth";
 import { usePostCommunitiesPostsById } from "@/hooks/generated/communities-hooks";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useStoredPhotos } from "@/hooks/shared/useStoredPhotos";
+import { useTimestampPhoto } from "@/hooks/shared/useTimestampPhoto";
 import useToggle from "@/hooks/shared/useToggle";
 import { getCurrentUser } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -584,6 +588,37 @@ const WritePageContent = () => {
   const hasTitle = watch("title").trim();
   const hasContent = extractTextFromHtml(watch("content") || "").length > 0;
 
+  // 타임스탬프 사진 관련 로직
+  const timestampPhoto = useTimestampPhoto({
+    getToolbarRect: () => null, // TextEditor 툴바 참조가 없으므로 null 반환
+    clampPopoverPosition: (position) => position, // 기본적으로 위치 그대로 반환
+    onImageUpload: registerImage,
+    onTimestampPhotoCapture: handlePhotoCapture,
+    insertImageToEditor: async (imageUrl, clientId) => {
+      try {
+        // imageUrl로부터 Blob을 가져와 File로 변환
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `timestamp-${Date.now()}.jpg`, {
+          type: blob.type,
+        });
+
+        // 이미지 큐에 추가
+        setImageQueue((prev) => {
+          if (prev.length >= MAX_FILES) {
+            openImageLimitModal();
+            return prev;
+          }
+          return [...prev, { clientId: clientId || crypto.randomUUID(), file }];
+        });
+      } catch (error) {
+        debug.error("타임스탬프 이미지 삽입 실패:", error);
+        setErrorMessage("타임스탬프 이미지 삽입에 실패했습니다");
+        openErrorModal();
+      }
+    },
+  });
+
   // 인증 조건 검사 (인증글일 때만)
   const content = watch("content") || "";
   const isTextLongEnough = checkPostTextLength(content, MIN_POST_TEXT_LENGTH);
@@ -834,6 +869,61 @@ const WritePageContent = () => {
           // 에디터 내용 변경 시 사진 개수 동기화
           syncPhotosWithEditorContent(content);
         }}
+      />
+
+      {/* 타임스탬프 메뉴 */}
+      <TimestampMenu
+        ref={timestampPhoto.timestampMenuRef}
+        isOpen={timestampPhoto.showTimestampMenu}
+        position={timestampPhoto.timestampMenuPosition}
+        onLocalGalleryClick={timestampPhoto.handleTimestampLocalGalleryClick}
+        onUsitGalleryClick={timestampPhoto.handleTimestampGalleryClick}
+        onCameraClick={timestampPhoto.handleTimestampCameraClick}
+      />
+
+      {/* 타임스탬프 갤러리 포털 */}
+      <TimestampGalleryPortal
+        isOpen={timestampPhoto.showTimestampGallery}
+        position={timestampPhoto.timestampGalleryPosition}
+        onPhotoSelect={(photos) => {
+          // 선택된 사진들을 에디터에 삽입
+          for (const photo of photos) {
+            const clientId = crypto.randomUUID();
+            const file = new File([photo.blob], photo.originalFileName, {
+              type: photo.blob.type,
+            });
+
+            setImageQueue((prev) => {
+              if (prev.length >= MAX_FILES) {
+                openImageLimitModal();
+                return prev;
+              }
+              return [...prev, { clientId, file }];
+            });
+          }
+          timestampPhoto.setShowTimestampGallery(false);
+        }}
+        onClose={() => timestampPhoto.setShowTimestampGallery(false)}
+        onNoPhotos={() => {
+          timestampPhoto.setShowTimestampGallery(false);
+          setErrorMessage(
+            "저장된 타임스탬프 사진이 없습니다.\n먼저 사진을 촬영하여 저장해주세요."
+          );
+          openErrorModal();
+        }}
+      />
+
+      {/* 타임스탬프 미리보기 모달 */}
+      <TimestampPreviewModal
+        isOpen={
+          timestampPhoto.showTimestampPreview &&
+          !!timestampPhoto.timestampPreviewImage
+        }
+        previewUrl={timestampPhoto.timestampPreviewUrl}
+        onConfirm={(croppedImage) =>
+          timestampPhoto.handleTimestampUpload(croppedImage)
+        }
+        onClose={timestampPhoto.handleTimestampCancel}
       />
 
       {/* 뒤로가기 컨펌 모달 */}
