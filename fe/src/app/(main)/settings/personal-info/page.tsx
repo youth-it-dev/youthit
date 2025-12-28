@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
 import {
@@ -8,13 +10,17 @@ import {
 } from "@/constants/my-page/_gender-mapping";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
 import { getCurrentUser } from "@/lib/auth";
+import { useTopBarStore } from "@/stores/shared/topbar-store";
 
 /**
  * @description 개인 정보 관리 페이지
  * 읽기 전용으로 사용자 정보를 표시
  */
 const PersonalInfoPage = () => {
+  const router = useRouter();
   const user = getCurrentUser();
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   const { data: userData } = useGetUsersMe({
     request: {},
@@ -29,6 +35,27 @@ const PersonalInfoPage = () => {
   const phoneNumber = userData?.phoneNumber || "";
   const birthDate = userData?.birthDate || "";
   const gender = userData?.gender || "";
+
+  // 투명한 히든 버튼 생성
+  const hiddenButton = useMemo(
+    () => (
+      <button
+        type="button"
+        onClick={() => router.push("/settings/timestamp-test")}
+        className="h-8 w-8 opacity-0"
+        aria-label="타임스탬프 에디터 열기"
+      />
+    ),
+    [router]
+  );
+
+  // TopBar rightSlot 설정
+  useEffect(() => {
+    setRightSlot(hiddenButton);
+    return () => {
+      resetTopBar();
+    };
+  }, [hiddenButton, setRightSlot, resetTopBar]);
 
   return (
     <div className="flex min-h-full w-full flex-col pt-12">
