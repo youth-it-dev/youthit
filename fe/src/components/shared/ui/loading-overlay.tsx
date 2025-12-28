@@ -31,7 +31,7 @@ export function LoadingOverlay({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-9999 flex items-center justify-center bg-gray-950/40",
+        "fixed inset-0 z-[10002] flex items-center justify-center bg-gray-950/40",
         className
       )}
       aria-busy="true"
