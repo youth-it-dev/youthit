@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ReceiptText } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LINK_URL } from "@/constants/shared/_link-url";
@@ -14,14 +16,30 @@ import { useTopBarStore } from "@/stores/shared/topbar-store";
  * @description 스토어 메인 페이지
  */
 const StorePage = () => {
+  const router = useRouter();
   const setTitle = useTopBarStore((state) => state.setTitle);
+  const setRightSlot = useTopBarStore((state) => state.setRightSlot);
 
   useEffect(() => {
+    const handleHistoryButtonClick = () => {
+      router.push(LINK_URL.STORE_HISTORY);
+    };
+
     setTitle("나다움 스토어");
+    setRightSlot(
+      <button
+        onClick={handleHistoryButtonClick}
+        className="flex h-10 w-10 items-center justify-center bg-white"
+        aria-label="스토어 내역 보기"
+      >
+        <ReceiptText className="h-5 w-5 stroke-2 text-gray-950" />
+      </button>
+    );
     return () => {
       setTitle("");
+      setRightSlot(null);
     };
-  }, [setTitle]);
+  }, [setTitle, setRightSlot, router]);
 
   const { data: userData } = useGetUsersMe({
     request: {},
@@ -76,14 +94,14 @@ const StorePage = () => {
           href={LINK_URL.STORE_HISTORY_NADAUM}
           className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4"
         >
-          <Typography font="noto" variant="label1B" className="text-gray-700">
+          <Typography font="noto" variant="label1M" className="text-gray-500">
             사용 가능한 나다움
           </Typography>
           <div className="flex items-center gap-2">
             <Typography
               font="noto"
               variant="heading3B"
-              className="text-gray-900"
+              className="text-main-500"
             >
               {userData?.rewards || 0}N
             </Typography>
