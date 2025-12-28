@@ -1704,7 +1704,10 @@ const TextEditor = ({
         <TimestampGalleryPortal
           isOpen={timestampPhoto.showTimestampGallery}
           position={timestampPhoto.timestampGalleryPosition}
-          onNoPhotos={() => setShowNoTimestampPhotosModal(true)}
+          onNoPhotos={() => {
+            timestampPhoto.setShowTimestampGallery(false);
+            setShowNoTimestampPhotosModal(true);
+          }}
           onPhotoSelect={async (photos) => {
             // 선택된 사진들을 텍스트 에디터에 삽입
             for (const photo of photos) {
@@ -1753,6 +1756,8 @@ const TextEditor = ({
           onClose={() => setShowNoTimestampPhotosModal(false)}
           onConfirm={() => setShowNoTimestampPhotosModal(false)}
           variant="primary"
+          closeOnOverlayClick={false}
+          closeOnEscape={false}
         />
 
         {/* Image size error modal */}
@@ -1764,6 +1769,8 @@ const TextEditor = ({
           onClose={() => setShowImageSizeErrorModal(false)}
           onConfirm={() => setShowImageSizeErrorModal(false)}
           variant="primary"
+          closeOnOverlayClick={false}
+          closeOnEscape={false}
         />
 
         {/* Generic error modal */}
@@ -1775,6 +1782,8 @@ const TextEditor = ({
           onClose={() => setShowErrorModal(false)}
           onConfirm={() => setShowErrorModal(false)}
           variant="primary"
+          closeOnOverlayClick={false}
+          closeOnEscape={false}
         />
 
         {/* Camera error modal */}
@@ -1791,6 +1800,8 @@ const TextEditor = ({
             timestampPhoto.handleTimestampLocalGalleryClick();
           }}
           variant="primary"
+          closeOnOverlayClick={false}
+          closeOnEscape={false}
         />
 
         {/* Format buttons */}
@@ -2128,7 +2139,16 @@ const TextEditor = ({
         {...(typeof window !== "undefined" && isIOSDevice()
           ? {
               // iOS Safari에서는 capture 속성으로 인한 문제를 방지하기 위해 추가 속성
-              style: { WebkitAppearance: "none" },
+              style: {
+                WebkitAppearance: "none",
+                position: "fixed",
+                top: "0",
+                left: "0",
+                width: "1px",
+                height: "1px",
+                opacity: "0",
+                pointerEvents: "none",
+              },
             }
           : {})}
       />
