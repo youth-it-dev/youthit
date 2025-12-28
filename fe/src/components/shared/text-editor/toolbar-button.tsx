@@ -11,10 +11,14 @@ interface ToolbarButtonProps {
   ariaLabel: string;
   disabled?: boolean;
   onMouseDown?: (e: React.MouseEvent) => void;
+  className?: string;
 }
 
 export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-  ({ onClick, children, ariaLabel, disabled = false, onMouseDown }, ref) => {
+  (
+    { onClick, children, ariaLabel, disabled = false, onMouseDown, className },
+    ref
+  ) => {
     return (
       <Button
         ref={ref}
@@ -23,7 +27,8 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         size="icon"
         className={cn(
           "text-muted-foreground size-8",
-          disabled && "cursor-not-allowed text-gray-300"
+          disabled && "cursor-not-allowed text-gray-300",
+          className
         )}
         disabled={disabled}
         onMouseDown={onMouseDown}
