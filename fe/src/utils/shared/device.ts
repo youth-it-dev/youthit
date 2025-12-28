@@ -1,4 +1,91 @@
+import { debug } from "@/utils/shared/debugger";
+
 type NavigatorWithStandalone = Navigator & { standalone?: boolean };
+
+// User-Agent Client Hints API 타입 선언 (실험적 API)
+interface NavigatorUAData {
+  readonly brands: readonly { brand: string; version: string }[];
+  readonly mobile: boolean;
+  readonly platform: string;
+  getHighEntropyValues(
+    hints: readonly string[]
+  ): Promise<Record<string, string>>;
+  toJSON(): {
+    brands: { brand: string; version: string }[];
+    mobile: boolean;
+    platform: string;
+  };
+}
+
+interface NavigatorWithUAData extends Navigator {
+  readonly userAgentData?: NavigatorUAData;
+}
+
+/**
+ * @description Android 기기인지 확인
+ * Android OS 감지: 2025년 12월 기준 최신 공식문서 기반 구현
+ *
+ * 감지 우선순위:
+ * 1. navigator.userAgentData.platform (실험적 API, 가장 정확함)
+ * 2. navigator.platform (deprecated되었으나 호환성 좋음)
+ * 3. navigator.userAgent (fallback)
+ *
+ * 참고: MDN Web Docs (2025년 12월)
+ * - navigator.userAgentData: 실험적 API, 일부 브라우저에서만 지원
+ * - navigator.platform: deprecated되었으나 여전히 널리 사용됨
+ * - navigator.userAgent: 가장 넓은 호환성
+ *
+ * @returns {boolean} Android 기기인 경우 true
+ */
+export const isAndroidDevice = (): boolean => {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+
+  try {
+    // 1. User-Agent Client Hints API (최신, 가장 정확함)
+    // MDN: navigator.userAgentData.platform은 실험적이나 Android에서 "Android" 반환
+    const navigatorWithUAData = navigator as NavigatorWithUAData;
+    const userAgentData = navigatorWithUAData.userAgentData;
+    if (
+      userAgentData &&
+      typeof userAgentData.getHighEntropyValues === "function"
+    ) {
+      // 동기적으로 접근 가능한 platform 속성 사용 (low-entropy)
+      if (userAgentData.platform === "Android") {
+        return true;
+      }
+    }
+  } catch (error) {
+    // User-Agent Client Hints API 미지원 또는 에러
+    debug?.warn?.("User-Agent Client Hints API 접근 실패:", error);
+  }
+
+  try {
+    // 2. navigator.platform (deprecated되었으나 호환성 좋음)
+    // MDN: Android에서는 "Linux armv8l", "Linux aarch64" 등 반환
+    const platform = navigator.platform?.toLowerCase() || "";
+    if (platform.includes("linux") && !platform.includes("x86")) {
+      // Linux 기반 ARM 아키텍처는 대부분 Android
+      // 단, x86은 제외 (Chrome OS 등)
+      const userAgent = navigator.userAgent?.toLowerCase() || "";
+      if (/android/.test(userAgent)) {
+        return true;
+      }
+    }
+  } catch (error) {
+    debug?.warn?.("navigator.platform 접근 실패:", error);
+  }
+
+  // 3. navigator.userAgent fallback (가장 넓은 호환성)
+  try {
+    const userAgent = navigator.userAgent?.toLowerCase() || "";
+    return /android/.test(userAgent) && !/like android/.test(userAgent);
+  } catch (error) {
+    debug?.warn?.("navigator.userAgent 접근 실패:", error);
+    return false;
+  }
+};
 
 /**
  * @description iOS 기기인지 확인
@@ -121,10 +208,15 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
     return undefined; // capture 속성 제거하여 기본 카메라 앱 사용
   }
 
-  // Chrome Mobile (Android) - capture 속성 완벽 지원
-  // Android Chrome은 capture="environment"를 완벽하게 지원 (후면 카메라 우선)
-  if (userAgent.includes("Chrome") && userAgent.includes("Mobile") && !isIOS) {
-    return "environment"; // 후면 카메라 우선
+  // Android Chrome - 사용자가 선택할 수 있도록 capture 속성 제거
+  // iOS처럼 카메라/갤러리 선택지를 제공하여 UX 일관성 확보
+  if (
+    userAgent.includes("Chrome") &&
+    userAgent.includes("Mobile") &&
+    !isIOS &&
+    /Android/i.test(userAgent)
+  ) {
+    return undefined; // capture 속성 제거하여 사용자 선택 제공
   }
 
   // Firefox Mobile - capture 속성 지원하지만 신뢰성이 낮음
@@ -132,9 +224,9 @@ export const getCameraCaptureValue = (): "environment" | "user" | undefined => {
     return undefined; // capture 속성 제거하여 안정성 확보
   }
 
-  // 그 외 모바일 브라우저 (Android 기반) - 기본적으로 후면 카메라 시도
+  // 그 외 모바일 브라우저 (Android 기반) - 사용자가 선택할 수 있도록 capture 속성 제거
   if (/Android|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) && !isIOS) {
-    return "environment";
+    return undefined; // capture 속성 제거하여 사용자 선택 제공
   }
 
   // 데스크톱 브라우저에서는 capture 속성 불필요
