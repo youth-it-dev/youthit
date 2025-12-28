@@ -45,7 +45,8 @@ const TopBar = ({ title, leftSlot, rightSlot }: TopBarProps) => {
       return;
     }
     // 스토어 상품 상세 페이지에서 뒤로가기 시 주문 페이지로 돌아가지 않도록 스토어 메인으로 이동
-    if (pathname?.match(/^\/store\/[^/]+$/)) {
+    // "history" 경로는 제외하여 구매 내역 페이지에서는 정상적인 뒤로가기 동작 유지
+    if (pathname?.match(/^\/store\/(?!history)[^/]+$/)) {
       router.replace(LINK_URL.STORE);
       return;
     }
