@@ -68,6 +68,7 @@ const TextEditor = ({
   onImageUpload,
   onFileUpload,
   onTimestampPhotoCapture,
+  showTimestampButton = false,
   onTitleChange,
   onContentChange,
 }: TextEditorProps) => {
@@ -2076,7 +2077,7 @@ const TextEditor = ({
           />
         </ToolbarButton>
 
-        {/* Timestamp button */}
+        {/* Timestamp button - Hidden for production, visible in test pages */}
         <ToolbarButton
           ref={timestampPhoto.timestampButtonRef}
           onClick={timestampPhoto.handleTimestampMenuToggle}
@@ -2088,6 +2089,7 @@ const TextEditor = ({
             }
             e.preventDefault();
           }}
+          className={showTimestampButton ? "" : "hidden"}
         >
           <Clock
             className={cn(
