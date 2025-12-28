@@ -19,6 +19,7 @@ export const LINK_URL = {
   SETTINGS: "/settings",
   PERSONAL_INFO: "/settings/personal-info",
   STORE: "/store",
+  STORE_HISTORY: "/store/history",
   STORE_HISTORY_NADAUM: "/store/history/nadaum",
   ANNOUNCEMENTS: "/announcements",
   NOTIFICATIONS: "/notifications",
