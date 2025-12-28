@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Input from "@/components/shared/input";
 import { Typography } from "@/components/shared/typography";
 import Modal from "@/components/shared/ui/modal";
@@ -161,6 +162,9 @@ const StorePurchasePage = () => {
     select: (data) => data?.user,
   });
 
+  // QueryClient 가져오기
+  const queryClient = useQueryClient();
+
   // 구매 mutation
   const purchaseMutation = usePostStorePurchases({
     onSuccess: () => {
@@ -168,6 +172,12 @@ const StorePurchasePage = () => {
       if (typeof window !== "undefined") {
         localStorage.removeItem(STORAGE_KEY);
       }
+
+      // 스토어 신청내역 목록 조회 캐시 무효화 (모든 pageSize, cursor 변형 포함)
+      queryClient.invalidateQueries({
+        queryKey: ["store", "getStorePurchases"],
+      });
+
       setCurrentStep("complete");
     },
     onError: (error: unknown) => {
@@ -311,7 +321,8 @@ const StorePurchasePage = () => {
 
   // 주문 완료 후 확인
   const handleComplete = useCallback(() => {
-    router.push(`/store/${productId}`);
+    // 히스토리를 지우고 상품 상세 페이지로 이동
+    router.replace(`/store/${productId}`);
   }, [router, productId]);
 
   const totalRequiredPoints =
