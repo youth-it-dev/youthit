@@ -213,65 +213,6 @@ export const getCameraPermissionStatus =
   };
 
 /**
- * @description 모바일 기기인지 확인
- * iOS (Safari, Chrome), Android (Chrome, Samsung Browser), 기타 모바일 브라우저 감지
- * 구 버전 브라우저: User Agent 기반 감지로 대응 (모든 브라우저에서 동작)
- * @returns {boolean} 모바일 기기 여부
- */
-export const isMobileDevice = (): boolean => {
-  if (typeof window === "undefined" || typeof navigator === "undefined") {
-    return false;
-  }
-
-  const userAgent = (navigator.userAgent || "").toLowerCase();
-
-  // iOS, Android, 기타 모바일 OS 감지 (구 버전 브라우저 대응)
-  const isMobile =
-    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-      userAgent
-    );
-
-  // 추가적으로 터치 지원 확인 (태블릿 등)
-  // iPadOS 13+는 MacIntel로 감지되지만 터치 지원 확인으로 보완
-  // 구 버전 브라우저에서도 ontouchstart는 지원되므로 안전
-  const hasTouchScreen =
-    "ontouchstart" in window ||
-    (typeof navigator.maxTouchPoints === "number" &&
-      navigator.maxTouchPoints > 0);
-
-  // 모바일 OS이거나, 터치 지원 + 매우 작은 화면 크기인 경우만 모바일로 판단
-  // PC의 큰 터치스크린은 제외하기 위해 768px로 제한 (태블릿 사이즈)
-  const viewportWidth =
-    typeof window.innerWidth === "number" ? window.innerWidth : 0;
-
-  // 터치스크린이 있는 경우에도 화면 크기가 작아야 모바일로 판단
-  const isSmallTouchScreen = hasTouchScreen && viewportWidth <= 768;
-
-  return isMobile || isSmallTouchScreen;
-};
-
-/**
- * @description 카메라 촬영 버튼을 표시할지 여부를 결정
- *
- * 일관된 UX 제공: 모든 모바일 플랫폼에서 동일한 버튼을 표시
- * - 모바일 기기이고 카메라 API를 지원하면 버튼 표시
- * - 내부적으로는 플랫폼에 맞게 처리:
- *   - iOS: capture 속성이 무시되지만, 사용자가 '사진 촬영' 클릭 시 iOS가 자동으로 카메라/갤러리 선택 제공
- *   - Android: capture="environment"로 후면 카메라 직접 접근
- *
- * @returns {boolean} 카메라 촬영 버튼을 표시할지 여부
- */
-export const shouldShowCameraButton = (): boolean => {
-  if (typeof window === "undefined" || typeof navigator === "undefined") {
-    return false;
-  }
-
-  // 모바일 기기이고 카메라 API를 지원하면 버튼 표시
-  // 모든 플랫폼에서 일관된 UX 제공
-  return isMobileDevice() && isCameraAPISupported();
-};
-
-/**
  * 브라우저별 카메라 에러 메시지를 반환
  * @param error - 선택적 에러 객체 (에러 타입에 따른 구체적인 메시지 제공)
  * @returns 사용자 친화적인 에러 메시지
