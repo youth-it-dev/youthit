@@ -260,21 +260,35 @@ const getRollupValues = (property) => {
           name: item.rich_text.map(text => text.plain_text).join('')
         };
       }
-      // 2. relation 타입 - ID만 있는 경우
+      // 2. number 타입 - rollup된 숫자값
+      else if (item.type === 'number' && item.number !== null && item.number !== undefined) {
+        return {
+          id: null,
+          name: String(item.number)
+        };
+      }
+      // 3. relation 타입 - ID만 있는 경우
       else if (item.type === 'relation' && item.relation) {
         return {
           id: item.relation[0]?.id || null,
           name: null
         };
       }
-      // 3. 단순 값 (string, number) - 직접 값
+      // 4. 단순 값 (string, number) - 직접 값
       else if (typeof item === 'string' || typeof item === 'number') {
         return {
           id: null,
           name: String(item)
         };
       }
-      // 4. 기타 객체 - 속성 우선순위 기반 처리
+      // 5. files 타입 - rollup된 파일 (name만 추출)
+      else if (item.type === 'files' && item.files && item.files.length > 0) {
+        return {
+          id: null,
+          name: item.files[0].name || ''
+        };
+      }
+      // 7. 기타 객체 - 속성 우선순위 기반 처리
       else if (item && typeof item === 'object') {
         let name = '';
         let id = null;
