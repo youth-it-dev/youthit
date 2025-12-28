@@ -133,7 +133,7 @@ const PurchaseSection = ({ section }: { section: PurchaseSection }) => {
       <div className="rounded-lg border border-gray-200 px-4">
         {purchases.map((purchase, index) => (
           <PurchaseItemCard
-            key={purchase.purchaseId}
+            key={purchase.purchaseId ?? `purchase-fallback-${index}`}
             purchase={purchase}
             isLast={index === purchases.length - 1}
           />
