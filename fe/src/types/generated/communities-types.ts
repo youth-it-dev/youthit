@@ -103,6 +103,10 @@ export type TGETCommunitiesPostsByTwoIdsRes = Schema.CommunityPost & {
   };
   programType?: "ROUTINE" | "GATHERING" | "TMI";
   isReview?: boolean;
+  media?: string[];
+  thumbnailMedia?: string[];
+  thumbnailUrl?: string;
+  imageCount?: number;
   reportsCount?: number;
   isAuthor?: boolean;
 };

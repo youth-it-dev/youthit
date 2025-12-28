@@ -111,6 +111,9 @@ export interface FileUploadResponse {
         size?: number;
         bucket?: string;
         path?: string;
+        thumbnailUrl?: string;
+        thumbnailFileName?: string;
+        thumbnailSize?: number;
       };
     }[];
     errors: string[];
@@ -323,6 +326,9 @@ export interface CommunityPostListItem {
       height?: number;
     };
   };
+  media?: string[];
+  thumbnailMedia?: string[];
+  thumbnailUrl?: string;
   mediaCount?: number;
   channel?: string;
   category?: string;
@@ -347,6 +353,9 @@ export interface CommunityPost {
   title?: string;
   content?: string;
   media?: string[];
+  thumbnailMedia?: string[];
+  thumbnailUrl?: string;
+  imageCount?: number;
   channel?: string;
   isLocked?: boolean;
   isPublic?: boolean;
