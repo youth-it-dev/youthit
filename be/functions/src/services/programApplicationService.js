@@ -46,12 +46,25 @@ class ProgramApplicationService {
   }
 
   /**
+   * 선착순 자동 승인 프로그램 여부 판단
+   * 노션의 "선착순 마감 여부" 필드만으로 자동 승인 여부 결정
+   * @param {Object} program - 프로그램 정보
+   * @returns {boolean} 자동 승인 대상 여부
+   */
+  isAutoApproveProgram(program) {
+    return program.isFirstComeDeadlineEnabled === true;
+  }
+
+  /**
    * 프로그램 신청 처리
+   * - 노션의 "선착순 마감 여부" 체크박스가 활성화된 경우 자동 승인 (status: approved)
+   * - 비활성화된 경우 수동 승인 대기 (status: pending)
    * @param {string} programId - 프로그램 ID
    * @param {Object} applicationData - 신청 데이터 { applicantId, nickname }
-   * @returns {Promise<Object>} 신청 결과
+   * @returns {Promise<Object>} 신청 결과 (status 필드 포함)
    * @throws {Error} NICKNAME_DUPLICATE - 닉네임 중복
    * @throws {Error} PROGRAM_NOT_FOUND - 프로그램을 찾을 수 없음
+   * @throws {Error} FIRST_COME_DEADLINE_REACHED - 선착순 마감
    * @throws {Error} NOTION_API_ERROR - Notion API 호출 실패
    */
   async applyToProgram(programId, applicationData) {
@@ -77,6 +90,10 @@ class ProgramApplicationService {
         throw periodError;
       }
 
+      // 1-2. 선착순 자동 승인 여부 판단 (노션 "선착순 마감 여부" 필드 기준)
+      const isAutoApprove = this.isAutoApproveProgram(program);
+      console.log(`[ProgramApplicationService] 프로그램 신청 시작 - programId: ${programId}, programType: ${program.programType}, isAutoApprove: ${isAutoApprove}, firstComeEnabled: ${program.isFirstComeDeadlineEnabled}`);
+      
       // 2. Community 존재 확인 및 생성 (Firestore용 ID로 정규화)
       const normalizedProgramId = normalizeProgramIdForFirestore(programId);
       await programCommunityService.ensureCommunityExists(normalizedProgramId, program);
@@ -111,8 +128,8 @@ class ProgramApplicationService {
         // 3-4. 승인된 멤버 수 카운트
         const approvedCount = allMembers.filter(m => m.status === 'approved').length;
         
-        // 3-5. 선착순 마감 체크
-        if (program.isFirstComeDeadlineEnabled && 
+        // 3-5. 선착순 마감 체크 (노션에서 선착순 활성화한 프로그램만)
+        if (isAutoApprove && 
             program.firstComeCapacity && 
             approvedCount >= program.firstComeCapacity) {
           const capacityError = new Error('선착순 마감되었습니다.');
@@ -121,13 +138,14 @@ class ProgramApplicationService {
           throw capacityError;
         }
         
-        // 3-6. 멤버 추가 (원자적 실행)
+        // 3-6. 멤버 추가 (원자적 실행) - 선착순 활성화 시 즉시 approved, 아니면 pending
+        const memberStatus = isAutoApprove ? 'approved' : 'pending';
         const newMemberRef = collectionRef.doc(applicantId);
         transaction.set(newMemberRef, {
           userId: applicantId,
           nickname: nickname.trim(),
           role: "member",
-          status: 'pending',
+          status: memberStatus,
           joinedAt: FieldValue.serverTimestamp(),
           createdAt: FieldValue.serverTimestamp()
         });
@@ -137,7 +155,7 @@ class ProgramApplicationService {
           userId: applicantId,
           nickname: nickname.trim(),
           role: "member",
-          status: 'pending'
+          status: memberStatus
         };
       });
 
@@ -159,6 +177,7 @@ class ProgramApplicationService {
         programId,
         applicantId,
         nickname,
+        status: memberResult.status, // 'approved' (자동 승인) 또는 'pending' (수동 승인 대기)
         appliedAt: new Date().toISOString(), // 클라이언트 응답용
         applicantsPageId
       };
@@ -272,6 +291,10 @@ class ProgramApplicationService {
       // "회원 관리" DB에서 사용자 찾기
       const userNotionPageId = await this.findUserNotionPageId(applicantId);
 
+      // 선착순 자동 승인 여부 판단 (노션 "선착순 마감 여부" 필드 기준)
+      const isAutoApprove = this.isAutoApproveProgram(program);
+      const approvalStatus = isAutoApprove ? '승인' : '승인대기';
+
       const properties = {
         '이름': {
           title: [
@@ -306,7 +329,7 @@ class ProgramApplicationService {
         },
         '승인여부': {
           select: {
-            name: '승인대기'
+            name: approvalStatus
           }
         }
       };
@@ -431,8 +454,7 @@ class ProgramApplicationService {
         `communities/${normalizedProgramId}/members`,
         applicationId,
         {
-          status: 'approved',
-          approvedAt: FieldValue.serverTimestamp()
+          status: 'approved'
         }
       );
 
@@ -476,8 +498,7 @@ class ProgramApplicationService {
 
       return {
         applicationId,
-        status: 'approved',
-        approvedAt: new Date().toISOString()
+        status: 'approved'
       };
 
     } catch (error) {
@@ -525,8 +546,7 @@ class ProgramApplicationService {
         `communities/${normalizedProgramId}/members`,
         applicationId,
         {
-          status: 'rejected',
-          rejectedAt: FieldValue.serverTimestamp()
+          status: 'rejected'
         }
       );
 
@@ -570,8 +590,7 @@ class ProgramApplicationService {
 
       return {
         applicationId,
-        status: 'rejected',
-        rejectedAt: new Date().toISOString()
+        status: 'rejected'
       };
 
     } catch (error) {
@@ -620,8 +639,7 @@ class ProgramApplicationService {
         `communities/${normalizedProgramId}/members`,
         applicationId,
         {
-          status: 'pending',
-          pendingAt: FieldValue.serverTimestamp()
+          status: 'pending'
         }
       );
 
@@ -646,8 +664,7 @@ class ProgramApplicationService {
 
       return {
         applicationId,
-        status: 'pending',
-        pendingAt: new Date().toISOString()
+        status: 'pending'
       };
 
     } catch (error) {
