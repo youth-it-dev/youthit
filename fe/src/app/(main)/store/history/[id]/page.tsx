@@ -11,17 +11,13 @@ import { storeKeys } from "@/constants/generated/query-keys";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { StorePurchase } from "@/types/generated/api-schema";
 import type { TGETStorePurchasesRes } from "@/types/generated/store-types";
+import {
+  formatOrderNumber,
+  getDeliveryStatusText,
+  getProductName,
+} from "@/utils/store/purchase";
 
 const PAGE_SIZE = 20; // 목록 페이지와 동일한 페이지 크기
-
-/**
- * @description title에서 상품명 추출
- */
-const getProductName = (title?: string): string => {
-  if (!title) return "-";
-  const parts = title.split(" - ");
-  return parts[0] || "-";
-};
 
 /**
  * @description 스토어 신청내역 상세 페이지
@@ -41,11 +37,8 @@ const StoreHistoryDetailPage = () => {
   const purchasesPagesData =
     queryClient.getQueryData<InfiniteData<TGETStorePurchasesRes>>(queryKey);
 
-  // 모든 페이지에서 해당 purchaseId가 속한 날짜 섹션 찾기
-  const purchaseSection = useMemo<{
-    dateLabel?: string;
-    items: StorePurchase[];
-  } | null>(() => {
+  // 모든 페이지에서 해당 purchaseId 찾기
+  const currentPurchase = useMemo<StorePurchase | null>(() => {
     if (!purchasesPagesData?.pages) return null;
 
     for (const page of purchasesPagesData.pages) {
@@ -56,23 +49,17 @@ const StoreHistoryDetailPage = () => {
           (item) => item.purchaseId === purchaseId
         );
         if (found) {
-          return {
-            dateLabel: section.dateLabel,
-            items: section.items,
-          };
+          return found;
         }
       }
     }
     return null;
   }, [purchasesPagesData, purchaseId]);
 
-  // 총 사용 나다움 계산 (모든 아이템의 requiredPoints * quantity 합계)
-  const totalRequiredPoints = useMemo(() => {
-    if (!purchaseSection?.items) return 0;
-    return purchaseSection.items.reduce((sum, item) => {
-      return sum + (item.requiredPoints || 0) * (item.quantity || 1);
-    }, 0);
-  }, [purchaseSection]);
+  // 총 사용 나다움 계산 (개별 아이템의 requiredPoints * quantity)
+  const totalRequiredPoints = currentPurchase
+    ? (currentPurchase.requiredPoints || 0) * (currentPurchase.quantity || 1)
+    : 0;
 
   useEffect(() => {
     setTitle("신청 내역 상세");
@@ -95,7 +82,7 @@ const StoreHistoryDetailPage = () => {
   }
 
   // 데이터를 찾지 못한 경우
-  if (!purchaseSection) {
+  if (!currentPurchase) {
     return (
       <div className="min-h-screen bg-white pt-12">
         <div className="flex min-h-[400px] items-center justify-center p-4">
@@ -107,21 +94,13 @@ const StoreHistoryDetailPage = () => {
     );
   }
 
-  // 현재 선택된 아이템 찾기 (주문번호 등에 사용)
-  const currentPurchase =
-    purchaseSection.items.find((item) => item.purchaseId === purchaseId) ||
-    purchaseSection.items[0];
-
   return (
     <div className="min-h-screen bg-white pt-12">
       <div className="px-4 py-6">
         {/* 주문번호 */}
         <div className="mb-5 rounded-lg bg-gray-50 p-4">
           <Typography font="noto" variant="body1M" className="text-gray-600">
-            주문번호{" "}
-            {currentPurchase.purchaseId
-              ? `C${currentPurchase.purchaseId.slice(-10).toUpperCase()}`
-              : "-"}
+            주문번호 {formatOrderNumber(currentPurchase.purchaseId)}
           </Typography>
         </div>
 
@@ -180,61 +159,51 @@ const StoreHistoryDetailPage = () => {
             결제 정보
           </Typography>
           <div className="rounded-lg border border-gray-200 p-4">
-            {/* 상품 정보 리스트 */}
-            <div className="mb-4 space-y-4">
-              {purchaseSection.items.map((item, index) => (
-                <div key={item.purchaseId || index}>
-                  <div className="flex items-stretch gap-3">
-                    {/* 상품 이미지 */}
-                    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-white">
-                      {item.productImage?.[0]?.url ? (
-                        <Image
-                          src={item.productImage[0].url}
-                          alt={getProductName(item.title)}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <Package
-                          className="h-8 w-8 text-gray-400"
-                          strokeWidth={1.5}
-                        />
-                      )}
-                    </div>
+            {/* 상품 정보 */}
+            <div className="mb-4 flex items-stretch gap-3">
+              {/* 상품 이미지 */}
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-white">
+                {currentPurchase.productImage?.[0]?.url ? (
+                  <Image
+                    src={currentPurchase.productImage[0].url}
+                    alt={getProductName(currentPurchase.title)}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <Package
+                    className="h-8 w-8 text-gray-400"
+                    strokeWidth={1.5}
+                  />
+                )}
+              </div>
 
-                    {/* 상품 상세 정보 */}
-                    <div className="flex flex-1 flex-col justify-between self-stretch">
-                      <Typography
-                        font="noto"
-                        variant="label2B"
-                        className="text-main-500"
-                      >
-                        {item.deliveryCompleted ? "전달 완료" : "신청 완료"}
-                      </Typography>
-                      <Typography
-                        font="noto"
-                        variant="body2B"
-                        className="text-gray-900"
-                      >
-                        {getProductName(item.title)}
-                      </Typography>
-                      <Typography
-                        font="noto"
-                        variant="label1B"
-                        className="text-gray-500"
-                      >
-                        {(item.requiredPoints || 0).toLocaleString()}N |{" "}
-                        {item.quantity || 1}개
-                      </Typography>
-                    </div>
-                  </div>
-                  {/* 마지막 아이템이 아니면 구분선 추가 */}
-                  {index < purchaseSection.items.length - 1 && (
-                    <div className="mt-4 border-t border-gray-200" />
-                  )}
-                </div>
-              ))}
+              {/* 상품 상세 정보 */}
+              <div className="flex flex-1 flex-col justify-between self-stretch">
+                <Typography
+                  font="noto"
+                  variant="label2B"
+                  className="text-main-500"
+                >
+                  {getDeliveryStatusText(currentPurchase.deliveryCompleted)}
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="body2B"
+                  className="text-gray-900"
+                >
+                  {getProductName(currentPurchase.title)}
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="label1B"
+                  className="text-gray-500"
+                >
+                  {(currentPurchase.requiredPoints || 0).toLocaleString()}N |{" "}
+                  {currentPurchase.quantity || 1}개
+                </Typography>
+              </div>
             </div>
 
             {/* 구분선 */}
