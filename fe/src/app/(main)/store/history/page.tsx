@@ -18,8 +18,10 @@ import type {
   TGETStorePurchasesReq,
 } from "@/types/generated/store-types";
 import { cn } from "@/utils/shared/cn";
+import { getDeliveryStatusText, getProductName } from "@/utils/store/purchase";
 
 const PAGE_SIZE = 20;
+const DETAIL_BUTTON_WIDTH = 80; // 상세 보기 버튼 영역 너비 (px)
 
 type PurchaseSection = NonNullable<
   TGETStorePurchasesRes["purchasesByDate"]
@@ -35,15 +37,8 @@ const PurchaseItemCard = ({
   purchase: StorePurchase;
   isLast?: boolean;
 }) => {
-  // title에서 상품명 추출 (형식: "상품명 - 주문자닉네임 - 주문일시")
-  const getProductName = (title?: string): string => {
-    if (!title) return "-";
-    const parts = title.split(" - ");
-    return parts[0] || "-";
-  };
-
   const productName = getProductName(purchase.title);
-  const status = purchase.deliveryCompleted ? "전달 완료" : "신청 완료";
+  const status = getDeliveryStatusText(purchase.deliveryCompleted);
   const points = purchase.requiredPoints || 0;
   const quantity = purchase.quantity || 1;
   const formattedPoints = points.toLocaleString();
@@ -58,7 +53,7 @@ const PurchaseItemCard = ({
     <Link
       href={detailPageUrl}
       className={cn(
-        "flex items-center gap-3 py-4",
+        "relative flex items-center gap-3 py-4",
         !isLast && "border-b border-gray-200"
       )}
     >
@@ -78,7 +73,10 @@ const PurchaseItemCard = ({
       </div>
 
       {/* 상품 정보 */}
-      <div className="flex flex-1 flex-col gap-1">
+      <div
+        className="flex flex-1 flex-col gap-1"
+        style={{ paddingRight: `${DETAIL_BUTTON_WIDTH}px` }}
+      >
         <div className="flex items-start">
           <Typography font="noto" variant="label2B" className="text-blue-500">
             {status}
@@ -91,6 +89,26 @@ const PurchaseItemCard = ({
           {formattedPoints}N | {quantity}개
         </Typography>
       </div>
+
+      {/* 상세 보기 버튼 (우측 하단) */}
+      <div className="pointer-events-none absolute right-4 bottom-4 flex shrink-0 items-center gap-1">
+        <Typography font="noto" variant="body3R" className="text-gray-400">
+          상세 보기
+        </Typography>
+        <svg
+          className="h-4 w-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </div>
     </Link>
   );
 };
@@ -99,42 +117,16 @@ const PurchaseItemCard = ({
  * @description 날짜별 구매 섹션 컴포넌트
  */
 const PurchaseSection = ({ section }: { section: PurchaseSection }) => {
-  // 섹션의 첫 번째 구매 항목의 상세 페이지로 이동
-  const firstPurchaseId = section.items?.[0]?.purchaseId;
-  const detailPageUrl = firstPurchaseId
-    ? `${LINK_URL.STORE_HISTORY}/${firstPurchaseId}`
-    : LINK_URL.STORE_HISTORY;
-
   const dateLabel = section.dateLabel || section.date || "";
   const purchases = section.items || [];
 
   return (
     <section className="mb-8">
       {/* 날짜 헤더 */}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <Typography font="noto" variant="body3M" className="text-gray-700">
           {dateLabel}
         </Typography>
-        {purchases.length > 0 && (
-          <Link href={detailPageUrl} className="flex items-center gap-1">
-            <Typography font="noto" variant="body3R" className="text-gray-400">
-              상세 보기
-            </Typography>
-            <svg
-              className="h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </Link>
-        )}
       </div>
 
       {/* 구매 항목 목록 */}
