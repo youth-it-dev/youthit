@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/hooks/shared/useMounted";
-import { isMobileDevice } from "@/utils/shared/device";
+import { shouldShowCameraButton } from "@/utils/shared/device";
 
 interface TimestampMenuProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
     ref
   ) => {
     const isMounted = useMounted();
-    const isMobile = isMobileDevice();
+    const showCameraButton = shouldShowCameraButton();
 
     if (!isOpen || !isMounted) return null;
 
@@ -41,7 +41,7 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
           left: `${position.left}px`,
         }}
       >
-        {isMobile && (
+        {showCameraButton && (
           <button
             type="button"
             className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
