@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import ButtonBase from "@/components/shared/base/button-base";
 import TextEditor from "@/components/shared/text-editor";
 import { Typography } from "@/components/shared/typography";
+import { LoadingOverlay } from "@/components/shared/ui/loading-overlay";
 import Modal from "@/components/shared/ui/modal";
 import {
   MAX_FILES,
@@ -203,6 +204,11 @@ const EditPageContent = () => {
     close: closeUpdateFailedModal,
   } = useToggle();
   const [updateFailedMessage, setUpdateFailedMessage] = useState<string>("");
+  const {
+    isOpen: isSubmitting,
+    open: setIsSubmitting,
+    close: setIsNotSubmitting,
+  } = useToggle();
 
   // 게시물 없음 모달
   const {
@@ -528,6 +534,8 @@ const EditPageContent = () => {
       return;
     }
 
+    setIsSubmitting();
+
     const trimmedTitle = values.title.trim();
     const currentContent = getValues("content");
     let uploadedImagePaths: string[] = [];
@@ -621,6 +629,8 @@ const EditPageContent = () => {
       handleUpdateSuccess();
     } catch (error) {
       await handleError(error, uploadedImagePaths, uploadedFilePaths);
+    } finally {
+      setIsNotSubmitting();
     }
   };
 
@@ -634,7 +644,7 @@ const EditPageContent = () => {
       <ButtonBase
         type="submit"
         className="disabled:opacity-50"
-        disabled={isSubmitDisabled}
+        disabled={isSubmitDisabled || isSubmitting}
         onClick={handleSubmit(onSubmit)}
       >
         <Typography font="noto" variant="body2M" className="text-main-600">
@@ -878,6 +888,12 @@ const EditPageContent = () => {
         onConfirm={closePostNotFoundModal}
         onClose={closePostNotFoundModal}
         variant="primary"
+      />
+
+      {/* 로딩 오버레이 */}
+      <LoadingOverlay
+        isLoading={isSubmitting}
+        message="게시글을 수정하고 있습니다..."
       />
     </form>
   );
