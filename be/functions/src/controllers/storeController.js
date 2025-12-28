@@ -153,12 +153,12 @@ class StoreController {
       const result = await storeService.getStorePurchases(userId, pageSizeNum, cursor);
 
       return res.success({
-        message: "스토어 구매신청내역을 성공적으로 조회했습니다.",
-        purchases: result.purchases,
+        message: "날짜별 스토어 구매신청내역을 성공적으로 조회했습니다.",
+        purchasesByDate: result.purchasesByDate,
+        totalCount: result.totalCount,
         pagination: {
           hasMore: result.hasMore,
-          nextCursor: result.nextCursor,
-          currentPageCount: result.currentPageCount
+          nextCursor: result.nextCursor
         }
       });
 
