@@ -52,10 +52,12 @@
 }
 
 /* iOS Safe Area 지원 */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .pb-safe {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 1.25rem) !important;
-  }
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem) !important;
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
 /* 마우스로 포커스된 요소의 기본 링 숨기기 (키보드 접근성 유지) */

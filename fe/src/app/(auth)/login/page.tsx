@@ -374,7 +374,7 @@ const LoginPageContent = () => {
           <ButtonBase
             onClick={handleKakaoLogin}
             disabled={isLoading}
-            className="bg-kakao flex w-full items-center justify-center gap-2 rounded-lg py-3 disabled:opacity-60"
+            className="bg-kakao flex h-11 w-full items-center justify-center gap-2 rounded-lg py-3 disabled:opacity-60"
           >
             <Image
               src={IMAGE_URL.ICON.logo.kakao.url}

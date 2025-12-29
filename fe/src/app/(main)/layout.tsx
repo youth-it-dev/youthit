@@ -16,6 +16,54 @@ import type { TGETHomeRes } from "@/types/generated/home-types";
 import { isPublicRoute } from "@/utils/auth/is-public-route";
 
 /**
+ * 디바이스 크기에 맞는 스플래시 이미지 선택
+ */
+const getSplashImage = () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const pixelRatio = window.devicePixelRatio || 1;
+
+  // 논리 픽셀 계산
+  const logicalWidth = width;
+  const logicalHeight = height;
+
+  // iPad Air 10.9" (820x1180 @2x)
+  if (logicalWidth === 820 && logicalHeight === 1180 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-1640-2360.jpg";
+  }
+  if (logicalWidth === 1180 && logicalHeight === 820 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-2360-1640.jpg";
+  }
+
+  // iPhone XR, 11 (414x896 @2x)
+  if (logicalWidth === 414 && logicalHeight === 896 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-828-1792.jpg";
+  }
+  if (logicalWidth === 896 && logicalHeight === 414 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-1792-828.jpg";
+  }
+
+  // iPhone SE (375x667 @2x)
+  if (logicalWidth === 375 && logicalHeight === 667 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-750-1334.jpg";
+  }
+  if (logicalWidth === 667 && logicalHeight === 375 && pixelRatio === 2) {
+    return "/imgs/splash/apple-splash-1334-750.jpg";
+  }
+
+  // iPhone 16 Pro Max (440x956 @3x)
+  if (logicalWidth === 440 && logicalHeight === 956 && pixelRatio === 3) {
+    return "/imgs/splash/apple-splash-1320-2868.jpg";
+  }
+  if (logicalWidth === 956 && logicalHeight === 440 && pixelRatio === 3) {
+    return "/imgs/splash/apple-splash-2868-1320.jpg";
+  }
+
+  // 기본값: 가장 일반적인 iPhone 크기
+  return "/imgs/splash/apple-splash-828-1792.jpg";
+};
+
+/**
  * @description 하단 네브바 포함 레이아웃
  */
 export default function MainLayout({
@@ -100,10 +148,9 @@ export default function MainLayout({
     }
   }, [isHomeLoading, homeData, isHomePage]);
 
-  // 오버레이 스플래시: 항상 레이아웃을 렌더하고 위에 얹어서 페이드아웃
-  // 표시 여부와 투명도 상태를 분리하여 버벅임 최소화
+  // 오버레이 스플래시: 항상 레이아웃을 렌더하고 위에 얹어서 표시
   const [showOverlay, setShowOverlay] = useState(isHomePage);
-  const [overlayOpaque, setOverlayOpaque] = useState(isHomePage);
+  const [overlayOpacity, setOverlayOpacity] = useState(1);
 
   useEffect(() => {
     if (!isHomePage) {
@@ -111,15 +158,18 @@ export default function MainLayout({
       return;
     }
 
-    // 데이터 준비되면 opacity -> 0 전환 후 DOM 제거
+    // 데이터 준비되면 페이드아웃 후 DOM 제거
     if (!isHomeLoading && homeData) {
       let animationFrameId: number | null = null;
       let timeoutId: NodeJS.Timeout | null = null;
 
-      // 한 프레임 뒤에 opacity 변경하여 CSS 트랜지션 보장
+      // 페이드아웃 시작
       animationFrameId = requestAnimationFrame(() => {
-        setOverlayOpaque(false);
-        timeoutId = setTimeout(() => setShowOverlay(false), 500);
+        setOverlayOpacity(0);
+        // 트랜지션 완료 후 DOM에서 제거
+        timeoutId = setTimeout(() => {
+          setShowOverlay(false);
+        }, 500); // duration-500과 동일한 시간
       });
 
       return () => {
@@ -133,29 +183,52 @@ export default function MainLayout({
     } else if (!homeData && isHomeLoading) {
       // '데이터가 전혀 없고' 로딩 중일 때만 스플래시 표시
       setShowOverlay(true);
-      setOverlayOpaque(true);
+      setOverlayOpacity(1);
     } else {
       // 데이터가 있으면 스플래시 숨김
       setShowOverlay(false);
     }
   }, [isHomePage, isHomeLoading, homeData]);
 
+  const [splashImage, setSplashImage] = useState<string | null>(null);
+  const [imageOpacity, setImageOpacity] = useState(0);
+
+  useEffect(() => {
+    setSplashImage(getSplashImage());
+  }, []);
+
+  // splashImage가 할당된 후 img 페이드인 트랜지션
+  useEffect(() => {
+    if (splashImage) {
+      // 다음 프레임에서 opacity를 1로 변경하여 페이드인 효과
+      const animationFrameId = requestAnimationFrame(() => {
+        setImageOpacity(1);
+      });
+      return () => cancelAnimationFrame(animationFrameId);
+    } else {
+      setImageOpacity(0);
+    }
+  }, [splashImage]);
+
   const layoutContent = (
     <div className="flex min-h-[100dvh] w-full flex-col items-center bg-white">
       {showOverlay && (
         <div
-          className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-500 will-change-[opacity] ${
-            overlayOpaque ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
+          className="bg-main-500 fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-500"
+          style={{
+            opacity: overlayOpacity,
+            backfaceVisibility: "hidden",
+            transform: "translateZ(0)",
+          }}
         >
-          <div className="relative h-full w-full max-w-[470px]">
+          {splashImage && (
             <img
-              src="/imgs/splash/apple-splash-1320-2868.jpg"
+              src={splashImage}
               alt="스플래시 화면"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-opacity duration-1000"
+              style={{ opacity: imageOpacity }}
             />
-          </div>
+          )}
         </div>
       )}
       <div className="flex min-h-[100dvh] w-full min-w-[320px] flex-col">
