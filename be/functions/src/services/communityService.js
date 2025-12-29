@@ -84,7 +84,7 @@ const MEMBER_ROLES = {
  * 커뮤니티 관련 모든 비즈니스 로직 처리
  */
 class CommunityService {
-  static MAX_PREVIEW_TEXT_LENGTH = 30;
+  static MAX_PREVIEW_TEXT_LENGTH = 60;
 
   constructor() {
     this.firestoreService = new FirestoreService("communities");
