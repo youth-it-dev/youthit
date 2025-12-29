@@ -74,18 +74,19 @@ const CERTIFICATION_COUNT_TYPES = new Set([
 
 // 멤버 역할 상수
 const MEMBER_ROLES = {
-  MEMBER: 'member',
-  ADMIN: 'admin',
-  MODERATOR: 'moderator'
+  MEMBER: "member",
+  ADMIN: "admin",
+  MODERATOR: "moderator",
 };
+
+// Preview 텍스트 최대 길이
+const MAX_PREVIEW_TEXT_LENGTH = 60;
 
 /**
  * Community Service (비즈니스 로직 계층)
  * 커뮤니티 관련 모든 비즈니스 로직 처리
  */
 class CommunityService {
-  static MAX_PREVIEW_TEXT_LENGTH = 60;
-
   constructor() {
     this.firestoreService = new FirestoreService("communities");
   }
@@ -412,7 +413,7 @@ class CommunityService {
 
     if (typeof post.content === 'string') {
       const textOnly = post.content.replace(/<[^>]*>/g, '').trim();
-      description = textOnly.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) + (textOnly.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "");
+      description = textOnly.substring(0, MAX_PREVIEW_TEXT_LENGTH);
 
       const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
       if (imgMatch) {
@@ -445,8 +446,7 @@ class CommunityService {
       );
       const text = textItem ? (textItem.content || textItem.text) : "";
       description = text
-        ? text.substring(0, CommunityService.MAX_PREVIEW_TEXT_LENGTH) +
-          (text.length > CommunityService.MAX_PREVIEW_TEXT_LENGTH ? "..." : "")
+        ? text.substring(0, MAX_PREVIEW_TEXT_LENGTH)
         : "";
 
       const firstImage = mediaArr.find((item) => item.type === "image") ||
@@ -942,7 +942,7 @@ class CommunityService {
         processed.programType = resolvedProgramType;
         processed.isReview = resolvedIsReview;
 
-        processed.preview = post.preview || this.createPreview(post);
+        processed.preview = this.createPreview(post);
         
         // thumbnailUrl이 있으면 preview의 thumbnail URL을 썸네일로 교체
         if (post.thumbnailUrl && processed.preview && processed.preview.thumbnail) {
@@ -1059,8 +1059,8 @@ class CommunityService {
         viewCount: post.viewCount || 0,
       };
 
-      // 저장된 preview 사용 (하위 호환: 없으면 동적 생성)
-      processedPost.preview = post.preview || communityService.createPreview(post);
+      // preview 동적 생성
+      processedPost.preview = communityService.createPreview(post);
       
       // thumbnailUrl이 있으면 preview의 thumbnail URL을 썸네일로 교체
       if (post.thumbnailUrl && processedPost.preview && processedPost.preview.thumbnail) {
@@ -1124,7 +1124,6 @@ class CommunityService {
         media: postMedia = [],
         type,
         channel,
-        category,
         scheduledDate,
         isPublic: requestIsPublic,
         isReview: requestIsReview,
