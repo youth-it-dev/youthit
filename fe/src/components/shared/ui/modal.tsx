@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Typography } from "@/components/shared/typography";
-import { useMounted } from "@/hooks/shared/useMounted";
 import { cn } from "@/utils/shared/cn";
 
 interface ModalProps {
@@ -62,7 +61,6 @@ const Modal = ({
     closeOnEscape ?? (shouldPreventClose ? false : true);
   const previousOverflow = useRef<string>("");
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
-  const isMounted = useMounted();
 
   // 이전 포커스 요소 저장 (모달 열릴 때)
   useEffect(() => {
@@ -113,7 +111,7 @@ const Modal = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, finalCloseOnEscape, handleClose]);
 
-  if (!isOpen || !isMounted) return null;
+  if (!isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[10001] flex items-center justify-center">

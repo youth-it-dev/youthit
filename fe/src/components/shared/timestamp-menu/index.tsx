@@ -2,7 +2,6 @@
 
 import { forwardRef } from "react";
 import { createPortal } from "react-dom";
-import { useMounted } from "@/hooks/shared/useMounted";
 import { isAndroidDevice } from "@/utils/shared/device";
 
 interface TimestampMenuProps {
@@ -30,10 +29,9 @@ export const TimestampMenu = forwardRef<HTMLDivElement, TimestampMenuProps>(
     },
     ref
   ) => {
-    const isMounted = useMounted();
     const isAndroid = isAndroidDevice();
 
-    if (!isOpen || !isMounted) return null;
+    if (!isOpen) return null;
 
     return createPortal(
       <div

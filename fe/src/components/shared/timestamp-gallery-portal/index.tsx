@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useMounted } from "@/hooks/shared/useMounted";
 import type { StoredPhoto } from "@/types/shared/_photo-storage-types";
 import { TimestampGallery } from "../timestamp-gallery";
 
@@ -47,14 +46,12 @@ export const TimestampGalleryPortal = ({
   onClose,
   onNoPhotos,
 }: TimestampGalleryPortalProps) => {
-  const isMounted = useMounted();
-
   const clampedLeft = useMemo(
     () => clampModalLeftPosition(position.left),
     [position.left]
   );
 
-  if (!isOpen || !isMounted) return null;
+  if (!isOpen) return null;
 
   return createPortal(
     <>

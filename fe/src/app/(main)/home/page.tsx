@@ -9,9 +9,7 @@ import "react-notion-x/src/styles.css";
 import { CustomPageLink, CustomImage } from "@/components/shared/notion";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
-import { useMounted } from "@/hooks/shared/useMounted";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
-import { cn } from "@/utils/shared/cn";
 import { isS3UrlExpired } from "@/utils/shared/s3-url-parser";
 
 const INITIAL_HEIGHT = 950;
@@ -48,7 +46,6 @@ const HomePage = () => {
   const [imageHeights, setImageHeights] = useState<number[]>([]);
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [defaultHeight, setDefaultHeight] = useState<number>(INITIAL_HEIGHT);
-  const isMounted = useMounted();
 
   // recordMap에서 배경 이미지 추출
   const backgroundImages = useMemo(() => {
@@ -145,9 +142,7 @@ const HomePage = () => {
 
   // 클라이언트에서만 window.innerHeight 설정
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setDefaultHeight(window.innerHeight);
-    }
+    setDefaultHeight(window.innerHeight);
   }, []);
 
   // TopBar 스크롤 감지 (Intersection Observer)
@@ -174,7 +169,7 @@ const HomePage = () => {
 
   // 배경 이미지 높이 계산
   useEffect(() => {
-    if (backgroundImages.length === 0 || typeof window === "undefined") return;
+    if (backgroundImages.length === 0) return;
 
     let active = true;
     const heights: number[] = [];
@@ -270,8 +265,7 @@ const HomePage = () => {
   return (
     <div className="relative w-full">
       {/* 배경 이미지 레이어 - 콘텐츠 높이에 맞춰 스크롤 가능 */}
-      {/* isMounted 체크로 서버/클라이언트 렌더링 일치 보장 */}
-      {isMounted && backgroundImages.length > 0 && (
+      {backgroundImages.length > 0 && imageHeights.length > 0 && (
         <div
           className="absolute z-1 mx-auto w-full max-w-[470px]"
           style={{
@@ -321,7 +315,7 @@ const HomePage = () => {
 
         <div className="relative mx-auto w-full max-w-[470px] px-1">
           <div className="relative z-10 mx-auto my-0 pt-[40px]">
-            {isMounted && homeData && (
+            {homeData && (
               <NotionRenderer
                 recordMap={homeData}
                 fullPage={false}
