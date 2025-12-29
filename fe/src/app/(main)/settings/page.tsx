@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
@@ -326,6 +327,15 @@ const SettingsPage = () => {
       <main className="flex flex-1 flex-col gap-6">
         {/* 설정 메뉴 */}
         <SettingsSection title="" items={settingsItems} />
+        {/* 하단 라이센스 정보 */}
+        <div className="mt-auto flex items-center justify-center pb-8">
+          <Image
+            src={IMAGE_URL.IMG.home.warranty.url}
+            alt={IMAGE_URL.IMG.home.warranty.alt}
+            width={370}
+            height={54}
+          />
+        </div>
       </main>
 
       {/* 로그아웃 모달 */}
