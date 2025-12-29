@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useEffect,
-  useLayoutEffect,
   useCallback,
   type ChangeEvent,
   Suspense,
@@ -27,11 +26,13 @@ import ProgramFilterBottomSheet, {
   type ProgramStateFilter,
 } from "@/components/community/ProgramFilterBottomSheet";
 import ProgramSelectBottomSheet from "@/components/community/ProgramSelectBottomSheet";
+import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import Modal from "@/components/shared/ui/modal";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
+import { usePullToRefresh } from "@/hooks/shared/usePullToRefresh";
 import useToggle from "@/hooks/shared/useToggle";
 import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
@@ -131,25 +132,6 @@ const CommunityPageContent = () => {
     useGetUsersMeParticipatingCommunities({
       enabled: Boolean(currentUser),
     });
-
-  // 프로그램 목록 조회 (추천 섹션용)
-  const { data: programsData } = useGetPrograms({
-    request: { pageSize: 20, recruitmentStatus: "ongoing" },
-    select: (data) => {
-      if (!data || typeof data !== "object") {
-        return [];
-      }
-      const responseData = data as ProgramListResponse["data"];
-      if (
-        responseData &&
-        "programs" in responseData &&
-        Array.isArray(responseData.programs)
-      ) {
-        return responseData.programs || [];
-      }
-      return [];
-    },
-  });
 
   const participatingCommunityIdSet = useMemo(() => {
     const set = new Set<string>();
@@ -613,18 +595,18 @@ const CommunityPageContent = () => {
     selectedSort,
   ]);
 
-  const segmentedPosts = useMemo(() => {
-    const top = filteredPosts.slice(0, 4);
-    const rest = filteredPosts.slice(4);
-    return { top, rest };
-  }, [filteredPosts]);
-
   const handleFetchNextPage = useCallback(() => {
     if (!hasNextPage || isFetchingNextPage) {
       return;
     }
     fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  // Pull-to-refresh 기능
+  const { pullDistance, isRefreshing, isPulling } = usePullToRefresh({
+    onRefresh: refetch,
+    enabled: !isInitialLoading, // 초기 로딩 중에는 비활성화
+  });
 
   // 스크롤 복원
   useEffect(() => {
@@ -684,29 +666,32 @@ const CommunityPageContent = () => {
         }
       />
 
-      <div className="px-5 pb-32">
+      <div
+        className="relative px-5 pb-32"
+        style={{
+          transform: `translateY(${isRefreshing ? 0 : Math.min(pullDistance, 60)}px)`,
+          transition: isRefreshing
+            ? "transform 0.2s ease-out"
+            : "transform 0.1s ease-out",
+        }}
+      >
+        {/* Pull-to-refresh 시각적 피드백 */}
+        <PullToRefresh
+          pullDistance={pullDistance}
+          isRefreshing={isRefreshing}
+          isPulling={isPulling}
+        />
         {/* 전체 포스트가 없을 때 - 로딩 완료 후에만 표시 */}
-        {!isInitialLoading &&
-          segmentedPosts.top.length + segmentedPosts.rest.length === 0 && (
-            <CommunityEmptyState
-              title="아직 게시글이 없어요"
-              description="첫 번째 이야기를 공유해보세요!"
-            />
-          )}
-
-        {/* 상위 4개 포스트 */}
-        <div>
-          <PostFeed
-            posts={segmentedPosts.top}
-            onPostClick={handlePostClick}
-            isLoading={isInitialLoading}
-            skeletonCount={4}
+        {!isInitialLoading && filteredPosts.length === 0 && (
+          <CommunityEmptyState
+            title="아직 게시글이 없어요"
+            description="첫 번째 이야기를 공유해보세요!"
           />
-        </div>
-        {/* 나머지 포스트 */}
+        )}
+
         <div className="mb-6">
           <PostFeed
-            posts={segmentedPosts.rest}
+            posts={filteredPosts}
             onPostClick={handlePostClick}
             isLoading={isInitialLoading}
             skeletonCount={5}
