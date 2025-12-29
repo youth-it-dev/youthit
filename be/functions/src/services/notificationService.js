@@ -98,9 +98,30 @@ class NotificationService {
   }
 
   /**
+   * 템플릿 페이지의 properties에서 프로그램 유형 추출
+   * @param {Object} props - 템플릿 페이지의 properties 객체
+   * @return {string} 프로그램 유형
+   * @private
+   */
+  _extractProgramTypeFromProps(props) {
+    let programType = '';
+    const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
+    if (programTypeField) {
+      if (programTypeField.select && programTypeField.select.name) {
+        programType = programTypeField.select.name;
+      } else if (programTypeField.title && programTypeField.title.length > 0) {
+        programType = programTypeField.title.map(t => t.plain_text).join('').trim();
+      } else {
+        programType = getSelectValue(programTypeField) || getTitleValue(programTypeField) || '';
+      }
+    }
+    return programType;
+  }
+
+  /**
    * 템플릿 페이지 ID로 알림 내용 템플릿 조회
    * @param {string} templatePageId - 템플릿 페이지 ID
-   * @return {Promise<Object|null>} 템플릿 데이터 {content, nadumAmount} 또는 null
+   * @return {Promise<Object|null>} 템플릿 데이터 {content, nadumAmount, programType} 또는 null
    */
   async getNotificationTemplateByPageId(templatePageId) {
     try {
@@ -112,18 +133,7 @@ class NotificationService {
       const props = templatePage.properties;
       const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
       const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
-      
-      let programType = '';
-      const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
-      if (programTypeField) {
-        if (programTypeField.select && programTypeField.select.name) {
-          programType = programTypeField.select.name;
-        } else if (programTypeField.title && programTypeField.title.length > 0) {
-          programType = programTypeField.title.map(t => t.plain_text).join('').trim();
-        } else {
-          programType = getSelectValue(programTypeField) || getTitleValue(programTypeField) || '';
-        }
-      }
+      const programType = this._extractProgramTypeFromProps(props);
 
       return {
         content: notificationContent,
@@ -241,19 +251,7 @@ class NotificationService {
       const props = templatePage.properties;
       const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
       const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
-      
-      // 프로그램 유형 필드 읽기
-      let programType = '';
-      const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
-      if (programTypeField) {
-        if (programTypeField.select && programTypeField.select.name) {
-          programType = programTypeField.select.name;
-        } else if (programTypeField.title && programTypeField.title.length > 0) {
-          programType = programTypeField.title.map(t => t.plain_text).join('').trim();
-        } else {
-          programType = getSelectValue(programTypeField) || getTitleValue(programTypeField) || '';
-        }
-      }
+      const programType = this._extractProgramTypeFromProps(props);
 
       return {
         content: notificationContent,
