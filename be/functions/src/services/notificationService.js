@@ -112,10 +112,23 @@ class NotificationService {
       const props = templatePage.properties;
       const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
       const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
+      
+      let programType = '';
+      const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
+      if (programTypeField) {
+        if (programTypeField.select && programTypeField.select.name) {
+          programType = programTypeField.select.name;
+        } else if (programTypeField.title && programTypeField.title.length > 0) {
+          programType = programTypeField.title.map(t => t.plain_text).join('').trim();
+        } else {
+          programType = getSelectValue(programTypeField) || getTitleValue(programTypeField) || '';
+        }
+      }
 
       return {
         content: notificationContent,
         nadumAmount,
+        programType,
       };
     } catch (error) {
       console.error(`[NotificationService] 템플릿 페이지 조회 실패 (pageId: ${templatePageId}):`, error.message);
@@ -228,10 +241,24 @@ class NotificationService {
       const props = templatePage.properties;
       const notificationContent = getTextContent(props[TEMPLATE_FIELDS.NOTIFICATION_CONTENT]) || '';
       const nadumAmount = getNumberValue(props[TEMPLATE_FIELDS.NADUM_AMOUNT]) || 0;
+      
+      // 프로그램 유형 필드 읽기
+      let programType = '';
+      const programTypeField = props[TEMPLATE_FIELDS.PROGRAM_TYPE];
+      if (programTypeField) {
+        if (programTypeField.select && programTypeField.select.name) {
+          programType = programTypeField.select.name;
+        } else if (programTypeField.title && programTypeField.title.length > 0) {
+          programType = programTypeField.title.map(t => t.plain_text).join('').trim();
+        } else {
+          programType = getSelectValue(programTypeField) || getTitleValue(programTypeField) || '';
+        }
+      }
 
       return {
         content: notificationContent,
         nadumAmount,
+        programType,
       };
     } catch (error) {
       console.error(`템플릿 조회 실패:`, error.message);
@@ -269,6 +296,7 @@ class NotificationService {
       
       let content = '';
       let nadumAmount = 0;
+      let programType = '';
       
       // 관계형 필드로 템플릿이 연결된 경우
       if (contentField && contentField.type === 'relation' && contentField.relation?.length > 0) {
@@ -277,6 +305,7 @@ class NotificationService {
         if (templateData) {
           content = templateData.content || '';
           nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
+          programType = templateData.programType || '';
         }
       }
       
@@ -305,6 +334,10 @@ class NotificationService {
           if (templateData) {
             content = templateData.content || '';
             nadumAmount = typeof templateData.nadumAmount === 'number' ? templateData.nadumAmount : 0;
+            programType = templateData.programType || programTypeName.trim();
+            console.log(`[NotificationService] 템플릿 조회 (type: ${programTypeName}) - programType: "${programType}"`);
+          } else {
+            programType = programTypeName.trim();
           }
         }
 
@@ -343,6 +376,7 @@ class NotificationService {
         nadumAmount,
         expiresAt,
         isMarketingNotification,
+        programType,
       };
     } catch (error) {
       console.error("알림 데이터 추출 실패:", error.message);
@@ -480,7 +514,8 @@ class NotificationService {
         pageId,
         filtered.finalUserIds,
         notificationData.nadumAmount,
-        notificationData.expiresAt
+        notificationData.expiresAt,
+        notificationData.programType
       );
 
       rewardFailedUserIds = rewards.rewardFailedUserIds;
@@ -567,8 +602,9 @@ class NotificationService {
   /**
    * reward 배치 공통 처리
    */
-  async processRewardBatch(batch, pageId, nadumAmount, expiresAt) {
+  async processRewardBatch(batch, pageId, nadumAmount, expiresAt, programType = null) {
     const options = expiresAt ? { expiresAt } : undefined;
+    const reason = (programType && programType.trim()) ? programType.trim() : null;
     return Promise.allSettled(
       batch.map(async (userId) => {
         const historyId = `additional_point_${pageId}_${userId}`;
@@ -582,7 +618,7 @@ class NotificationService {
                   historyId,
                   null,
                   true,
-                  null,
+                  reason,
                   options
                 )
               : await this.rewardService.deductRewardFromUser(
@@ -592,7 +628,7 @@ class NotificationService {
                   historyId,
                   null,
                   true,
-                  null
+                  reason
                 );
 
           return { userId, success: true, duplicate: result.isDuplicate };
@@ -679,7 +715,7 @@ class NotificationService {
   /**
    * 나다움 지급/차감/미해당 처리
    */
-  async processRewards(pageId, finalUserIds, nadumAmount, expiresAt) {
+  async processRewards(pageId, finalUserIds, nadumAmount, expiresAt, programType = null) {
     let rewardedUserIds = [];
     let rewardFailedUserIds = [];
     let paymentResult = null;
@@ -706,7 +742,8 @@ class NotificationService {
             batch,
             pageId,
             nadumAmount,
-            expiresAt
+            expiresAt,
+            programType
           );
           const batchRewardedUserIds = batchResults
             .filter((result) => result.status === "fulfilled" && result.value.success && !result.value.duplicate)
@@ -773,7 +810,8 @@ class NotificationService {
             batch,
             pageId,
             nadumAmount,
-            expiresAt
+            expiresAt,
+            programType
           );
           const batchRewardedUserIds = batchResults
             .filter((result) => result.status === "fulfilled" && result.value.success && !result.value.duplicate)
