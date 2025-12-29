@@ -14,54 +14,7 @@ import { AuthGuard } from "@/contexts/shared/guard";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETHomeRes } from "@/types/generated/home-types";
 import { isPublicRoute } from "@/utils/auth/is-public-route";
-
-/**
- * 디바이스 크기에 맞는 스플래시 이미지 선택
- */
-const getSplashImage = () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const pixelRatio = window.devicePixelRatio || 1;
-
-  // 논리 픽셀 계산
-  const logicalWidth = width;
-  const logicalHeight = height;
-
-  // iPad Air 10.9" (820x1180 @2x)
-  if (logicalWidth === 820 && logicalHeight === 1180 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-1640-2360.jpg";
-  }
-  if (logicalWidth === 1180 && logicalHeight === 820 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-2360-1640.jpg";
-  }
-
-  // iPhone XR, 11 (414x896 @2x)
-  if (logicalWidth === 414 && logicalHeight === 896 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-828-1792.jpg";
-  }
-  if (logicalWidth === 896 && logicalHeight === 414 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-1792-828.jpg";
-  }
-
-  // iPhone SE (375x667 @2x)
-  if (logicalWidth === 375 && logicalHeight === 667 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-750-1334.jpg";
-  }
-  if (logicalWidth === 667 && logicalHeight === 375 && pixelRatio === 2) {
-    return "/imgs/splash/apple-splash-1334-750.jpg";
-  }
-
-  // iPhone 16 Pro Max (440x956 @3x)
-  if (logicalWidth === 440 && logicalHeight === 956 && pixelRatio === 3) {
-    return "/imgs/splash/apple-splash-1320-2868.jpg";
-  }
-  if (logicalWidth === 956 && logicalHeight === 440 && pixelRatio === 3) {
-    return "/imgs/splash/apple-splash-2868-1320.jpg";
-  }
-
-  // 기본값: 가장 일반적인 iPhone 크기
-  return "/imgs/splash/apple-splash-828-1792.jpg";
-};
+import { getSplashConfig } from "@/utils/shared/get-splash-config";
 
 /**
  * @description 하단 네브바 포함 레이아웃
@@ -190,16 +143,18 @@ export default function MainLayout({
     }
   }, [isHomePage, isHomeLoading, homeData]);
 
-  const [splashImage, setSplashImage] = useState<string | null>(null);
+  const [splashConfig, setSplashConfig] = useState<ReturnType<
+    typeof getSplashConfig
+  > | null>(null);
   const [imageOpacity, setImageOpacity] = useState(0);
 
   useEffect(() => {
-    setSplashImage(getSplashImage());
+    setSplashConfig(getSplashConfig());
   }, []);
 
-  // splashImage가 할당된 후 img 페이드인 트랜지션
+  // splashConfig가 할당된 후 img 페이드인 트랜지션
   useEffect(() => {
-    if (splashImage) {
+    if (splashConfig) {
       // 다음 프레임에서 opacity를 1로 변경하여 페이드인 효과
       const animationFrameId = requestAnimationFrame(() => {
         setImageOpacity(1);
@@ -208,7 +163,7 @@ export default function MainLayout({
     } else {
       setImageOpacity(0);
     }
-  }, [splashImage]);
+  }, [splashConfig]);
 
   const layoutContent = (
     <div className="flex min-h-[100dvh] w-full flex-col items-center bg-white">
@@ -221,12 +176,20 @@ export default function MainLayout({
             transform: "translateZ(0)",
           }}
         >
-          {splashImage && (
+          {splashConfig && (
             <img
-              src={splashImage}
+              src={splashConfig.imageUrl}
               alt="스플래시 화면"
-              className="h-full w-full object-cover transition-opacity duration-1000"
-              style={{ opacity: imageOpacity }}
+              className="transition-opacity duration-1000"
+              style={{
+                opacity: imageOpacity,
+                ...splashConfig.imageStyle,
+              }}
+              onError={(e) => {
+                // 이미지 로드 실패 시 기본 배경색만 표시
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
             />
           )}
         </div>
