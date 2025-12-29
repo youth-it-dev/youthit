@@ -11,7 +11,7 @@ const {isAdminUser} = require("../utils/helpers");
 class QnAService {
   
   static MAX_PARENT_QNA_FOR_REPLIES = 10; 
-  static MAX_NOTIFICATION_TEXT_LENGTH = 10;
+  static MAX_NOTIFICATION_TEXT_LENGTH = 40;
   static PAGE_TYPES = {
     PROGRAM: "program",
     ANNOUNCEMENT: "announcement",
@@ -24,6 +24,37 @@ class QnAService {
     }
     const lower = value.trim().toLowerCase();
     return Object.values(QnAService.PAGE_TYPES).includes(lower) ? lower : null;
+  }
+
+  /**
+   * QnA 답글 알림 메시지 생성
+   * @param {string} commenterName - 답글 작성자 이름
+   * @param {string} content - 답글 내용
+   * @returns {string} 알림 메시지
+   */
+  static createQnANotificationMessage(commenterName, content) {
+    const textOnly = typeof content === 'string' 
+      ? content.replace(/<[^>]*>/g, '') 
+      : (content || '');
+
+    const baseTemplate = `${commenterName}님이 댓글을 남겼어요!: `;
+    const baseLength = baseTemplate.length;
+    const maxLength = QnAService.MAX_NOTIFICATION_TEXT_LENGTH;
+    const remainingLength = Math.max(0, maxLength - baseLength);
+    
+    let commentPreview = '';
+    if (textOnly && textOnly.trim()) {
+      if (textOnly.length > remainingLength) {
+        const cutLength = Math.max(0, remainingLength - 3);
+        commentPreview = textOnly.substring(0, cutLength) + '...';
+      } else {
+        commentPreview = textOnly;
+      }
+    } else {
+      commentPreview = '댓글';
+    }
+    
+    return baseTemplate + commentPreview;
   }
 
   constructor() {
@@ -139,20 +170,14 @@ class QnAService {
 
       // 알림 전송: 대댓글인 경우만
       if (parentId && parentQnA && parentQnA.userId !== userId) {
-        const textOnly = typeof parentQnA.content === 'string' 
-          ? parentQnA.content.replace(/<[^>]*>/g, '') 
-          : parentQnA.content;
-        const qnaPreview = textOnly || "문의";
-        const preview = qnaPreview.length > QnAService.MAX_NOTIFICATION_TEXT_LENGTH ? 
-          qnaPreview.substring(0, QnAService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
-          qnaPreview;
-
         const commenterName = author !== "익명" ? author : "사용자";
         console.log(`QnA 답글 알림 전송: ${parentQnA.userId}에게 답글 알림`);
+        const notificationMessage = QnAService.createQnANotificationMessage(commenterName, created.content);
+        
         fcmHelper.sendNotification(
           parentQnA.userId,
           "새로운 답글이 달렸습니다",
-          `${commenterName}님이 "${preview}"에 답글을 남겼습니다.`,
+          notificationMessage,
           "QNA",
           pageId,
           "",
@@ -566,20 +591,11 @@ class QnAService {
               likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
             }
 
-            const textOnly = typeof qna.content === 'string' 
-              ? qna.content.replace(/<[^>]*>/g, '') 
-              : qna.content;
-            const qnaPreview = textOnly || "문의";
-            const preview =
-              qnaPreview.length > QnAService.MAX_NOTIFICATION_TEXT_LENGTH
-                ? qnaPreview.substring(0, QnAService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
-                : qnaPreview;
-
             fcmHelper
               .sendNotification(
                 qna.userId,
                 "문의에 좋아요가 달렸습니다",
-                `${likerName}님이 "${preview}" 문의에 좋아요를 눌렀습니다`,
+                `${likerName}님이 회원님의 문의에 좋아요를 눌렀습니다.`,
                 "QNA_LIKE",
                 qna.pageId,
                 "",
