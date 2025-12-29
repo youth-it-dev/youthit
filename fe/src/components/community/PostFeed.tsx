@@ -80,7 +80,7 @@ const PostFeed = ({
   // 로딩 중일 때 스켈레톤 표시
   if (isLoading) {
     return (
-      <div className="mt-5 space-y-4">
+      <div className="mt-5 flex flex-col gap-9">
         {Array.from({ length: skeletonCount }).map((_, index) => (
           <div key={`skeleton-${index}`} className="relative">
             {/* 상단 - 작성자/시간 스켈레톤 (포스트잇 밖) */}
@@ -112,7 +112,7 @@ const PostFeed = ({
               </div>
 
               {/* 썸네일 이미지 스켈레톤 - 정방형 */}
-              <div className="relative mb-4 flex justify-center">
+              <div className="relative mb-9 flex justify-center">
                 <Skeleton className="h-[186px] w-[186px] rounded-md" />
               </div>
 
@@ -139,7 +139,7 @@ const PostFeed = ({
   }
 
   return (
-    <div className="mt-5 space-y-4">
+    <div className="mt-5 flex flex-col gap-9">
       {posts.map((post) => {
         // 신고 처리된 게시글 표시
         if (post.reportsCount && post.reportsCount >= 5) {
@@ -201,8 +201,8 @@ const PostFeed = ({
               {/* 제목 */}
               <Typography
                 font="noto"
-                variant="body1B"
-                className="mb-1 text-gray-950"
+                variant="body2B"
+                className="mb-1 text-gray-600"
               >
                 {post.title || ""}
               </Typography>
@@ -211,15 +211,15 @@ const PostFeed = ({
               {post.preview?.description && (
                 <Typography
                   font="noto"
-                  variant="body2R"
-                  className="mb-4 line-clamp-2 text-gray-700"
+                  variant="label1M"
+                  className="mb-6 line-clamp-2 text-gray-500"
                 >
                   {post.preview.description}
                 </Typography>
               )}
 
               {/* 썸네일 이미지 - 정방형, 중앙 배치 */}
-              <div className="relative mb-4 flex justify-center">
+              <div className="relative mb-9 flex justify-center">
                 {post.preview?.thumbnail?.url &&
                 isValidImageUrl(post.preview.thumbnail.url) ? (
                   <>
