@@ -2368,7 +2368,7 @@ class CommunityService {
             fcmHelper.sendNotification(
               post.authorId,
               "게시글에 좋아요가 달렸습니다",
-              `${likerName}님이 "${post.title}"에 좋아요를 눌렀습니다`,
+              `${likerName}님이 회원님의 게시글을 좋아합니다.`,
               "POST_LIKE",
               postId,
               communityId,
