@@ -119,6 +119,12 @@ const ICON = {
     url: "/icons/avatar.svg",
     alt: "기본 프로필 이미지",
   },
+  sticker: {
+    cloud: {
+      url: "/icons/sticker01.svg",
+      alt: "구름 스티커",
+    },
+  },
 };
 
 const IMG = {

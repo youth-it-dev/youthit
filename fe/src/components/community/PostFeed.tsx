@@ -1,11 +1,12 @@
 "use client";
 
 import { memo, useState } from "react";
+import Image from "next/image";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { POST_ANONYMOUS_NAME } from "@/constants/shared/_post-constants";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
-import { cn } from "@/utils/shared/cn";
 import { getTimeAgo } from "@/utils/shared/date";
 import { isValidImageUrl } from "@/utils/shared/url";
 import { Typography } from "../shared/typography";
@@ -17,25 +18,52 @@ interface PostFeedProps {
   skeletonCount?: number;
 }
 
-const PostThumbnail = memo(({ src, alt }: { src: string; alt: string }) => {
-  const [hasError, setHasError] = useState(false);
+const PostThumbnail = memo(
+  ({
+    src,
+    alt,
+    imageCount = 1,
+  }: {
+    src: string;
+    alt: string;
+    imageCount?: number;
+  }) => {
+    const [hasError, setHasError] = useState(false);
 
-  if (hasError) return null;
+    if (hasError) {
+      return (
+        <div className="relative h-[186px] w-[186px]">
+          <div className="relative h-[186px] w-[186px] overflow-hidden rounded-md border-2 border-white bg-gray-100" />
+        </div>
+      );
+    }
 
-  return (
-    <div className="flex-shrink-0">
-      <div className="relative h-22 w-22 overflow-hidden rounded-lg bg-gray-100">
-        <img
-          src={src}
-          alt={alt}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          onError={() => setHasError(true)}
-        />
+    return (
+      <div className="relative h-[186px] w-[186px]">
+        {/* 2개 이상일 때 뒤에 포개진 카드들 */}
+        {imageCount >= 2 && (
+          <>
+            <div
+              className="bg-main-100 absolute top-0 left-0 h-[186px] w-[186px] overflow-hidden rounded-md border-2 border-white"
+              style={{ transform: "rotate(5deg)" }}
+            />
+          </>
+        )}
+
+        {/* 메인 카드 (맨 앞) - 정방형 */}
+        <div className="relative h-[186px] w-[186px] overflow-hidden rounded-md border-2 border-white bg-gray-100">
+          <img
+            src={src}
+            alt={alt}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={() => setHasError(true)}
+          />
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 PostThumbnail.displayName = "PostThumbnail";
 
@@ -52,53 +80,58 @@ const PostFeed = ({
   // 로딩 중일 때 스켈레톤 표시
   if (isLoading) {
     return (
-      <div>
+      <div className="mt-5 space-y-4">
         {Array.from({ length: skeletonCount }).map((_, index) => (
-          <div
-            key={`skeleton-${index}`}
-            className="relative border-b border-gray-200 bg-white py-5"
-          >
-            <div className="flex gap-3">
-              {/* 텍스트 컨텐츠 영역 */}
-              <div className="min-w-0 flex-1">
-                {/* 카테고리 태그 스켈레톤 */}
-                <div className="mb-2">
-                  <Skeleton className="h-6 w-20" />
-                </div>
+          <div key={`skeleton-${index}`} className="relative">
+            {/* 상단 - 작성자/시간 스켈레톤 (포스트잇 밖) */}
+            <div className="mb-3 flex items-center gap-2">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-3 w-16" />
+            </div>
 
-                {/* 제목 스켈레톤 */}
-                <div className="mb-2">
-                  <Skeleton className="h-6 w-3/4" />
-                </div>
+            {/* 포스트잇 스타일 컨텐츠 */}
+            <div
+              className="relative ml-8 p-5 shadow-sm"
+              style={{
+                backgroundColor: "#EBF0F9",
+                borderRadius: "10px",
+                clipPath:
+                  "polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)",
+              }}
+            >
+              {/* 제목 스켈레톤 */}
+              <Skeleton className="mb-1 h-6 w-3/4" />
 
-                {/* 설명 스켈레톤 (2줄) */}
-                <div className="mb-3 space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                </div>
-
-                {/* 작성자/시간 스켈레톤 */}
-                <div className="flex items-center gap-2">
-                  {/* 프로필 이미지 스켈레톤 */}
-                  <Skeleton className="h-6 w-6 rounded-full" />
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
+              {/* 설명 스켈레톤 (2줄) */}
+              <div className="mb-4 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
               </div>
 
-              {/* 우측 영역 - 썸네일 및 좋아요/코멘트 */}
-              <div className="mb-3 flex flex-col items-end justify-between">
-                {/* 썸네일 이미지 스켈레톤 */}
-                <div className="flex justify-end">
-                  <Skeleton className="h-20 w-20 rounded-lg" />
-                </div>
-                {/* 액션 아이콘들 스켈레톤 */}
-                <div className="flex gap-4">
-                  <Skeleton className="h-4 w-8" />
-                  <Skeleton className="h-4 w-8" />
-                </div>
+              {/* 썸네일 이미지 스켈레톤 - 정방형 */}
+              <div className="relative mb-4 flex justify-center">
+                <Skeleton className="h-[186px] w-[186px] rounded-md" />
+              </div>
+
+              {/* 하단 칩 스켈레톤 */}
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20 rounded" />
+                <Skeleton className="h-6 w-24 rounded" />
               </div>
             </div>
+
+            {/* 우하단 접힌 부분 (dog-ear) */}
+            <div
+              className="pointer-events-none absolute right-0 bottom-0"
+              style={{
+                borderTopLeftRadius: "10px",
+                borderWidth: "0 0 24px 24px",
+                borderColor: "transparent transparent transparent #C4D4F3",
+              }}
+            />
           </div>
         ))}
       </div>
@@ -106,151 +139,160 @@ const PostFeed = ({
   }
 
   return (
-    <div>
+    <div className="mt-5 space-y-4">
       {posts.map((post) => {
         // 신고 처리된 게시글 표시
         if (post.reportsCount && post.reportsCount >= 5) {
           return (
-            <div
-              key={post.id}
-              className={cn(
-                "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
-                post === posts[posts.length - 1] && "border-b-0"
-              )}
-            >
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="h-9 text-gray-700"
-              >
-                신고 처리된 게시글 입니다.
-              </Typography>
+            <div key={post.id} className="relative">
+              <div className="bg-main-50 relative rounded-md p-5 shadow-sm">
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-gray-700"
+                >
+                  신고 처리된 게시글 입니다.
+                </Typography>
+              </div>
             </div>
           );
         }
-        return (
-          <div
-            key={post.id}
-            className={cn(
-              "relative cursor-pointer border-b border-gray-200 bg-white py-5 transition-colors hover:bg-gray-50",
-              post === posts[posts.length - 1] && "border-b-0"
-            )}
-            onClick={() => handlePostClick(post)}
-          >
-            <div className="flex min-h-25 gap-3">
-              {/* 텍스트 컨텐츠 */}
-              <div className="min-w-0 flex-1">
-                {/* 카테고리 태그 */}
-                {post.category && (
-                  <Typography
-                    font="noto"
-                    variant="label1M"
-                    // text가 배경 기준으로 세로 중앙에 오도록 정렬하기 위해서 line-height를 19px로 설정했음에도 여전히 텍스트가 세로 하단 정렬됨
-                    className="text-main-500 bg-main-50 mb-2 flex h-[19px] w-fit items-center rounded-xs p-1 leading-[19px]"
-                  >
-                    {post.category}
-                  </Typography>
-                )}
 
-                {/* 제목 */}
+        return (
+          <div key={post.id} className="relative">
+            {/* 상단 - 작성자/시간 (포스트잇 밖) */}
+            <div className="mb-2 flex items-center gap-2">
+              <ProfileImage
+                src={post.profileImageUrl}
+                alt={post.author || ""}
+                size="h-8 w-8"
+              />
+              <div className="flex-1">
                 <Typography
                   font="noto"
                   variant="body2B"
-                  className="mb-1 line-clamp-1 text-gray-950"
+                  className="text-gray-950"
                 >
-                  {post.title || ""}
+                  {post.author || POST_ANONYMOUS_NAME}
                 </Typography>
-
-                {/* 설명 (2줄 미리보기) */}
-                {post.preview?.description && (
-                  <Typography
-                    font="noto"
-                    variant="caption1R"
-                    className="line-clamp-2 text-gray-700"
-                  >
-                    {post.preview.description}
-                  </Typography>
-                )}
               </div>
-
-              {/* 우측 영역 - 썸네일 */}
-              <div className="mb-3">
-                {post.preview?.thumbnail?.url &&
-                  isValidImageUrl(post.preview.thumbnail.url) && (
-                    <PostThumbnail
-                      src={post.preview.thumbnail.url}
-                      alt={post.title || ""}
-                    />
-                  )}
-              </div>
-            </div>
-            {/* 하단 섹션 - 작성자/시간/게시물카운트 데이터 표시부 */}
-            <div className="flex justify-between">
-              <div className="flex items-center gap-1">
-                {/* 유저 프로필사진 */}
-                <ProfileImage
-                  src={post.profileImageUrl}
-                  alt={post.author || ""}
-                  size="h-4 w-4"
-                />
+              {post.createdAt && (
                 <Typography
                   font="noto"
                   variant="label2R"
                   className="text-gray-400"
                 >
-                  {post.author || POST_ANONYMOUS_NAME}
+                  {getTimeAgo(post.createdAt)}
                 </Typography>
-                <span className="h-[6px] w-px bg-gray-200" />
-                {post.createdAt && (
-                  <Typography
-                    font="noto"
-                    variant="label2R"
-                    className="text-gray-400"
-                  >
-                    {getTimeAgo(post.createdAt)}
-                  </Typography>
+              )}
+            </div>
+
+            {/* 포스트잇 스타일 컨텐츠 */}
+            <div
+              className="relative ml-8 cursor-pointer p-5 shadow-sm transition-shadow hover:shadow-md"
+              onClick={() => handlePostClick(post)}
+              style={{
+                backgroundColor: "#EBF0F9",
+                borderRadius: "10px",
+                clipPath:
+                  "polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)",
+              }}
+            >
+              {/* 제목 */}
+              <Typography
+                font="noto"
+                variant="body1B"
+                className="mb-1 text-gray-950"
+              >
+                {post.title || ""}
+              </Typography>
+
+              {/* 설명 (2줄 미리보기) */}
+              {post.preview?.description && (
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="mb-4 line-clamp-2 text-gray-700"
+                >
+                  {post.preview.description}
+                </Typography>
+              )}
+
+              {/* 썸네일 이미지 - 정방형, 중앙 배치 */}
+              <div className="relative mb-4 flex justify-center">
+                {post.preview?.thumbnail?.url &&
+                isValidImageUrl(post.preview.thumbnail.url) ? (
+                  <>
+                    {/* 스티커 - 이미지 테두리와 겹치게 */}
+                    <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                      <Image
+                        src={IMAGE_URL.ICON.sticker.cloud.url}
+                        alt={IMAGE_URL.ICON.sticker.cloud.alt}
+                        width={46}
+                        height={20}
+                      />
+                    </div>
+                    <PostThumbnail
+                      src={post.preview.thumbnail.url}
+                      alt={post.title || ""}
+                      imageCount={
+                        (post.preview as { imageCount?: number })?.imageCount ||
+                        1
+                      }
+                    />
+                  </>
+                ) : (
+                  <div className="relative h-[186px] w-[186px]">
+                    {/* 스티커 - 이미지 테두리와 겹치게 */}
+                    <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                      <Image
+                        src={IMAGE_URL.ICON.sticker.cloud.url}
+                        alt={IMAGE_URL.ICON.sticker.cloud.alt}
+                        width={46}
+                        height={20}
+                      />
+                    </div>
+                    <div className="h-full w-full overflow-hidden rounded-md border-2 border-white bg-gray-100" />
+                  </div>
                 )}
               </div>
-              {/* 카운트 표시부 - 좋아요/댓글 */}
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  <span className="text-xs text-gray-400">
-                    {post.likesCount}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span className="text-xs text-gray-400">
-                    {post.commentsCount}
-                  </span>
-                </div>
+
+              {/* 하단 칩 섹션 */}
+              <div className="flex gap-2">
+                {post.category && (
+                  <div className="flex items-center rounded-md bg-white px-[6px] py-1">
+                    <Typography
+                      font="noto"
+                      variant="caption1M"
+                      className="line-clamp-1 text-gray-400"
+                    >
+                      {post.category}
+                    </Typography>
+                  </div>
+                )}
+                {post.channel && (
+                  <div className="flex items-center rounded-md bg-white px-[6px] py-1">
+                    <Typography
+                      font="noto"
+                      variant="caption1M"
+                      className="line-clamp-1 text-gray-400"
+                    >
+                      {post.channel}
+                    </Typography>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* 우하단 접힌 부분 (dog-ear) */}
+            <div
+              className="pointer-events-none absolute right-0 bottom-0"
+              style={{
+                borderTopLeftRadius: "10px",
+                borderWidth: "0 0 24px 24px",
+                borderColor: "transparent transparent transparent #C4D4F3",
+              }}
+            />
           </div>
         );
       })}
