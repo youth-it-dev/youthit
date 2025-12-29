@@ -35,9 +35,9 @@ class AdminLogsService {
       // 2. 노션 데이터베이스에서 기존 데이터 조회 (관리자ID 기준)
       const notionAdminLogs = await this.getNotionAdminLogs(this.notionAdminLogDB);
   
-      let syncedCount = 0;
+      let successCount = 0;
       let failedCount = 0;
-      const syncedLogIds = [];
+      const successLogIds = [];
       const failedLogIds = [];
   
       // 3. 각 adminLog 데이터를 배치로 처리
@@ -52,7 +52,10 @@ class AdminLogsService {
             const adminLog = doc.data();
   
             // 노션 데이터 구성
-            const notionPage = this.buildNotionAdminLogPage(adminLog, adminLogId);
+            //const notionPage = this.buildNotionAdminLogPage(adminLog, adminLogId);
+            
+            // syncAdminLogs 메서드 내부
+            const notionPage = await this.buildNotionAdminLogPage(adminLog, adminLogId);
   
             // 노션에 기존 페이지가 있으면 업데이트, 없으면 생성
             if (notionAdminLogs[adminLogId]) {
@@ -68,8 +71,8 @@ class AdminLogsService {
               console.log(`[생성] 관리자 로그 ${adminLogId} 노션 동기화 완료`);
             }
   
-            syncedCount++;
-            syncedLogIds.push(adminLogId);
+            successCount++;
+            successLogIds.push(adminLogId);
   
             return { success: true, adminLogId, action: notionAdminLogs[adminLogId] ? 'update' : 'create' };
           } catch (error) {
@@ -85,7 +88,7 @@ class AdminLogsService {
         const batchSuccess = batchResults.filter(r => r.success).length;
         const batchFailed = batchResults.filter(r => !r.success).length;
   
-        console.log(`배치 완료: 성공 ${batchSuccess}건, 실패 ${batchFailed}건 (총 진행률: ${syncedCount + failedCount}/${snapshot.docs.length})`);
+        console.log(`배치 완료: 성공 ${batchSuccess}건, 실패 ${batchFailed}건 (총 진행률: ${successCount + failedCount}/${snapshot.docs.length})`);
   
         // 마지막 배치가 아니면 지연
         if (i + BATCH_SIZE < snapshot.docs.length) {
@@ -95,9 +98,9 @@ class AdminLogsService {
       }
   
       console.log(`=== 관리자 로그 동기화 완료 ===`);
-      console.log(`성공: ${syncedCount}건, 실패: ${failedCount}건`);
+      console.log(`성공: ${successCount}건, 실패: ${failedCount}건`);
   
-      return { syncedCount, failedCount };
+      return { successCount, failedCount };
   
     } catch (error) {
       console.error('syncAdminLogs 전체 오류:', error);
@@ -170,22 +173,95 @@ class AdminLogsService {
   }
 
 
+
+   /**
+   * 사용자 ID 배열을 노션 페이지 ID 배열로 변환
+   * @param {Array<string>} userIds - 사용자 ID 배열
+   * @returns {Promise<Array<string>>} 노션 페이지 ID 배열
+   */
+   async convertUserIdsToNotionPageIds(userIds) {
+    if (!userIds || userIds.length === 0) {
+      return [];
+    }
+
+    try {
+      const notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+      if (!notionUserAccountDB) {
+        console.warn('[adminLogsService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
+        return [];
+      }
+
+      const pageIds = [];
+      
+      // 배치로 사용자 조회 (한 번에 여러 사용자 조회)
+      for (let i = 0; i < userIds.length; i += 100) {
+        const batch = userIds.slice(i, i + 100);
+        
+        // 각 사용자 ID에 대해 노션 페이지 조회
+        const batchPromises = batch.map(async (userId) => {
+          try {
+            const response = await fetch(`https://api.notion.com/v1/databases/${notionUserAccountDB}/query`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+                'Notion-Version': '2022-06-28',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                filter: {
+                  property: '사용자ID',
+                  rich_text: { equals: userId }
+                },
+                page_size: 1
+              })
+            });
+
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              return data.results[0].id;
+            }
+            return null;
+          } catch (error) {
+            console.warn(`[adminLogsService] 사용자 ${userId}의 노션 페이지 조회 실패:`, error.message);
+            return null;
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        pageIds.push(...batchResults.filter(id => id !== null));
+        
+        // 배치 사이 지연 (Notion API rate limit 방지)
+        if (i + 100 < userIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      return pageIds;
+    } catch (error) {
+      console.error('[adminLogsService] 사용자 ID를 노션 페이지 ID로 변환 실패:', error);
+      return [];
+    }
+  }
+
+
   /**
    * adminLog 데이터를 노션 페이지 형식으로 변환
    */
-  buildNotionAdminLogPage(adminLog, adminLogId) {
+  async buildNotionAdminLogPage(adminLog, adminLogId) {
     // 상태 계산: SUCCESS, PARTIAL, FAILURE
     const metadata = adminLog.metadata || {};
-    const syncedCount = metadata.syncedCount || 0;
+    //const syncedCount = metadata.syncedCount || 0;
+    const successCount = metadata.successCount || 0;
     const failedCount = metadata.failedCount || 0;
     const total = metadata.total || 1;
-    const syncedUserIds = metadata.syncedUserIds || [];
+    //const syncedUserIds = metadata.syncedUserIds || [];
+    const successUserIds = metadata.successUserIds || [];
     const failedUserIds = metadata.failedUserIds || [];
 
     let status = "SUCCESS";
-    if (failedCount > 0 && syncedCount === 0) {
+    if (failedCount > 0 && successCount === 0) {
       status = "FAILURE";
-    } else if (syncedCount > 0 && failedCount > 0) {
+    } else if (successCount > 0 && failedCount > 0) {
       status = "PARTIAL";
     } else if (total > 1 && failedCount > 0) {
       status = "PARTIAL";
@@ -215,7 +291,7 @@ class AdminLogsService {
         number: total
       },
       "성공": {
-        number: syncedCount || (status === "SUCCESS" ? 1 : 0)
+        number: successCount || (status === "SUCCESS" ? 1 : 0)
       },
       "실패": {
         number: failedCount || (status === "FAILURE" ? 1 : 0)
@@ -241,29 +317,54 @@ class AdminLogsService {
       + url : 제한없음
       + relation(관계) : 다른 페이지와 관계 연결 
     */
+
+    //[==기존==]
     // 동기화된 사용자 ID 목록 (다중선택 타입)
-    if (syncedUserIds.length > 0) {
-      notionPage["동기화된 사용자ID"] = {
-        multi_select: syncedUserIds.map(userId => ({ name: userId }))
-      };
-    } else {
-      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-      notionPage["동기화된 사용자ID"] = {
-        multi_select: []
-      };
+    // if (syncedUserIds.length > 0) {
+    //   notionPage["동기화된 사용자ID"] = {
+    //     multi_select: syncedUserIds.map(userId => ({ name: userId }))
+    //   };
+    // } else {
+    //   // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+    //   notionPage["동기화된 사용자ID"] = {
+    //     multi_select: []
+    //   };
+    // }
+
+    // // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
+    // if (failedUserIds.length > 0) {
+    //   notionPage["실패한 사용자ID"] = {
+    //     multi_select: failedUserIds.map(userId => ({ name: userId }))
+    //   };
+    // } else {
+    //   // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+    //   notionPage["실패한 사용자ID"] = {
+    //     multi_select: []
+    //   };
+    // }
+
+    // 성공한 사용자 관계형 필드 변환
+    let successNotionPageIds = [];
+    if (successUserIds && successUserIds.length > 0) {
+      successNotionPageIds = await this.convertUserIdsToNotionPageIds(successUserIds);
+    }
+    
+    notionPage["성공한 사용자"] = {
+      relation: successNotionPageIds.map(pageId => ({ id: pageId }))
+    };
+
+    // 실패한 사용자 관계형 필드 변환
+    let failedNotionPageIds = [];
+    if (failedUserIds && failedUserIds.length > 0) {
+      failedNotionPageIds = await this.convertUserIdsToNotionPageIds(failedUserIds);
     }
 
-    // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
-    if (failedUserIds.length > 0) {
-      notionPage["실패한 사용자ID"] = {
-        multi_select: failedUserIds.map(userId => ({ name: userId }))
-      };
-    } else {
-      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-      notionPage["실패한 사용자ID"] = {
-        multi_select: []
-      };
-    }
+    // console.log(`[adminLogsService] 성공한 사용자 ID 목록: ${successUserIds}`);
+    // console.log(`[adminLogsService] 실패한 사용자 Notion 페이지 ID 목록: ${failedNotionPageIds}`);
+
+    notionPage["실패한 사용자"] = {
+      relation: failedNotionPageIds.map(pageId => ({ id: pageId }))
+    };
 
     return notionPage;
   }
@@ -357,12 +458,6 @@ class AdminLogsService {
     logMessage = null
   }) {
     try {
-      
-      // metadata 객체 생성 및 logMessage 병합
-      const finalMetadata = {
-        ...(metadata || {}),
-        logMessage: logMessage || ""
-      };
 
       const logRef = db.collection("adminLogs").doc();
       await logRef.set({
@@ -370,15 +465,16 @@ class AdminLogsService {
         action: action,
         targetId: targetId,
         timestamp: timestamp || new Date(),
-        metadata: finalMetadata
+        metadata: metadata || {}
       });
       
-      const syncedCount = metadata?.syncedCount || 0;
-      if (logMessage) {
-        console.log(`[adminLogs] 관리자 로그 저장 완료: ${logMessage}`);
-      } else {
-        console.log(`[adminLogs] 관리자 로그 저장 완료: ${action} (${syncedCount}개)`);
+      const successCount = metadata?.successCount || 0;
+      const failedCount = metadata?.failedCount || 0;
+      console.log(`[adminLogs] 관리자 로그 저장 완료: ${action} (성공: ${successCount}개, 실패: ${failedCount}개)`);
+      if (logMessage && logMessage.trim() !== "") {
+        console.log(`[adminLogs] 관리자 로그 메시지: ${logMessage}`);
       }
+
     } catch (logError) {
       console.error("[adminLogs] 로그 저장 실패:", logError);
       // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
