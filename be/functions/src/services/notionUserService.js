@@ -377,14 +377,18 @@ class NotionUserService {
     //백업 결과 이력 저장 (별도 action으로 저장)
     await adminLogsService.saveAdminLog({
       adminId: "Notion 관리자",
-      action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
+      action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_PARTIAL_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_PARTIAL_BACKUP_FAILED,
       targetId: "", // 전체 동기화 작업이므로 빈 값
       timestamp: new Date(),
       metadata: backupSuccess && backupResult ? {
-        syncedCount: backupResult.backedUp,
+        //syncedCount: backupResult.backedUp,
+        successCount: backupResult.backedUp,
         failedCount: backupResult.failed,
         archivedCount: backupResult.deleted,
         total: backupResult.backedUp + backupResult.failed,
+        successUserIds: backupResult.successUserIds || [], // 성공한 사용자 ID 목록
+        failedUserIds: backupResult.failedUserIds || [], // 실패한 사용자 ID 목록
+        logMessage: "",
         ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
       } : {
         logMessage : backupError
@@ -420,16 +424,19 @@ class NotionUserService {
     // 회원 동기화 이력 저장
     await adminLogsService.saveAdminLog({
       adminId: "Notion 관리자",
-      action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
+      action: ADMIN_LOG_ACTIONS.NOTION_USER_PARTIAL_SYNCED,
       targetId: "", // 전체 동기화 작업이므로 빈 값
       timestamp: new Date(),
       metadata: {
-        syncedCount: syncedCount,
+        //syncedCount: syncedCount,
+        successCount: syncedCount,
         failedCount: failedCount,
         archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
         total: syncedCount + failedCount,
-        syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+        //syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+        successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+        logMessage: "",
       }
     });
 
@@ -1522,7 +1529,7 @@ async syncSelectedUsers() {
 
       if (sourcePages.length === 0) {
         console.log('백업할 페이지가 없습니다.');
-        return { backedUp: 0, failed: 0 };
+        return { backedUp: 0, failed: 0, successUserIds: [], failedUserIds: [] };
       }
 
       // 2. 백업 데이터베이스의 기존 페이지 조회 (사용자ID 기준)
@@ -1544,6 +1551,8 @@ async syncSelectedUsers() {
       let failedCount = 0;
       let deletedCount = 0;
       const errors = [];
+      const successUserIds = []; // 성공한 사용자 ID 목록
+      const failedUserIds = []; // 실패한 사용자 ID 목록
 
       // 3. 배치 처리로 백업
       for (let i = 0; i < sourcePages.length; i += BATCH_SIZE) {
@@ -1635,10 +1644,18 @@ async syncSelectedUsers() {
 
 
             backedUpCount++;
+            // 성공한 사용자 ID 추가
+            if (userId) {
+              successUserIds.push(userId);
+            }
             return { success: true, userId: userId || "unknown" };
           } catch (error) {
             failedCount++;
             const userId = sourcePage.properties["사용자ID"]?.rich_text?.[0]?.plain_text || "unknown";
+             // 실패한 사용자 ID 추가
+             if (userId && userId !== "unknown") {
+              failedUserIds.push(userId);
+            }
             errors.push({
               userId,
               pageId: sourcePage.id,
@@ -1710,6 +1727,8 @@ async syncSelectedUsers() {
         updated: updatedCount,
         failed: failedCount,
         deleted: deletedCount,
+        successUserIds: successUserIds, // 성공한 사용자 ID 목록 추가
+        failedUserIds: failedUserIds, // 실패한 사용자 ID 목록 추가
         ...(errors.length > 0 && { errors })
       };
     } catch (error) {

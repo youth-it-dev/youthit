@@ -79,6 +79,15 @@ const ADMIN_LOG_ACTIONS = {
     NOTION_BACKUP_COMPLETED: "NOTION_BACKUP_COMPLETED", //노션 백업 성공
     NOTION_BACKUP_FAILED: "NOTION_BACKUP_FAILED", //노션 백업 실패
 
+
+
+
+    //신규 사용하는 액션로그(실제 사용)
+    NOTION_PARTIAL_BACKUP_COMPLETED: "NOTION_PARTIAL_BACKUP_COMPLETED", // 노션 부분 데이터 백업 성공
+    NOTION_PARTIAL_BACKUP_FAILED: "NOTION_PARTIAL_BACKUP_FAILED",     // 노션 부분 데이터 백업 실패
+    NOTION_USER_PARTIAL_SYNCED: "NOTION_USER_PARTIAL_SYNCED", //부분 데이터 불러오기  
+
+
   };
   
   module.exports = {
