@@ -13,7 +13,7 @@ const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
 class CommentService {
   
   static MAX_PARENT_COMMENTS_FOR_REPLIES = 10; 
-  static MAX_NOTIFICATION_TEXT_LENGTH = 10;
+  static MAX_NOTIFICATION_TEXT_LENGTH = 40;
   static PROGRAM_TYPES = {
     ROUTINE: "ROUTINE",
     GATHERING: "GATHERING",
@@ -28,6 +28,37 @@ class CommentService {
     return Object.prototype.hasOwnProperty.call(CommentService.PROGRAM_TYPES, upper)
       ? CommentService.PROGRAM_TYPES[upper]
       : upper;
+  }
+
+  /**
+   * 댓글 알림 메시지 생성
+   * @param {string} commenterName - 댓글 작성자 이름
+   * @param {string} content - 댓글 내용
+   * @returns {string} 알림 메시지
+   */
+  static createCommentNotificationMessage(commenterName, content) {
+    const textOnly = typeof content === 'string' 
+      ? content.replace(/<[^>]*>/g, '') 
+      : (content || '');
+
+    const baseTemplate = `${commenterName}님이 댓글을 남겼어요!: `;
+    const baseLength = baseTemplate.length;
+    const maxLength = CommentService.MAX_NOTIFICATION_TEXT_LENGTH;
+    const remainingLength = Math.max(0, maxLength - baseLength);
+    
+    let commentPreview = '';
+    if (textOnly && textOnly.trim()) {
+      if (textOnly.length > remainingLength) {
+        const cutLength = Math.max(0, remainingLength - 3);
+        commentPreview = textOnly.substring(0, cutLength) + '...';
+      } else {
+        commentPreview = textOnly;
+      }
+    } else {
+      commentPreview = '댓글';
+    }
+    
+    return baseTemplate + commentPreview;
   }
 
   constructor() {
@@ -214,13 +245,15 @@ class CommentService {
 
       const created = await this.firestoreService.getDocument("comments", commentId);
 
-      if (post.authorId !== userId) {
+      if (!parentId && post.authorId !== userId) {
         const commenterName = author !== "익명" ? author : "사용자";
         const link = NOTIFICATION_LINKS.POST(postId, communityId);
+        const notificationMessage = CommentService.createCommentNotificationMessage(commenterName, created.content);
+        
         fcmHelper.sendNotification(
           post.authorId,
           "새로운 댓글이 달렸습니다",
-          `${commenterName}님이 게시글 "${post.title}"에 댓글을 남겼습니다.`,
+          notificationMessage,
           "COMMENT",
           postId,
           communityId,
@@ -233,22 +266,16 @@ class CommentService {
 
       
       if (parentId && parentComment && parentComment.userId !== userId) {
-        const textOnly = typeof parentComment.content === 'string' 
-          ? parentComment.content.replace(/<[^>]*>/g, '') 
-          : parentComment.content;
-        const commentPreview = textOnly || "댓글";
-        const preview = commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH ? 
-          commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..." : 
-          commentPreview;
-
         // author는 이미 게시글 isPublic에 따라 올바르게 설정됨
         const commenterName = author !== "익명" ? author : "사용자";
         console.log(`대댓글 알림 전송: ${parentComment.userId}에게 답글 알림`);
         const link = NOTIFICATION_LINKS.POST(postId, communityId);
+        const notificationMessage = CommentService.createCommentNotificationMessage(commenterName, created.content);
+        
         fcmHelper.sendNotification(
           parentComment.userId,
           "새로운 답글이 달렸습니다",
-          `${commenterName}님이 "${preview}"에 답글을 남겼습니다.`,
+          notificationMessage,
           "COMMENT",
           postId,
           communityId,
@@ -835,21 +862,12 @@ class CommentService {
               }
             }
 
-            const textOnly = typeof comment.content === 'string' 
-              ? comment.content.replace(/<[^>]*>/g, '') 
-              : comment.content;
-            const commentPreview = textOnly || "댓글";
-            const preview =
-              commentPreview.length > CommentService.MAX_NOTIFICATION_TEXT_LENGTH
-                ? commentPreview.substring(0, CommentService.MAX_NOTIFICATION_TEXT_LENGTH) + "..."
-                : commentPreview;
-
             const link = NOTIFICATION_LINKS.POST(comment.postId, comment.communityId);
             fcmHelper
               .sendNotification(
                 comment.userId,
                 "댓글에 좋아요가 달렸습니다",
-                `${likerName}님이 "${preview}" 댓글에 좋아요를 눌렀습니다`,
+                `${likerName}님이 회원님의 댓글을 좋아합니다.`,
                 "COMMENT_LIKE",
                 comment.postId,
                 comment.communityId,
