@@ -608,18 +608,10 @@ async syncAllUserAccounts() {
             },
             "사용자ID": { rich_text: [{ text: { content: userId } }] },
             "사용자 실명": { rich_text: [{ text: { content: user.name || "" } }] },
-            // "상태": {
-            //   select: {
-            //     name: (user.deletedAt !== undefined && user.deletedAt !== null && user.deletedAt !== "") 
-            //       ? "탈퇴" 
-            //       : "가입"
-            //   }
-            // },
             "전화번호": { rich_text: [{ text: { content: user.phoneNumber || "" } }] },
             "생년월일": { rich_text: [{ text: { content: user.birthDate || "" } }] },
             "이메일": { rich_text: [{ text: { content: user.email || "" } }] },
             "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-            //"가입 방법": { select: { name: user.authType || "email" } },
             "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
             "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
             "유입경로": { rich_text: [{ text: { content: user.utmSource || "" } }] },
@@ -782,58 +774,43 @@ async syncAllUserAccounts() {
       console.error('백업 실패:', error);
     }
 
-
-    // 백업 결과 이력 저장 (별도 action으로 저장)
-    try {
-      const backupLogRef = db.collection("adminLogs").doc();
-      await backupLogRef.set({
-        adminId: "Notion 관리자",
-        action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
-        targetId: "", // 백업 작업이므로 빈 값
-        timestamp: new Date(),
-        metadata: backupSuccess && backupResult ? {
-          syncedCount: backupResult.backedUp,
-          created: backupResult.created,
-          archivedCount: backupResult.deleted,
-          total: backupResult.backedUp + backupResult.failed,
-          failedCount: backupResult.failed,
-          ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
-        } : {
-          logMessage : backupError
-        }
-      });
-      if (backupSuccess) {
-        console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
-      } else {
-        console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
+    //관리자 로그 저장-백업 결과 이력 저장 (별도 action으로 저장)
+    await adminLogsService.saveAdminLog({
+      adminId: "Notion 관리자",
+      action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_FULL_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_FULL_BACKUP_FAILED,
+      targetId: "", // 백업 작업이므로 빈 값
+      timestamp: new Date(),
+      metadata: backupSuccess && backupResult ? {
+        successCount: backupResult.backedUp,
+        failedCount: backupResult.failed,
+        archivedCount: backupResult.deleted,
+        total: backupResult.backedUp + backupResult.failed,
+        successUserIds: backupResult.successUserIds || [], // 성공한 사용자 ID 목록
+        failedUserIds: backupResult.failedUserIds || [], // 실패한 사용자 ID 목록
+        logMessage: "",
+        ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
+      } : {
+        logMessage : backupError
       }
-    } catch (backupLogError) {
-      console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
-      // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-    }
+    });
 
 
-
-    try {
-      const logRef = db.collection("adminLogs").doc();
-      await logRef.set({
-        adminId: "Notion 관리자",
-        action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-        targetId: "",
-        timestamp: new Date(),
-        metadata: {
-          syncedCount: syncedCount,
-          failedCount: failedCount,
-          archivedCount: archivedCount, //Firebase -> Notion으로 동기화 하는 경우 존재
-          total: snapshot.docs.length,
-          syncedUserIds: syncedUserIds,
-          failedUserIds: failedUserIds,
-        }
-      });
-      console.log(`[adminLogs] 전체 동기화 이력 저장 완료`);
-    } catch (logError) {
-      console.error("[adminLogs] 로그 저장 실패:", logError);
-    }
+    //관리자 로그 저장 - 전체 동기화 이력 저장
+    await adminLogsService.saveAdminLog({
+      adminId: "Notion 관리자",
+      action: ADMIN_LOG_ACTIONS.NOTION_USER_FULL_SYNCED,
+      targetId: "",
+      timestamp: new Date(),
+      metadata: {
+        successCount: syncedCount,
+        failedCount: failedCount,
+        archivedCount: archivedCount, //Firebase -> Notion으로 동기화 하는 경우 존재
+        total: snapshot.docs.length,
+        successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+        failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+        logMessage: "",
+      }
+    });
 
     return { 
       syncedCount, 
