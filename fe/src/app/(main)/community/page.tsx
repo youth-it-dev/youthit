@@ -30,7 +30,6 @@ import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import Modal from "@/components/shared/ui/modal";
 import { communitiesKeys } from "@/constants/generated/query-keys";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { useGetPrograms } from "@/hooks/generated/programs-hooks";
 import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { usePullToRefresh } from "@/hooks/shared/usePullToRefresh";
 import useToggle from "@/hooks/shared/useToggle";
