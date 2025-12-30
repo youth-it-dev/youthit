@@ -94,7 +94,6 @@ class NotificationService {
     this.templateDatabaseId = NOTION_NOTIFICATION_TEMPLATE_DB_ID;
     this.firestoreService = new FirestoreService("users");
     this.rewardService = new RewardService();
-    this.notificationFirestoreService = new FirestoreService("notifications");
   }
 
   /**
@@ -1440,7 +1439,6 @@ class NotificationService {
       }
 
       const notification = {
-        userId,
         title,
         message,
         type,
@@ -1471,7 +1469,8 @@ class NotificationService {
       }
       // announcement 타입은 기본 필드만 저장 (추가 필드 없음)
 
-      const docRef = await this.notificationFirestoreService.create(notification);
+      const userNotificationService = new FirestoreService(`users/${userId}/notifications`);
+      const docRef = await userNotificationService.create(notification);
       return docRef.id;
     } catch (error) {
       console.error("알림 저장 실패:", error);
@@ -1492,11 +1491,10 @@ class NotificationService {
     try {
       const {page = 0, size = 20} = options;
 
-      // 알림 목록 조회 (페이지네이션)
-      const notificationsResult = await this.notificationFirestoreService.getWithPagination({
-        where: [
-          {field: "userId", operator: "==", value: userId}
-        ],
+      const userNotificationService = new FirestoreService(`users/${userId}/notifications`);
+
+      const notificationsResult = await userNotificationService.getWithPagination({
+        where: [],
         orderBy: "createdAt",
         orderDirection: "desc",
         page: parseInt(page),
@@ -1505,9 +1503,6 @@ class NotificationService {
 
       const notifications = notificationsResult?.content || [];
       const pageable = notificationsResult?.pageable || {};
-      
-      // userId 필드 제거
-      const notificationsWithoutUserId = notifications.map(({userId, ...rest}) => rest);
       
       // 페이지네이션 정보 변환 (pageable -> pagination)
       const pagination = {
@@ -1518,18 +1513,16 @@ class NotificationService {
         hasNext: pageable.hasNext ?? false,
       };
 
-      // 읽지 않은 알림 개수 조회 (전체 개수)
-      const unreadNotifications = await this.notificationFirestoreService.getCollectionWhereMultiple(
-        "notifications",
+      const unreadNotifications = await this.firestoreService.getCollectionWhereMultiple(
+        `users/${userId}/notifications`,
         [
-          {field: "userId", operator: "==", value: userId},
           {field: "isRead", operator: "==", value: false}
         ]
       );
       const unreadCount = unreadNotifications?.length || 0;
 
       return {
-        notifications: notificationsWithoutUserId,
+        notifications,
         pagination,
         unreadCount,
       };
@@ -1549,11 +1542,9 @@ class NotificationService {
    */
   async markAllAsRead(userId) {
     try {
-      // 읽지 않은 알림 조회
-      const unreadNotifications = await this.notificationFirestoreService.getCollectionWhereMultiple(
-        "notifications",
+      const unreadNotifications = await this.firestoreService.getCollectionWhereMultiple(
+        `users/${userId}/notifications`,
         [
-          {field: "userId", operator: "==", value: userId},
           {field: "isRead", operator: "==", value: false}
         ]
       );
@@ -1564,10 +1555,14 @@ class NotificationService {
 
       // 각 알림을 개별적으로 업데이트
       const updatePromises = unreadNotifications.map(notification =>
-        this.notificationFirestoreService.update(notification.id, {
-          isRead: true,
-          updatedAt: FieldValue.serverTimestamp()
-        })
+        this.firestoreService.updateDocument(
+          `users/${userId}/notifications`,
+          notification.id,
+          {
+            isRead: true,
+            updatedAt: FieldValue.serverTimestamp()
+          }
+        )
       );
 
       await Promise.all(updatePromises);
@@ -1598,21 +1593,15 @@ class NotificationService {
         throw error;
       }
 
-      // 알림 조회
-      const notification = await this.notificationFirestoreService.getById(notificationId);
+      const notification = await this.firestoreService.getDocument(
+        `users/${userId}/notifications`,
+        notificationId
+      );
 
       if (!notification) {
         const error = new Error("알림을 찾을 수 없습니다");
         error.code = "NOTIFICATION_NOT_FOUND";
         error.statusCode = 404;
-        throw error;
-      }
-
-      // 사용자 소유 확인
-      if (notification.userId !== userId) {
-        const error = new Error("권한이 없습니다");
-        error.code = "NOTIFICATION_UNAUTHORIZED";
-        error.statusCode = 403;
         throw error;
       }
 
@@ -1622,10 +1611,14 @@ class NotificationService {
       }
 
       // 읽음 처리
-      await this.notificationFirestoreService.update(notificationId, {
-        isRead: true,
-        updatedAt: FieldValue.serverTimestamp()
-      });
+      await this.firestoreService.updateDocument(
+        `users/${userId}/notifications`,
+        notificationId,
+        {
+          isRead: true,
+          updatedAt: FieldValue.serverTimestamp()
+        }
+      );
 
       return { message: "알림이 읽음 처리되었습니다", updated: true };
     } catch (error) {
