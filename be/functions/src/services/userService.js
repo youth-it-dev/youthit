@@ -1788,6 +1788,14 @@ class UserService {
             programStatus = "completed";
           }
           
+          if (programStatus === "completed" && endDate) {
+            const oneWeekInMs = 7 * 24 * 60 * 60 * 1000;
+            const oneWeekAfterEndDate = new Date(endDate.getTime() + oneWeekInMs);
+            if (now > oneWeekAfterEndDate) {
+              return; 
+            }
+          }
+          
           grouped[typeInfo.key].items.push({
             id: community.id,
             name: community.name,
