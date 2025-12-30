@@ -26,22 +26,41 @@ export const usePullToRefresh = ({
   const startYRef = useRef<number | null>(null);
   const scrollElementRef = useRef<HTMLElement | null>(null);
   const isRefreshingRef = useRef(false);
+  const pullDistanceRef = useRef(0);
 
   // ref 동기화 (이벤트 핸들러에서 최신 값 참조용)
   useEffect(() => {
     isRefreshingRef.current = isRefreshing;
-  }, [isRefreshing]);
+    pullDistanceRef.current = pullDistance;
+  }, [isRefreshing, pullDistance]);
+
+  // isPulling 또는 isRefreshing 중일 때 페이지 스크롤 방지
+  useEffect(() => {
+    if (isPulling || isRefreshing) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+  }, [isPulling, isRefreshing]);
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshingRef.current) return;
 
     isRefreshingRef.current = true;
     setIsRefreshing(true);
+
+    // await 전에 현재 pullDistance를 최대값으로 고정
+    const maxPullDistance = pullDistanceRef.current;
+    setPullDistance(maxPullDistance);
+
     try {
       await onRefresh();
     } finally {
       isRefreshingRef.current = false;
       setIsRefreshing(false);
+      // 페칭 완료 후 스크롤 위치 복원
       setPullDistance(0);
     }
   }, [onRefresh]);
