@@ -34,17 +34,6 @@ export const usePullToRefresh = ({
     pullDistanceRef.current = pullDistance;
   }, [isRefreshing, pullDistance]);
 
-  // isPulling 또는 isRefreshing 중일 때 페이지 스크롤 방지
-  useEffect(() => {
-    if (isPulling || isRefreshing) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    }
-  }, [isPulling, isRefreshing]);
-
   const handleRefresh = useCallback(async () => {
     if (isRefreshingRef.current) return;
 

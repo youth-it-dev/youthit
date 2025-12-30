@@ -614,8 +614,7 @@ const CommunityPageContent = () => {
     if (!savedPosition) return;
 
     // 데이터 로딩 완료 후 스크롤 복원
-    // isRefreshing 중이면 스크롤 복원하지 않음 (pullDistance와 충돌 방지)
-    if (isLoading || posts.length === 0 || isRefreshing) return;
+    if (isLoading || posts.length === 0) return;
 
     const mainElement = document.querySelector("main");
     if (mainElement) {
@@ -625,7 +624,7 @@ const CommunityPageContent = () => {
         sessionStorage.removeItem("community_scroll_position");
       });
     }
-  }, [isLoading, posts.length, isRefreshing]);
+  }, [isLoading, posts.length]);
 
   // 에러 상태 처리
   if (error) {
