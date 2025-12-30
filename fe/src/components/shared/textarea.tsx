@@ -12,7 +12,7 @@ const Textarea = ({
   return (
     <textarea
       className={cn(
-        "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 h-21 w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-4 text-base leading-1.5 font-normal text-gray-900 shadow-xs focus:outline-3",
+        "font-noto focus:ring-main-400 focus:outline-main-500/50 focus:border-main-500 h-21 w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-4 text-base leading-1.5 font-normal text-gray-900 shadow-xs focus:outline-3",
         className
       )}
       readOnly={readOnly}
