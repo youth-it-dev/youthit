@@ -659,11 +659,11 @@ const ProfileEditPage = () => {
         >
           <Typography
             font="noto"
-            variant="body1M"
+            variant="label1M"
             className={
               isCompleteEnabled && !isSubmitting
-                ? "text-main-600"
-                : "text-gray-300"
+                ? "text-main-500"
+                : "text-main-500/30"
             }
           >
             {PROFILE_EDIT_LABELS.COMPLETE_BUTTON}
@@ -681,11 +681,11 @@ const ProfileEditPage = () => {
             className="relative disabled:cursor-not-allowed disabled:opacity-50"
             aria-label={PROFILE_EDIT_LABELS.PROFILE_IMAGE_CHANGE}
           >
-            <div className="relative h-24 w-24">
+            <div className="relative h-19 w-19">
               <ProfileImage src={profileImageUrl} size="h-full w-full" />
             </div>
-            <div className="absolute right-0 bottom-0 flex h-7 w-7 items-center justify-center rounded-full bg-gray-700">
-              <Camera className="h-4 w-4 text-white" />
+            <div className="absolute right-[-2px] bottom-[-2px] flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 bg-white">
+              <Camera className="h-5 w-5 text-gray-500" />
             </div>
           </button>
         </div>
@@ -699,13 +699,6 @@ const ProfileEditPage = () => {
             >
               {PROFILE_EDIT_LABELS.NICKNAME}
             </Typography>
-            <Typography
-              font="noto"
-              variant="body2B"
-              className="text-main-600 mb-2"
-            >
-              *
-            </Typography>
           </div>
           <div className="relative">
             <Input
@@ -717,14 +710,17 @@ const ProfileEditPage = () => {
               disabled={!isDataLoaded}
               onChange={handleNicknameChange}
             />
-            {!nicknameError && (
-              <Typography
-                font="noto"
-                variant="caption1R"
-                className="mt-1 text-gray-400"
+            {nickname && nickname.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setValue("nickname", "", { shouldDirty: true });
+                }}
+                className="absolute top-1/2 right-[14px] flex h-[14px] w-[14px] -translate-y-1/2 items-center justify-center rounded-full bg-[#DFDFDF] transition-opacity hover:opacity-80"
+                aria-label="입력 내용 지우기"
               >
-                {PROFILE_EDIT_HELPERS.NICKNAME}
-              </Typography>
+                <X className="h-[11px] w-[11px] text-white" />
+              </button>
             )}
             {nicknameError && (
               <div className="mt-1 flex w-full items-center gap-1">

@@ -24,7 +24,7 @@ export const PROFILE_EDIT_MESSAGES = {
 export const PROFILE_EDIT_ERRORS = {
   NICKNAME_MAX_LENGTH: "닉네임은 최대 8자까지 입력 가능합니다.",
   NICKNAME_INVALID_CHARACTERS:
-    "닉네임은 한글, 영어, 숫자만 사용 가능하며 최대 8자까지 입력 가능합니다.",
+    "닉네임은 한글, 영어, 숫자만 사용 가능하며,\n최대 8자까지 입력 가능합니다.",
   NICKNAME_DUPLICATED: "중복된 이름입니다. 다른 이름을 선택해주세요.",
 } as const;
 
