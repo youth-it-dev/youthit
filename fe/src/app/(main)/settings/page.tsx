@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
-import { usersKeys } from "@/constants/generated/query-keys";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
 import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
@@ -172,12 +171,14 @@ const SettingsPage = () => {
   };
 
   const handleNotificationToggle = useThrottle(async (checked: boolean) => {
-    const previousValue = isNotificationEnabled;
+    // Optimistic 업데이트: 즉시 UI 상태 변경
+    setIsNotificationEnabled(checked);
 
     // 알림을 켜려고 할 때
     if (checked) {
       if (typeof window === "undefined" || !("Notification" in window)) {
         showToast("이 브라우저는 알림을 지원하지 않습니다.");
+        setIsNotificationEnabled(false);
         return;
       }
 
@@ -195,7 +196,7 @@ const SettingsPage = () => {
         showToast(
           "알림 권한 요청이 거부되었습니다.\n알림을 받으시려면 브라우저 설정에서 알림을 허용해주세요."
         );
-        setIsNotificationEnabled(true);
+        setIsNotificationEnabled(false);
         return;
       }
 
@@ -220,9 +221,7 @@ const SettingsPage = () => {
       }
     }
 
-    // 토글 상태 업데이트 및 API 호출
-    setIsNotificationEnabled(checked);
-
+    // API 호출
     pushNotificationToggleMutate(undefined as void, {
       onSuccess: (response) => {
         const nextPushTermsAgreed = response.data?.pushTermsAgreed;
@@ -237,20 +236,25 @@ const SettingsPage = () => {
       },
       onError: (error) => {
         debug.error("알림 설정 변경 오류:", error);
-        setIsNotificationEnabled(previousValue);
+        if (typeof pushTermsAgreed === "boolean") {
+          setIsNotificationEnabled(pushTermsAgreed);
+        }
         showToast("알림 설정 변경에 실패했습니다.");
       },
     });
-  }, 2000);
+  }, 1000);
 
   const handleMarketingConsentToggle = useThrottle((checked: boolean) => {
-    const previousValue = isMarketingConsentEnabled;
+    // Optimistic 업데이트: 즉시 UI 상태 변경
     setIsMarketingConsentEnabled(checked);
 
     const kakaoAccessToken = getKakaoAccessToken();
 
     if (!kakaoAccessToken) {
-      setIsMarketingConsentEnabled(previousValue);
+      // 토큰이 없으면 서버 상태로 롤백
+      if (typeof marketingTermsAgreed === "boolean") {
+        setIsMarketingConsentEnabled(marketingTermsAgreed);
+      }
       return;
     }
 
@@ -270,11 +274,14 @@ const SettingsPage = () => {
         },
         onError: (error) => {
           debug.error("마케팅 정보 수신 동의 변경 오류:", error);
-          setIsMarketingConsentEnabled(previousValue);
+          // 에러 발생 시 서버 상태로 롤백
+          if (typeof marketingTermsAgreed === "boolean") {
+            setIsMarketingConsentEnabled(marketingTermsAgreed);
+          }
         },
       }
     );
-  }, 2000);
+  }, 1000);
 
   const settingsItems = [
     {
