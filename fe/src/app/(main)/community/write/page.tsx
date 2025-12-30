@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useRef, useLayoutEffect, Suspense } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  Suspense,
+  useMemo,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -63,7 +70,7 @@ const WritePageContent = () => {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { mutate, isPending } = usePostCommunitiesPostsById();
-  const [isAuthGuideOpen, setIsAuthGuideOpen] = useState(false);
+  const [isAuthGuideOpen, setIsAuthGuideOpen] = useState<boolean>(true);
   const {
     isOpen: isUploading,
     open: openUploading,
@@ -164,6 +171,23 @@ const WritePageContent = () => {
   // API 스키마에서 정의된 타입 사용
   const certificationMethod: Program["certificationMethod"] =
     programData?.program?.certificationMethod;
+
+  // 인증 가이드 내용이 있는지 확인
+  const hasAuthGuideContent = useMemo(() => {
+    if (!certificationMethod || certificationMethod.length === 0) {
+      return false;
+    }
+    return certificationMethod.some((method) => method.plain_text);
+  }, [certificationMethod]);
+
+  // 인증 방법 섹션을 표시할지 여부 (에러가 있거나 내용이 있을 때만)
+  const shouldShowAuthSection = useMemo(() => {
+    if (isReview) return false;
+    // 로딩 중일 때는 표시하지 않음
+    if (isProgramLoading) return false;
+    // 에러가 있거나 내용이 있으면 표시
+    return isProgramError || hasAuthGuideContent;
+  }, [isReview, isProgramLoading, isProgramError, hasAuthGuideContent]);
 
   const { handleSubmit, setValue, getValues, watch, reset } =
     useForm<WriteFormValues>({
@@ -733,8 +757,8 @@ const WritePageContent = () => {
             </div>
           </div>
         )}
-        {/* 인증방법 - 인증글일 때만 표시 */}
-        {!isReview && (
+        {/* 인증방법 - 인증글일 때만 표시, 인증 가이드 내용이 있을 때만 표시 */}
+        {shouldShowAuthSection && (
           <div className="border-main-300 bg-main-50 flex flex-col rounded-lg border px-5 py-4">
             <div className="flex items-center justify-between">
               <Typography
@@ -758,54 +782,43 @@ const WritePageContent = () => {
                 )}
               </ButtonBase>
             </div>
-            {isAuthGuideOpen && isProgramLoading && (
-              <div className="font-noto font-regular text-[13px] leading-normal text-gray-500">
-                <p>인증 가이드를 불러오는 중...</p>
-              </div>
+
+            {isAuthGuideOpen && (
+              <>
+                {isProgramError && (
+                  <div className="font-noto font-regular text-[13px] leading-normal text-red-500">
+                    <p>인증 가이드를 불러오지 못했습니다.</p>
+                    <ButtonBase
+                      onClick={() => refetchProgram()}
+                      className="mt-2 rounded-md bg-gray-200 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-300"
+                    >
+                      다시 시도
+                    </ButtonBase>
+                  </div>
+                )}
+
+                {!isProgramError && hasAuthGuideContent && (
+                  <div
+                    id="auth-guide-content"
+                    className="font-noto font-regular text-[13px] leading-normal text-gray-950"
+                  >
+                    <p className="whitespace-pre-line">
+                      {certificationMethod
+                        ?.map((method) => method.plain_text)
+                        .filter(Boolean)}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
-            {isAuthGuideOpen && isProgramError && (
-              <div className="font-noto font-regular text-[13px] leading-normal text-red-500">
-                <p>인증 가이드를 불러오지 못했습니다.</p>
-                <ButtonBase
-                  onClick={() => refetchProgram()}
-                  className="mt-2 rounded-md bg-gray-200 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-300"
-                >
-                  다시 시도
-                </ButtonBase>
-              </div>
-            )}
-            {isAuthGuideOpen &&
-              !isProgramLoading &&
-              !isProgramError &&
-              certificationMethod &&
-              certificationMethod.length > 0 && (
-                <div
-                  id="auth-guide-content"
-                  className="font-noto font-regular text-[13px] leading-normal text-gray-950"
-                >
-                  <p className="whitespace-pre-line">
-                    {certificationMethod
-                      .map((method) => method.plain_text)
-                      .filter(Boolean)}
-                  </p>
-                </div>
-              )}
-            {isAuthGuideOpen &&
-              !isProgramLoading &&
-              !isProgramError &&
-              (!certificationMethod || certificationMethod.length === 0) && (
-                <div className="font-noto font-regular text-[13px] leading-normal text-gray-500">
-                  <p>등록된 인증 가이드가 없습니다.</p>
-                </div>
-              )}
           </div>
         )}
         {/* 현재 완료된 인증 - 인증글일 때만 표시 */}
         {!isReview && (
           <>
             <Typography font="noto" variant="label2R" className="text-gray-400">
-              *작성 완료 시 나다움 포인트 지급 및 해당 인증글은 피드에
-              올라갑니다.
+              *작성 완료 시 나다움 포인트가 지급되며, 해당 인증글은 피드에
+              게시됩니다.
             </Typography>
             <div className="flex flex-col gap-2">
               <Typography
