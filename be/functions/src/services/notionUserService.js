@@ -341,38 +341,6 @@ class NotionUserService {
       console.error('백업 실패:', error);
     }
 
-
-    //==기존==
-    // 백업 결과 이력 저장 (별도 action으로 저장)
-    // try {
-    //   const backupLogRef = db.collection("adminLogs").doc();
-    //   await backupLogRef.set({
-    //     adminId: "Notion 관리자",
-    //     action: backupSuccess ? ADMIN_LOG_ACTIONS.NOTION_BACKUP_COMPLETED : ADMIN_LOG_ACTIONS.NOTION_BACKUP_FAILED,
-    //     targetId: "", // 백업 작업이므로 빈 값
-    //     timestamp: new Date(),
-    //     metadata: backupSuccess && backupResult ? {
-    //       syncedCount: backupResult.backedUp,
-    //       created: backupResult.created,
-    //       archivedCount: backupResult.deleted,
-    //       total: backupResult.backedUp + backupResult.failed,
-    //       failedCount: backupResult.failed,
-    //       ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
-    //     } : {
-    //       logMessage : backupError
-    //     }
-    //   });
-    //   if (backupSuccess) {
-    //     console.log(`[adminLogs] 백업 결과 저장 완료: 성공 (${backupResult.backedUp}개 백업)`);
-    //   } else {
-    //     console.log(`[adminLogs] 백업 결과 저장 완료: 실패 - ${backupError}`);
-    //   }
-    // } catch (backupLogError) {
-    //   console.error("[adminLogs] 백업 로그 저장 실패:", backupLogError);
-    //   // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-    // }
-
-
     //관리자 로그 저장 (신규)
     //백업 결과 이력 저장 (별도 action으로 저장)
     await adminLogsService.saveAdminLog({
@@ -381,7 +349,6 @@ class NotionUserService {
       targetId: "", // 전체 동기화 작업이므로 빈 값
       timestamp: new Date(),
       metadata: backupSuccess && backupResult ? {
-        //syncedCount: backupResult.backedUp,
         successCount: backupResult.backedUp,
         failedCount: backupResult.failed,
         archivedCount: backupResult.deleted,
@@ -395,45 +362,17 @@ class NotionUserService {
       }
     });
 
-
-    // ==기존==
-    // try {
-    //   const logRef = db.collection("adminLogs").doc();
-    //   await logRef.set({
-    //     adminId: "Notion 관리자",
-    //     action: ADMIN_LOG_ACTIONS.USER_PART_SYNCED,
-    //     targetId: "", // 전체 동기화 작업이므로 빈 값
-    //     timestamp: new Date(),
-    //     metadata: {
-    //       syncedCount: syncedCount,
-    //       failedCount: failedCount,
-    //       archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
-    //       total: syncedCount + failedCount,
-    //       syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
-    //       failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
-    //     }
-    //   });
-    //   console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명`);
-    // } catch (logError) {
-    //   console.error("[adminLogs] 로그 저장 실패:", logError);
-    //   // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-    // }
-
-
-    //관리자 로그 저장 (신규)
-    // 회원 동기화 이력 저장
+    //관리자 로그 저장-회원 동기화 이력 저장
     await adminLogsService.saveAdminLog({
       adminId: "Notion 관리자",
       action: ADMIN_LOG_ACTIONS.NOTION_USER_PARTIAL_SYNCED,
       targetId: "", // 전체 동기화 작업이므로 빈 값
       timestamp: new Date(),
       metadata: {
-        //syncedCount: syncedCount,
         successCount: syncedCount,
         failedCount: failedCount,
         archivedCount: archivedCount,  //Firebase -> Notion으로 동기화 하는 경우 존재
         total: syncedCount + failedCount,
-        //syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
         logMessage: "",
