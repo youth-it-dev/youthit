@@ -261,7 +261,20 @@ class UserService {
    */
   async getUserById(uid) {
     try {
-      return await this.firestoreService.getById(uid);
+      const user = await this.firestoreService.getById(uid);
+      if (!user) {
+        return null;
+      }
+      
+      if (!user.participationCounts) {
+        user.participationCounts = {
+          routine: 0,
+          gathering: 0,
+          tmi: 0
+        };
+      }
+      
+      return user;
     } catch (error) {
       console.error("사용자 조회 에러:", error.message);
       const e = new Error("사용자를 조회할 수 없습니다");

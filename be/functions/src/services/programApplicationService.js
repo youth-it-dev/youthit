@@ -3,10 +3,11 @@ const programService = require('./programService');
 const programCommunityService = require('./programCommunityService');
 const CommunityService = require('./communityService');
 const FirestoreService = require('./firestoreService');
-const { db, FieldValue } = require('../config/database');
+const { FieldValue } = require('../config/database');
 const { validateNicknameOrThrow } = require('../utils/nicknameValidator');
 const fcmHelper = require('../utils/fcmHelper');
 const { NOTIFICATION_LINKS } = require('../constants/urlConstants');
+const { normalizeProgramTypeValue } = require('./programService');
 
 // Notion 버전
 const NOTION_VERSION = process.env.NOTION_VERSION || "2025-09-03";
@@ -43,6 +44,7 @@ class ProgramApplicationService {
     this.applicationDataSource = NOTION_PROGRAM_APPLICATION_DB_ID;
     this.firestoreService = new FirestoreService();
     this.communityService = new CommunityService();
+    this.userService = new FirestoreService('users');
   }
 
   /**
@@ -170,6 +172,37 @@ class ProgramApplicationService {
       } catch (updateError) {
         console.warn('[ProgramApplicationService] Notion 페이지 ID 업데이트 실패:', updateError.message);
         // 업데이트 실패해도 신청은 완료된 것으로 처리
+      }
+
+      // 8. 자동 승인인 경우 participationCounts 증가
+      if (memberResult.status === 'approved') {
+        try {
+          const programType = normalizeProgramTypeValue(program?.programType);
+          
+          if (programType) {
+            const userData = await this.userService.getById(applicantId);
+            
+            // participationCounts 초기화 (없는 경우)
+            const currentCounts = userData?.participationCounts || {
+              routine: 0,
+              gathering: 0,
+              tmi: 0
+            };
+            
+            const updateData = {
+              participationCounts: {
+                routine: programType === 'ROUTINE' ? currentCounts.routine + 1 : currentCounts.routine,
+                gathering: programType === 'GATHERING' ? currentCounts.gathering + 1 : currentCounts.gathering,
+                tmi: programType === 'TMI' ? currentCounts.tmi + 1 : currentCounts.tmi,
+              }
+            };
+            
+            await this.userService.update(applicantId, updateData);
+            console.log(`[ProgramApplicationService] 자동 승인 participationCounts 증가 완료 - userId: ${applicantId}, programType: ${programType}`);
+          }
+        } catch (countError) {
+          console.warn('[ProgramApplicationService] 자동 승인 participationCounts 증가 실패:', countError.message);
+        }
       }
 
       return {
@@ -479,6 +512,35 @@ class ProgramApplicationService {
         try {
           const community = await this.communityService.getCommunityMapping(normalizedProgramId);
           const programName = community?.name || "프로그램";
+          
+          // participationCounts 증가
+          try {
+            const programType = normalizeProgramTypeValue(community?.programType);
+            
+            if (programType) {
+              const userData = await this.userService.getById(member.userId);
+              
+              // participationCounts 초기화 (없는 경우)
+              const currentCounts = userData?.participationCounts || {
+                routine: 0,
+                gathering: 0,
+                tmi: 0
+              };
+              
+              const updateData = {
+                participationCounts: {
+                  routine: programType === 'ROUTINE' ? currentCounts.routine + 1 : currentCounts.routine,
+                  gathering: programType === 'GATHERING' ? currentCounts.gathering + 1 : currentCounts.gathering,
+                  tmi: programType === 'TMI' ? currentCounts.tmi + 1 : currentCounts.tmi,
+                }
+              };
+              
+              await this.userService.update(member.userId, updateData);
+              console.log(`[ProgramApplicationService] participationCounts 증가 완료 - userId: ${member.userId}, programType: ${programType}`);
+            }
+          } catch (countError) {
+            console.warn('[ProgramApplicationService] participationCounts 증가 실패:', countError.message);
+          }
           
           await fcmHelper.sendNotification(
             member.userId,
