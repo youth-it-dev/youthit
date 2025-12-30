@@ -35,7 +35,6 @@ import { usePullToRefresh } from "@/hooks/shared/usePullToRefresh";
 import useToggle from "@/hooks/shared/useToggle";
 import { onAuthStateChange } from "@/lib/auth";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
-import type { ProgramListResponse } from "@/types/generated/api-schema";
 import type { TGETCommunitiesPostsRes } from "@/types/generated/communities-types";
 
 const COMMUNITY_POST_LIST_SIZE = 20;
@@ -697,52 +696,52 @@ const CommunityPageContent = () => {
             skeletonCount={5}
           />
         </div>
-
-        <CommunityInfiniteScrollTrigger
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          onLoadMore={handleFetchNextPage}
-        />
-
-        <CommunityLoadingStates
-          isFetchingNextPage={isFetchingNextPage}
-          hasNextPage={hasNextPage}
-          hasData={filteredPosts.length > 0}
-          loadingMessage="게시글을 더 불러오는 중이에요..."
-          completedMessage="모든 게시글을 확인했어요"
-        />
-
-        {/* 플로팅 작성 버튼 */}
-        <FloatingWriteButton
-          onOpenBottomSheet={() => setIsProgramSelectSheetOpen(true)}
-        />
-
-        {/* 프로그램 선택 바텀시트 */}
-        <ProgramSelectBottomSheet
-          isOpen={isProgramSelectSheetOpen}
-          onClose={() => setIsProgramSelectSheetOpen(false)}
-        />
-
-        <ProgramFilterBottomSheet
-          isOpen={isFilterSheetOpen}
-          onClose={() => setIsFilterSheetOpen(false)}
-          selectedSort={selectedSort}
-          selectedProgramState={selectedProgramState}
-          selectedCategories={selectedCategories}
-          onApply={handleFilterApply}
-        />
-
-        {/* 게시물 정보 없음 모달 */}
-        <Modal
-          isOpen={isPostNotFoundModalOpen}
-          title="게시물을 찾을 수 없어요"
-          description="게시물 정보를 찾을 수 없습니다."
-          confirmText="확인"
-          onConfirm={closePostNotFoundModal}
-          onClose={closePostNotFoundModal}
-          variant="primary"
-        />
       </div>
+
+      {/* 플로팅 작성 버튼 */}
+      <FloatingWriteButton
+        onOpenBottomSheet={() => setIsProgramSelectSheetOpen(true)}
+      />
+
+      <CommunityInfiniteScrollTrigger
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={handleFetchNextPage}
+      />
+
+      <CommunityLoadingStates
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        hasData={filteredPosts.length > 0}
+        loadingMessage="게시글을 더 불러오는 중이에요..."
+        completedMessage="모든 게시글을 확인했어요"
+      />
+
+      {/* 프로그램 선택 바텀시트 */}
+      <ProgramSelectBottomSheet
+        isOpen={isProgramSelectSheetOpen}
+        onClose={() => setIsProgramSelectSheetOpen(false)}
+      />
+
+      <ProgramFilterBottomSheet
+        isOpen={isFilterSheetOpen}
+        onClose={() => setIsFilterSheetOpen(false)}
+        selectedSort={selectedSort}
+        selectedProgramState={selectedProgramState}
+        selectedCategories={selectedCategories}
+        onApply={handleFilterApply}
+      />
+
+      {/* 게시물 정보 없음 모달 */}
+      <Modal
+        isOpen={isPostNotFoundModalOpen}
+        title="게시물을 찾을 수 없어요"
+        description="게시물 정보를 찾을 수 없습니다."
+        confirmText="확인"
+        onConfirm={closePostNotFoundModal}
+        onClose={closePostNotFoundModal}
+        variant="primary"
+      />
     </div>
   );
 };
