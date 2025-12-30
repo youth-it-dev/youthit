@@ -1379,18 +1379,10 @@ async syncSelectedUsers() {
         },
         "사용자ID": { rich_text: [{ text: { content: userId } }] },
         "사용자 실명": { rich_text: [{ text: { content: updatedUserData.name || "" } }] },
-        // "상태": {
-        //   select: {
-        //     name: (updatedUserData.deletedAt !== undefined && updatedUserData.deletedAt !== null && updatedUserData.deletedAt !== "") 
-        //       ? "탈퇴" 
-        //       : "가입"
-        //   }
-        // },
         "전화번호": { rich_text: [{ text: { content: updatedUserData.phoneNumber || "" } }] },
         "생년월일": { rich_text: [{ text: { content: updatedUserData.birthDate || "" } }] },
         "이메일": { rich_text: [{ text: { content: updatedUserData.email || "" } }] },
         "가입완료 일시": createdAtIso ? { date: { start: createdAtIso } } : undefined,
-        //"가입 방법": { select: { name: updatedUserData.authType || "email" } },
         "앱 첫 로그인": createdAtIso ? { date: { start: createdAtIso } } : undefined,
         "최근 앱 활동 일시": lastLoginIso ? { date: { start: lastLoginIso } } : undefined,
         "유입경로": { rich_text: [{ text: { content: updatedUserData.utmSource || "" } }] },
@@ -1459,28 +1451,22 @@ async syncSelectedUsers() {
   }
 
   console.log(`선택된 회원 동기화 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
- 
-  
-  try {
-    const logRef = db.collection("adminLogs").doc();
-    await logRef.set({
-      adminId: "Notion 관리자",
-      action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-      targetId: "", // 전체 동기화 작업이므로 빈 값
-      timestamp: new Date(),
-      metadata: {
-        syncedCount: syncedCount,
-        failedCount: skippedCount + validateErrorCount,
-        total: syncedCount + skippedCount + validateErrorCount,
-        syncedUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
-        failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
-      }
-    });
-    console.log(`[adminLogs] 회원 동기화 이력 저장 완료: ${syncedCount}명 성공, ${failedCount}명 실패`);
-  } catch (logError) {
-    console.error("[adminLogs] 로그 저장 실패:", logError);
-    // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
-  }
+
+  //관리자 로그 저장-회원 동기화 이력 저장
+  await adminLogsService.saveAdminLog({
+    adminId: "Notion 관리자",
+    action: ADMIN_LOG_ACTIONS.ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED,
+    targetId: "", // 전체 동기화 작업이므로 빈 값
+    timestamp: new Date(),
+    metadata: {
+      successCount: syncedCount,
+      failedCount: skippedCount + validateErrorCount,
+      total: syncedCount + skippedCount + validateErrorCount,
+      successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+      failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+      logMessage: "",
+    }
+  });
  
  
   return { syncedCount, skippedCount, validateErrorCount };

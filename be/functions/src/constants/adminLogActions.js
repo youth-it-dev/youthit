@@ -85,11 +85,14 @@ const ADMIN_LOG_ACTIONS = {
     //신규 사용하는 액션로그(실제 사용)
     NOTION_PARTIAL_BACKUP_COMPLETED: "NOTION_PARTIAL_BACKUP_COMPLETED", // 노션 부분 데이터 백업 성공
     NOTION_PARTIAL_BACKUP_FAILED: "NOTION_PARTIAL_BACKUP_FAILED",     // 노션 부분 데이터 백업 실패
-    NOTION_USER_PARTIAL_SYNCED: "NOTION_USER_PARTIAL_SYNCED", //부분 데이터 불러오기  
+    
     NOTION_FULL_BACKUP_COMPLETED: "NOTION_FULL_BACKUP_COMPLETED", // 노션 전체 데이터 백업 성공
     NOTION_FULL_BACKUP_FAILED: "NOTION_FULL_BACKUP_FAILED",     // 노션 전체 데이터 백업 실패
-    NOTION_USER_FULL_SYNCED: "NOTION_USER_FULL_SYNCED", // 노션 전체 사용자 동기화 성공
     
+    NOTION_USER_FULL_SYNCED: "NOTION_USER_FULL_SYNCED", // 노션 전체 사용자 동기화 성공
+    NOTION_USER_PARTIAL_SYNCED: "NOTION_USER_PARTIAL_SYNCED", //부분 데이터 불러오기  
+    
+    ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED: "ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED", // 회원관리 노션 데이터베이스에서 선택된 데이터 -> Firebase 동기화
   };
   
   module.exports = {
