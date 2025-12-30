@@ -13,6 +13,7 @@ import {
   ACTION_KEY,
   EXPIRATION_DESCRIPTION_TEMPLATE,
   HISTORY_TYPE_LABEL,
+  NADAUM_GUIDE_TEXT,
   PAGE_FILTER,
   CHANGE_TYPE,
 } from "@/constants/store/_nadaum-history-constants";
@@ -343,77 +344,19 @@ const Page = () => {
         <Typography
           font="noto"
           variant="heading2B"
-          className="text-gray-950"
+          className="mt-5 mb-2.5 text-gray-950"
           as="h2"
           id="nadaum-guide-title"
         >
           나다움 가이드
         </Typography>
-        <ol className="mt-2.5 space-y-3 pb-6">
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              1. &apos;나다움&apos;은 유스잇에서 커뮤니티 활동을 통해 지급 받을
-              수 있는 포인트입니다.
-            </Typography>
-          </li>
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              2. 나다움은 유스잇에서 원하는 선물로 교환 가능하며 사용한 만큼
-              차감됩니다.
-            </Typography>
-          </li>
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              3. 나다움의 유효기간은 원칙적으로 적립 후 120일(4개월)이며,
-              유효기간 동안 사용하지 않을 경우 순차적으로 소멸됩니다. 다만,
-              마케팅 기타 프로모션 등을 통하여 지급되거나 사전 특약(사전 안내
-              포함)이 있는 나다움의 유효기간은 각각 별도로 설정될 수 있습니다.
-            </Typography>
-          </li>
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              4. 나다움은 제 3자에게 양도할 수 없으며 유상으로 거래하거나
-              현금으로 전환할 수 없습니다.
-            </Typography>
-          </li>
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              5. 유스잇은 회원이 유스잇에서 승인하지 않은 방법으로 나다움을
-              획득하거나 부정한 목적이나 용도로 나다움을 사용하는 경우 나다움의
-              사용을 제한하거나 회원 자격을 정지할 수 있습니다.
-            </Typography>
-          </li>
-          <li>
-            <Typography
-              font="noto"
-              variant="body2R"
-              className="leading-6 text-gray-950"
-            >
-              6. 유스잇 회원 탈퇴 시 나다움은 즉시 소멸되며, 탈퇴 후 재가입
-              하더라도 소멸된 나다움은 복구되지 않습니다.
-            </Typography>
-          </li>
-        </ol>
+        <Typography
+          font="noto"
+          variant="body2R"
+          className="pb-6 leading-6 whitespace-pre-line text-gray-950"
+        >
+          {NADAUM_GUIDE_TEXT}
+        </Typography>
       </BottomSheet>
     </>
   );

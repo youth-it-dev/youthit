@@ -166,8 +166,7 @@ const SettingsPage = () => {
   };
 
   const handleHistoryClick = () => {
-    // TODO: 나다움 내역 페이지로 이동
-    debug.log("나다움 내역 클릭");
+    router.push(LINK_URL.STORE_HISTORY_NADAUM);
   };
 
   const handleNotificationToggle = useThrottle(async (checked: boolean) => {
