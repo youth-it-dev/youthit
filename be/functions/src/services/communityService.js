@@ -80,7 +80,7 @@ const MEMBER_ROLES = {
 };
 
 // Preview 텍스트 최대 길이
-const MAX_PREVIEW_TEXT_LENGTH = 60;
+const MAX_PREVIEW_TEXT_LENGTH = 100;
 
 /**
  * Community Service (비즈니스 로직 계층)

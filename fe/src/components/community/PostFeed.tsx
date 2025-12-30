@@ -202,7 +202,7 @@ const PostFeed = ({
               <Typography
                 font="noto"
                 variant="body2B"
-                className="mb-1 text-gray-600"
+                className="mb-1 line-clamp-1 break-all text-gray-600"
               >
                 {post.title || ""}
               </Typography>
@@ -212,7 +212,7 @@ const PostFeed = ({
                 <Typography
                   font="noto"
                   variant="label1M"
-                  className="mb-6 line-clamp-2 text-gray-500"
+                  className="mb-6 line-clamp-2 break-all text-gray-500"
                 >
                   {post.preview.description}
                 </Typography>
