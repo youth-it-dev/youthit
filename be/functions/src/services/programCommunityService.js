@@ -1,6 +1,7 @@
 const CommunityService = require('./communityService');
 const FirestoreService = require('./firestoreService');
 const { FieldValue } = require('../config/database');
+const { normalizeProgramTypeValue } = require('./programService');
 
 /**
  * ProgramCommunityService
@@ -75,8 +76,6 @@ class ProgramCommunityService {
    */
   async createCommunityFromProgram(programId, program) {
     try {
-      const { normalizeProgramTypeValue } = require('./programService');
-      
       const communityData = {
         id: programId,
         name: program?.programName || program?.title || null,
@@ -104,9 +103,6 @@ class ProgramCommunityService {
    */
   async syncCommunityWithNotion(programId, program) {
     try {
-      // programService에서 import한 유틸 함수 사용
-      const { normalizeProgramTypeValue } = require('./programService');
-      
       // Community 전체 데이터 조회
       const community = await this.firestoreService.getDocument('communities', programId);
       if (!community) {
