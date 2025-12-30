@@ -40,6 +40,34 @@ class ProgramCommunityService {
   }
 
   /**
+   * 날짜 문자열을 Date 객체로 변환 (한국 시간대 UTC+9 기준)
+   * @param {string|null|Date} dateValue - 날짜 값
+   * @param {boolean} isEndDate - endDate인 경우 true (23:59:59 설정)
+   * @returns {Date|null} 변환된 Date 객체 또는 null
+   */
+  _parseDateWithTime(dateValue, isEndDate = false) {
+    if (!dateValue) {
+      return null;
+    }
+
+    if (dateValue instanceof Date) {
+      return dateValue;
+    }
+
+    const dateString = String(dateValue);
+    
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const time = isEndDate ? '23:59:59' : '00:00:00';
+      const kstTimeString = `${dateString}T${time}+09:00`;
+      const date = new Date(kstTimeString);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    const date = new Date(dateString);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  /**
    * 프로그램 정보로 Community 생성
    * @param {string} programId - 프로그램 ID (Community ID)
    * @param {Object} program - 프로그램 정보
@@ -47,15 +75,14 @@ class ProgramCommunityService {
    */
   async createCommunityFromProgram(programId, program) {
     try {
-      // programService에서 import한 유틸 함수 사용
-      const { normalizeProgramTypeValue, toDateOrNull } = require('./programService');
+      const { normalizeProgramTypeValue } = require('./programService');
       
       const communityData = {
         id: programId,
         name: program?.programName || program?.title || null,
         programType: normalizeProgramTypeValue(program?.programType) || null,
-        startDate: toDateOrNull(program?.startDate),
-        endDate: toDateOrNull(program?.endDate),
+        startDate: this._parseDateWithTime(program?.startDate, false),
+        endDate: this._parseDateWithTime(program?.endDate, true),
         createdAt: FieldValue.serverTimestamp(),
       };
 
@@ -78,7 +105,7 @@ class ProgramCommunityService {
   async syncCommunityWithNotion(programId, program) {
     try {
       // programService에서 import한 유틸 함수 사용
-      const { normalizeProgramTypeValue, toDateOrNull } = require('./programService');
+      const { normalizeProgramTypeValue } = require('./programService');
       
       // Community 전체 데이터 조회
       const community = await this.firestoreService.getDocument('communities', programId);
@@ -90,8 +117,8 @@ class ProgramCommunityService {
       // Notion 데이터에서 동기화할 필드 추출
       const notionName = program?.programName || program?.title || null;
       const notionProgramType = normalizeProgramTypeValue(program?.programType) || null;
-      const notionStartDate = toDateOrNull(program?.startDate);
-      const notionEndDate = toDateOrNull(program?.endDate);
+      const notionStartDate = this._parseDateWithTime(program?.startDate, false);
+      const notionEndDate = this._parseDateWithTime(program?.endDate, true);
 
       // 업데이트할 필드 확인
       const updateData = {};
