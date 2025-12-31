@@ -236,6 +236,49 @@ const options = {
               format: "date-time",
               description: "사용자 정보가 변경된 시간 (노션 동기화 기준)",
             },
+            participationCounts: {
+              type: "object",
+              description: "프로그램별 참여 횟수",
+              properties: {
+                routine: {
+                  type: "number",
+                  description: "루틴 프로그램 참여 횟수",
+                  example: 3,
+                },
+                gathering: {
+                  type: "number",
+                  description: "월간소모임 프로그램 참여 횟수",
+                  example: 2,
+                },
+                tmi: {
+                  type: "number",
+                  description: "TMI 프로젝트 프로그램 참여 횟수",
+                  example: 1,
+                },
+              },
+              example: {
+                routine: 3,
+                gathering: 2,
+                tmi: 1,
+              },
+            },
+            consecutiveRoutinePosts: {
+              type: "number",
+              description: "연속 루틴 인증 횟수 (루틴 종료 시 0으로 초기화)",
+              example: 5,
+            },
+            currentRoutineCommunityId: {
+              type: "string",
+              nullable: true,
+              description: "현재 진행 중인 루틴 커뮤니티 ID (루틴 종료 시 null로 초기화)",
+              example: "community123",
+            },
+            lastRoutineAuthDate: {
+              type: "string",
+              nullable: true,
+              description: "마지막 루틴 인증 날짜 (YYYY-MM-DD)",
+              example: "2025-01-14",
+            },
           },
         },
         Mission: {
