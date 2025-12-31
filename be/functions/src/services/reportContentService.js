@@ -4,6 +4,8 @@ const FirestoreService = require("./firestoreService");
 const { Timestamp } = require("firebase-admin/firestore");
 const notionUserService = require("./notionUserService");
 const { MISSION_POSTS_COLLECTION } = require("../constants/missionConstants");
+const adminLogsService = require("./adminLogsService");
+const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
 
 
 class ReportContentService {
@@ -1144,11 +1146,16 @@ async syncResolvedReports() {
  // 4. Firebase 동기화 및 Notion 데이터베이스 이동
  let syncedCount = 0;
  let failedCount = 0;
+ const successUserIds = []; // 성공한 사용자 ID 목록
+ const failedUserIds = []; // 실패한 사용자 ID 목록
 
  for (const report of processedReports) {
    try {
      const { targetType, targetId, communityId, status, notionPage } = report;
      if (!targetId || !targetType) continue;
+
+     // 작성자 ID 추출 (성공/실패 추적용)
+     const targetUserId = notionPage?.properties['작성자ID']?.rich_text?.[0]?.text?.content || null;
 
      // status=true인 경우에만 동기화 진행
      // (그룹화 단계에서 동일한 신고 콘텐츠에 status=true가 하나라도 있으면 모두 true로 처리됨)
@@ -1321,11 +1328,22 @@ async syncResolvedReports() {
         // }
 
          syncedCount++;
+         // 성공한 사용자 ID 추가
+         if (targetUserId) {
+          successUserIds.push(targetUserId);
+        }
+
          console.log(`[성공] ${targetId} → reportedDatabaseId로 이동 완료`);
        } catch (notionError) {
          console.error(`[Notion 이동 실패] ${targetId}:`, notionError.message);
+
          failedCount++;
-         errorCounts.notionMoveFailed++;
+         // 실패한 사용자 ID 추가
+         if (targetUserId) {
+          failedUserIds.push(targetUserId);
+        }
+
+        errorCounts.notionMoveFailed++;
         errorDetails.push({
           targetId,
           targetType,
@@ -1335,11 +1353,22 @@ async syncResolvedReports() {
        }
      } else {
        failedCount++;
+       // 실패한 사용자 ID 추가
+       if (targetUserId) {
+        failedUserIds.push(targetUserId);
+      }
      }
 
    } catch (err) {
      console.error(`동기화 중 오류 (targetId: ${report.targetId}):`, err);
+
      failedCount++;
+     // 실패한 사용자 ID 추가
+     const targetUserId = report.notionPage?.properties['작성자ID']?.rich_text?.[0]?.text?.content || null;
+     if (targetUserId) {
+       failedUserIds.push(targetUserId);
+     }
+
      if (err.code === "POST_NOT_FOUND" || err.code === "COMMENT_NOT_FOUND") {
            errorCounts.firebaseNotFound++;
      } else {
@@ -1355,6 +1384,29 @@ async syncResolvedReports() {
  }
 
     console.log(`Notion → Firebase 동기화 완료: 성공 ${syncedCount}개, 실패 ${failedCount}개`);
+
+    // 처리한 회원(작성자) 수 계산 (중복 제거)
+    const allProcessedUserIds = [...new Set([...successUserIds, ...failedUserIds])];
+    const totalProcessedUsers = allProcessedUserIds.length;
+
+    //관리자 로그 저장-신고 처리 이력 저장
+    await adminLogsService.saveAdminLog({
+      adminId: "Notion 관리자",
+      action: ADMIN_LOG_ACTIONS.NOTION_REPORT_PROCESS_REQUESTED,
+      targetId: "",
+      timestamp: new Date(),
+      metadata: {
+        successCount: syncedCount,
+        failedCount: failedCount,
+        total: totalProcessedUsers,     // 처리한 회원 수 (신고 건수외는 별개)
+        successUserIds: successUserIds, // 성공한 사용자 ID 목록
+        failedUserIds: failedUserIds, // 실패한 사용자 ID 목록
+        logMessage: "",
+        errorCounts: errorCounts, // 에러 상세 정보
+        ...(errorDetails.length > 0 && { errors: errorDetails })
+      }
+    });
+
     return { 
       total: reports.length, 
       synced: syncedCount, 

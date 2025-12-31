@@ -95,6 +95,9 @@ const ADMIN_LOG_ACTIONS = {
     ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED: "ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED", // 회원관리 노션 데이터베이스에서 선택된 데이터 -> Firebase 동기화
 
     NOTION_USER_RESTORE_REQUESTED: "NOTION_USER_RESTORE_REQUESTED", // 노션 회원관리 복원 요청 (복원 버튼 클릭)
+
+    NOTION_REPORT_PROCESS_REQUESTED: "NOTION_REPORT_PROCESS_REQUESTED", // 노션 신고 콘텐츠 처리 요청 (관리자 액션)
+    
   };
   
   module.exports = {
