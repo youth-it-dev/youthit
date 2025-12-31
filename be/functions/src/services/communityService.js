@@ -1509,6 +1509,14 @@ class CommunityService {
         });
 
         const postRef = this.firestoreService.db.collection(`communities/${communityId}/posts`).doc();
+        const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const memberRef = this.firestoreService.db
+          .collection(`communities/${communityId}/members`)
+          .doc(userId);
+
+        const memberDoc = await transaction.get(memberRef);
+        const isMemberExists = memberDoc.exists;
+
         transaction.set(postRef, newPost);
         
         if (validatedFiles.length > 0) {
@@ -1536,11 +1544,6 @@ class CommunityService {
           createdAt: FieldValue.serverTimestamp(),
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
-
-        const userRef = this.firestoreService.db.collection("users").doc(userId);
-        const memberRef = this.firestoreService.db
-          .collection(`communities/${communityId}/members`)
-          .doc(userId);
 
         // 루틴 인증글 처리
         if (newPost.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert && userData) {
@@ -1571,10 +1574,14 @@ class CommunityService {
             // certificationPosts는 하루 1회만 +1
             if (shouldIncrement) {
               userUpdate.certificationPosts = FieldValue.increment(1);
-              transaction.update(memberRef, {
-                certificationPostsCount: FieldValue.increment(1),
-                updatedAt: FieldValue.serverTimestamp(),
-              });
+              
+              // 멤버 문서가 존재할 때만 업데이트 (Admin은 members에 없을 수 있음)
+              if (isMemberExists) {
+                transaction.update(memberRef, {
+                  certificationPostsCount: FieldValue.increment(1),
+                  updatedAt: FieldValue.serverTimestamp(),
+                });
+              }
             }
 
             transaction.update(userRef, userUpdate);
@@ -1586,10 +1593,13 @@ class CommunityService {
             updatedAt: FieldValue.serverTimestamp(),
           });
 
-          transaction.update(memberRef, {
-            certificationPostsCount: FieldValue.increment(1),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
+          // 멤버 문서가 존재할 때만 업데이트 (Admin은 members에 없을 수 있음)
+          if (isMemberExists) {
+            transaction.update(memberRef, {
+              certificationPostsCount: FieldValue.increment(1),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
         }
         
         console.log("[COMMUNITY][createPost] 트랜잭션 내 작업 완료", {
@@ -2299,6 +2309,16 @@ class CommunityService {
 
       // 리워드 차감 + 게시글 삭제를 하나의 트랜잭션으로 처리
       await this.firestoreService.runTransaction(async (transaction) => {
+        const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const memberRef = this.firestoreService.db
+          .collection(`communities/${communityId}/members`)
+          .doc(userId);
+
+        // Firestore 트랜잭션 규칙: 모든 읽기를 쓰기 전에 실행해야 함
+        // 멤버 문서 존재 여부 확인 (한 번만 읽기, Admin은 members에 없을 수 있음)
+        const memberDoc = await transaction.get(memberRef);
+        const isMemberExists = memberDoc.exists;
+
         // 리워드 차감 처리
         await this.getRewardService().handleRewardOnPostDeletion(
           userId,
@@ -2320,11 +2340,6 @@ class CommunityService {
           .doc(postId);
         transaction.delete(authoredPostRef);
 
-        const userRef = this.firestoreService.db.collection("users").doc(userId);
-        const memberRef = this.firestoreService.db
-          .collection(`communities/${communityId}/members`)
-          .doc(userId);
-
         // 루틴 인증글 삭제 시 롤백 처리
         if (post.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
           if (shouldRollback && rollbackData) {
@@ -2345,10 +2360,13 @@ class CommunityService {
             userUpdate.certificationPosts = FieldValue.increment(-1);
             transaction.update(userRef, userUpdate);
 
-            transaction.update(memberRef, {
-              certificationPostsCount: FieldValue.increment(-1),
-              updatedAt: FieldValue.serverTimestamp(),
-            });
+            // 멤버 문서가 존재할 때만 업데이트 (Admin은 members에 없을 수 있음)
+            if (isMemberExists) {
+              transaction.update(memberRef, {
+                certificationPostsCount: FieldValue.increment(-1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            }
           } else {
             // 롤백하지 않는 경우 (어제 이전 게시글 삭제 등)
             // certificationPosts는 감소하지 않음 (이미 오늘 인증이 완료된 상태)
@@ -2360,10 +2378,13 @@ class CommunityService {
             updatedAt: FieldValue.serverTimestamp(),
           });
 
-          transaction.update(memberRef, {
-            certificationPostsCount: FieldValue.increment(-1),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
+          // 멤버 문서가 존재할 때만 업데이트 (Admin은 members에 없을 수 있음)
+          if (isMemberExists) {
+            transaction.update(memberRef, {
+              certificationPostsCount: FieldValue.increment(-1),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
         }
       });
     } catch (error) {
