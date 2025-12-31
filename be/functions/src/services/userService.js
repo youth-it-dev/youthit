@@ -273,6 +273,80 @@ class UserService {
           tmi: 0
         };
       }
+
+      // 기본값 설정
+      if (user.consecutiveRoutinePosts === undefined) {
+        user.consecutiveRoutinePosts = 0;
+      }
+      if (user.currentRoutineCommunityId === undefined) {
+        user.currentRoutineCommunityId = null;
+      }
+      if (user.lastRoutineAuthDate === undefined) {
+        user.lastRoutineAuthDate = null;
+      }
+
+      // 루틴 종료 체크 및 초기화 (연속일자가 0이 아닐 때만)
+      if (user.consecutiveRoutinePosts > 0 && user.currentRoutineCommunityId) {
+        try {
+          const FirestoreService = require("./firestoreService");
+          const communityService = new FirestoreService("communities");
+          const community = await communityService.getById(user.currentRoutineCommunityId);
+          
+          if (community && community.endDate) {
+            const toDate = (value) => {
+              if (!value) return null;
+              if (typeof value.toDate === "function") {
+                try {
+                  return value.toDate();
+                } catch (_) {
+                  return null;
+                }
+              }
+              if (value instanceof Date) {
+                return value;
+              }
+              try {
+                return new Date(value);
+              } catch (_) {
+                return null;
+              }
+            };
+            
+            const endDate = toDate(community.endDate);
+            const now = new Date();
+            
+            // UTC 기준 Date 객체 비교로 종료 여부 확인
+            if (endDate && endDate < now) {
+              // 루틴 종료 → 초기화
+              user.consecutiveRoutinePosts = 0;
+              user.currentRoutineCommunityId = null;
+              user.lastRoutineAuthDate = null;
+              
+              // Firestore에도 업데이트
+              await this.firestoreService.update(uid, {
+                consecutiveRoutinePosts: 0,
+                currentRoutineCommunityId: null,
+                lastRoutineAuthDate: null,
+                updatedAt: require("firebase-admin/firestore").FieldValue.serverTimestamp(),
+              });
+            }
+          } else if (!community) {
+            // 커뮤니티가 없으면 초기화
+            user.consecutiveRoutinePosts = 0;
+            user.currentRoutineCommunityId = null;
+            user.lastRoutineAuthDate = null;
+            
+            await this.firestoreService.update(uid, {
+              consecutiveRoutinePosts: 0,
+              currentRoutineCommunityId: null,
+              lastRoutineAuthDate: null,
+              updatedAt: require("firebase-admin/firestore").FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (error) {
+          console.warn("[USER][getUserById] 루틴 종료 체크 실패 (계속 진행):", error.message);
+        }
+      }
       
       return user;
     } catch (error) {
