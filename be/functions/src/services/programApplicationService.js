@@ -180,22 +180,15 @@ class ProgramApplicationService {
           const programType = normalizeProgramTypeValue(program?.programType);
           
           if (programType) {
-            const userData = await this.userService.getById(applicantId);
-            
-            // participationCounts 초기화 (없는 경우)
-            const currentCounts = userData?.participationCounts || {
-              routine: 0,
-              gathering: 0,
-              tmi: 0
-            };
-            
-            const updateData = {
-              participationCounts: {
-                routine: programType === 'ROUTINE' ? currentCounts.routine + 1 : currentCounts.routine,
-                gathering: programType === 'GATHERING' ? currentCounts.gathering + 1 : currentCounts.gathering,
-                tmi: programType === 'TMI' ? currentCounts.tmi + 1 : currentCounts.tmi,
-              }
-            };
+            // FieldValue.increment()로 원자적 증가 (동시성 문제 해결)
+            const updateData = {};
+            if (programType === 'ROUTINE') {
+              updateData['participationCounts.routine'] = FieldValue.increment(1);
+            } else if (programType === 'GATHERING') {
+              updateData['participationCounts.gathering'] = FieldValue.increment(1);
+            } else if (programType === 'TMI') {
+              updateData['participationCounts.tmi'] = FieldValue.increment(1);
+            }
             
             await this.userService.update(applicantId, updateData);
             console.log(`[ProgramApplicationService] 자동 승인 participationCounts 증가 완료 - userId: ${applicantId}, programType: ${programType}`);
@@ -518,22 +511,15 @@ class ProgramApplicationService {
             const programType = normalizeProgramTypeValue(community?.programType);
             
             if (programType) {
-              const userData = await this.userService.getById(member.userId);
-              
-              // participationCounts 초기화 (없는 경우)
-              const currentCounts = userData?.participationCounts || {
-                routine: 0,
-                gathering: 0,
-                tmi: 0
-              };
-              
-              const updateData = {
-                participationCounts: {
-                  routine: programType === 'ROUTINE' ? currentCounts.routine + 1 : currentCounts.routine,
-                  gathering: programType === 'GATHERING' ? currentCounts.gathering + 1 : currentCounts.gathering,
-                  tmi: programType === 'TMI' ? currentCounts.tmi + 1 : currentCounts.tmi,
-                }
-              };
+              // FieldValue.increment()로 원자적 증가 (동시성 문제 해결)
+              const updateData = {};
+              if (programType === 'ROUTINE') {
+                updateData['participationCounts.routine'] = FieldValue.increment(1);
+              } else if (programType === 'GATHERING') {
+                updateData['participationCounts.gathering'] = FieldValue.increment(1);
+              } else if (programType === 'TMI') {
+                updateData['participationCounts.tmi'] = FieldValue.increment(1);
+              }
               
               await this.userService.update(member.userId, updateData);
               console.log(`[ProgramApplicationService] participationCounts 증가 완료 - userId: ${member.userId}, programType: ${programType}`);
