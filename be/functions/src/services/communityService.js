@@ -1546,6 +1546,7 @@ class CommunityService {
         if (newPost.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert && userData) {
           const { todayKey, yesterdayKey } = getTodayAndYesterdayKeys();
           
+          // 오늘 이미 인증했으면 아무 동작도 하지 않음 (연속일자 유지)
           if (userData.lastRoutineAuthDate === todayKey) {
           } else {
             // 오늘 첫 인증인 경우만 처리
