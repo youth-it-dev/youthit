@@ -81,6 +81,94 @@ const MEMBER_ROLES = {
 const MAX_PREVIEW_TEXT_LENGTH = 100;
 
 /**
+ * 날짜를 YYYY-MM-DD 형식으로 변환 (KST 기준, 시간 무시)
+ * @param {Date|Timestamp|string} dateValue - 변환할 날짜
+ * @returns {string|null} YYYY-MM-DD 형식의 날짜 문자열 (KST 기준)
+ */
+function getDateKey(dateValue) {
+  if (!dateValue) return null;
+  try {
+    let date;
+    if (typeof dateValue?.toDate === "function") {
+      date = dateValue.toDate();
+    } else {
+      date = new Date(dateValue);
+    }
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    // UTC 시간에 9시간을 더해서 KST로 변환
+    const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    const year = kstDate.getUTCFullYear();
+    const month = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(kstDate.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.warn("[getDateKey] 날짜 변환 실패:", error);
+    return null;
+  }
+}
+
+/**
+ * 오늘과 어제 날짜 키 반환 (KST 기준)
+ * @returns {{todayKey: string, yesterdayKey: string}}
+ */
+function getTodayAndYesterdayKeys() {
+  const today = new Date();
+  const todayKey = getDateKey(today);
+  
+  // todayKey를 KST 기준 Date 객체로 변환 후 하루 빼기
+  const todayKstDate = new Date(todayKey + 'T00:00:00+09:00');
+  const yesterdayKstDate = new Date(todayKstDate);
+  yesterdayKstDate.setDate(yesterdayKstDate.getDate() - 1);
+  const yesterdayKey = getDateKey(yesterdayKstDate);
+  
+  return { todayKey, yesterdayKey };
+}
+
+/**
+ * 연속일자 계산
+ * @param {string|null} lastRoutineAuthDate - 마지막 인증 날짜 (YYYY-MM-DD, KST 기준)
+ * @param {number} currentConsecutive - 현재 연속일자
+ * @param {string|null} currentRoutineCommunityId - 현재 루틴 커뮤니티 ID
+ * @param {string} communityId - 게시글 작성 커뮤니티 ID
+ * @param {string} todayKey - 오늘 날짜 키 (KST 기준)
+ * @param {string} yesterdayKey - 어제 날짜 키 (KST 기준)
+ * @returns {{newConsecutive: number, newCurrentRoutineCommunityId: string}}
+ */
+function calculateConsecutiveDays(
+  lastRoutineAuthDate,
+  currentConsecutive,
+  currentRoutineCommunityId,
+  communityId,
+  todayKey,
+  yesterdayKey
+) {
+  // 같은 커뮤니티 + 어제 인증 → streak +1
+  if (currentRoutineCommunityId === communityId && lastRoutineAuthDate === yesterdayKey) {
+    return {
+      newConsecutive: currentConsecutive + 1,
+      newCurrentRoutineCommunityId: communityId,
+    };
+  }
+  // 그 외 → streak = 1
+  return {
+    newConsecutive: 1,
+    newCurrentRoutineCommunityId: communityId,
+  };
+}
+
+/**
+ * 오늘 인증 여부 확인 (certificationPosts 증가 여부 결정)
+ * @param {string|null} lastRoutineAuthDate - 마지막 인증 날짜 (KST 기준)
+ * @param {string} todayKey - 오늘 날짜 키 (KST 기준)
+ * @returns {boolean} 오늘 첫 인증이면 true
+ */
+function shouldIncrementCertificationCount(lastRoutineAuthDate, todayKey) {
+  return lastRoutineAuthDate !== todayKey;
+}
+
+/**
  * Community Service (비즈니스 로직 계층)
  * 커뮤니티 관련 모든 비즈니스 로직 처리
  */
@@ -1398,6 +1486,21 @@ class CommunityService {
         updatedAt: FieldValue.serverTimestamp(),
       };
 
+      // 루틴 인증글인 경우 사용자 정보 조회 (트랜잭션 전에)
+      let userData = null;
+      if (newPost.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
+        try {
+          const userDoc = await this.firestoreService.getDocument("users", userId);
+          userData = {
+            lastRoutineAuthDate: userDoc?.lastRoutineAuthDate || null,
+            currentRoutineCommunityId: userDoc?.currentRoutineCommunityId || null,
+            consecutiveRoutinePosts: userDoc?.consecutiveRoutinePosts || 0,
+          };
+        } catch (error) {
+          console.warn("[COMMUNITY][createPost] 사용자 정보 조회 실패 (루틴 인증 처리 스킵):", error.message);
+        }
+      }
+
       const result = await this.firestoreService.runTransaction(async (transaction) => {
         console.log("[COMMUNITY][createPost] Firestore 트랜잭션 시작", {
           communityId,
@@ -1434,16 +1537,54 @@ class CommunityService {
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
 
-        if (CERTIFICATION_COUNT_TYPES.has(newPost.type)) {
-          const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const memberRef = this.firestoreService.db
+          .collection(`communities/${communityId}/members`)
+          .doc(userId);
+
+        // 루틴 인증글 처리
+        if (newPost.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert && userData) {
+          const { todayKey, yesterdayKey } = getTodayAndYesterdayKeys();
+          
+          if (userData.lastRoutineAuthDate === todayKey) {
+          } else {
+            // 오늘 첫 인증인 경우만 처리
+            const shouldIncrement = shouldIncrementCertificationCount(userData.lastRoutineAuthDate, todayKey);
+            
+            const { newConsecutive, newCurrentRoutineCommunityId } = calculateConsecutiveDays(
+              userData.lastRoutineAuthDate,
+              userData.consecutiveRoutinePosts,
+              userData.currentRoutineCommunityId,
+              communityId,
+              todayKey,
+              yesterdayKey
+            );
+
+            const userUpdate = {
+              lastRoutineAuthDate: todayKey,
+              consecutiveRoutinePosts: newConsecutive,
+              currentRoutineCommunityId: newCurrentRoutineCommunityId,
+              updatedAt: FieldValue.serverTimestamp(),
+            };
+
+            // certificationPosts는 하루 1회만 +1
+            if (shouldIncrement) {
+              userUpdate.certificationPosts = FieldValue.increment(1);
+              transaction.update(memberRef, {
+                certificationPostsCount: FieldValue.increment(1),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            }
+
+            transaction.update(userRef, userUpdate);
+          }
+        } else if (CERTIFICATION_COUNT_TYPES.has(newPost.type)) {
+          // 기존 로직 (루틴이 아닌 다른 인증글)
           transaction.update(userRef, {
             certificationPosts: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),
           });
 
-          const memberRef = this.firestoreService.db
-            .collection(`communities/${communityId}/members`)
-            .doc(userId);
           transaction.update(memberRef, {
             certificationPostsCount: FieldValue.increment(1),
             updatedAt: FieldValue.serverTimestamp(),
@@ -2105,6 +2246,56 @@ class CommunityService {
 
       await this._deleteLikesByPost(postId);
 
+      // 루틴 인증글 삭제인 경우 롤백 로직을 위한 정보 조회 (트랜잭션 전에)
+      let shouldRollback = false;
+      let rollbackData = null;
+      if (post.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
+        try {
+          const { todayKey, yesterdayKey } = getTodayAndYesterdayKeys();
+          const deletedPostDate = getDateKey(post.createdAt);
+          
+          // 오늘 작성한 게시글만 처리
+          if (deletedPostDate === todayKey) {
+            const userDoc = await this.firestoreService.getDocument("users", userId);
+            const userData = {
+              lastRoutineAuthDate: userDoc?.lastRoutineAuthDate || null,
+              currentRoutineCommunityId: userDoc?.currentRoutineCommunityId || null,
+              consecutiveRoutinePosts: userDoc?.consecutiveRoutinePosts || 0,
+            };
+
+            // 삭제 후 오늘 남아있는 인증글 개수 확인
+            const authoredPosts = await this.firestoreService.getCollectionWhere(
+              `users/${userId}/authoredPosts`,
+              "programType",
+              "==",
+              PROGRAM_TYPES.ROUTINE
+            );
+            
+            const todayPosts = authoredPosts.filter((authoredPost) => {
+              if (authoredPost.postId === postId) return false; // 삭제할 게시글 제외
+              if (authoredPost.communityId !== communityId) return false; // 같은 커뮤니티만
+              const postDate = getDateKey(authoredPost.createdAt);
+              return postDate === todayKey;
+            });
+
+            // 롤백 조건 확인
+            if (
+              todayPosts.length === 0 && // 오늘 인증글이 0개
+              userData.lastRoutineAuthDate === todayKey && // 오늘 인증했음
+              userData.currentRoutineCommunityId === communityId // 같은 커뮤니티
+            ) {
+              shouldRollback = true;
+              rollbackData = {
+                consecutiveRoutinePosts: userData.consecutiveRoutinePosts,
+                yesterdayKey,
+              };
+            }
+          }
+        } catch (error) {
+          console.warn("[COMMUNITY][deletePost] 루틴 인증 롤백 정보 조회 실패 (계속 진행):", error.message);
+        }
+      }
+
       // 리워드 차감 + 게시글 삭제를 하나의 트랜잭션으로 처리
       await this.firestoreService.runTransaction(async (transaction) => {
         // 리워드 차감 처리
@@ -2128,18 +2319,46 @@ class CommunityService {
           .doc(postId);
         transaction.delete(authoredPostRef);
 
-        // certificationPosts 카운트 감소
-        if (CERTIFICATION_COUNT_TYPES.has(post.type)) {
-          const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const userRef = this.firestoreService.db.collection("users").doc(userId);
+        const memberRef = this.firestoreService.db
+          .collection(`communities/${communityId}/members`)
+          .doc(userId);
+
+        // 루틴 인증글 삭제 시 롤백 처리
+        if (post.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
+          if (shouldRollback && rollbackData) {
+            // 롤백 처리
+            const userUpdate = {
+              updatedAt: FieldValue.serverTimestamp(),
+            };
+
+            if (rollbackData.consecutiveRoutinePosts >= 2) {
+              userUpdate.consecutiveRoutinePosts = rollbackData.consecutiveRoutinePosts - 1;
+              userUpdate.lastRoutineAuthDate = rollbackData.yesterdayKey;
+            } else {
+              userUpdate.consecutiveRoutinePosts = 0;
+              userUpdate.lastRoutineAuthDate = null;
+              userUpdate.currentRoutineCommunityId = null;
+            }
+
+            userUpdate.certificationPosts = FieldValue.increment(-1);
+            transaction.update(userRef, userUpdate);
+
+            transaction.update(memberRef, {
+              certificationPostsCount: FieldValue.increment(-1),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          } else {
+            // 롤백하지 않는 경우 (어제 이전 게시글 삭제 등)
+            // certificationPosts는 감소하지 않음 (이미 오늘 인증이 완료된 상태)
+          }
+        } else if (CERTIFICATION_COUNT_TYPES.has(post.type)) {
+          // 기존 로직 (루틴이 아닌 다른 인증글)
           transaction.update(userRef, {
             certificationPosts: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
           });
 
-          // members 컬렉션의 certificationPostsCount 감소
-          const memberRef = this.firestoreService.db
-            .collection(`communities/${communityId}/members`)
-            .doc(userId);
           transaction.update(memberRef, {
             certificationPostsCount: FieldValue.increment(-1),
             updatedAt: FieldValue.serverTimestamp(),
