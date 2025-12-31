@@ -1541,6 +1541,7 @@ class CommunityService {
           thumbnailUrl: thumbnailUrl || null,
           originalImageUrl: originalImageUrl || null,
           programType: resolvedProgramType || null,
+          isReview: resolvedIsReview || false,
           createdAt: FieldValue.serverTimestamp(),
           lastAuthoredAt: FieldValue.serverTimestamp(),
         });
@@ -2171,6 +2172,9 @@ class CommunityService {
           }
           if (originalImageUrl !== undefined) {
             authoredPostUpdate.originalImageUrl = originalImageUrl;
+          }
+          if (Object.prototype.hasOwnProperty.call(updateData, "isReview")) {
+            authoredPostUpdate.isReview = updateData.isReview;
           }
           
           if (Object.keys(authoredPostUpdate).length > 0) {
