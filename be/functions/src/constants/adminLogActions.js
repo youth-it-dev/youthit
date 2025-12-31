@@ -93,6 +93,8 @@ const ADMIN_LOG_ACTIONS = {
     NOTION_USER_PARTIAL_SYNCED: "NOTION_USER_PARTIAL_SYNCED", //부분 데이터 불러오기  
     
     ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED: "ADMIN_LOG_MEMBER_SYNC_N2F_SELECTED", // 회원관리 노션 데이터베이스에서 선택된 데이터 -> Firebase 동기화
+
+    NOTION_USER_RESTORE_REQUESTED: "NOTION_USER_RESTORE_REQUESTED", // 노션 회원관리 복원 요청 (복원 버튼 클릭)
   };
   
   module.exports = {

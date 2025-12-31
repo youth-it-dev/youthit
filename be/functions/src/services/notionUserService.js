@@ -1964,25 +1964,21 @@ async syncSelectedUsers() {
 
     console.log(`백업 DB에서 전체 회원 복원 완료: ${syncedCount}명 업데이트, ${skippedCount}명 건너뜀, 잘못된 값: ${validateErrorCount}`);
 
-    try {
-      const logRef = db.collection("adminLogs").doc();
-      await logRef.set({
-        adminId: "Notion 관리자",
-        action: ADMIN_LOG_ACTIONS.USER_ALL_SYNCED,
-        targetId: "",
-        timestamp: new Date(),
-        metadata: {
-          syncedCount: syncedCount,
-          failedCount: skippedCount + validateErrorCount,
-          total: syncedCount + skippedCount + validateErrorCount,
-          syncedUserIds: syncedUserIds,
-          failedUserIds: failedUserIds,
-        }
-      });
-      console.log(`[adminLogs] 백업 DB 복원 이력 저장 완료: ${syncedCount}명 성공, ${skippedCount + validateErrorCount}명 실패`);
-    } catch (logError) {
-      console.error("[adminLogs] 로그 저장 실패:", logError);
-    }
+    //관리자 로그 저장-백업 DB 복원 이력 저장
+    await adminLogsService.saveAdminLog({
+      adminId: "Notion 관리자",
+      action: ADMIN_LOG_ACTIONS.NOTION_USER_RESTORE_REQUESTED,
+      targetId: "",
+      timestamp: new Date(),
+      metadata: {
+        successCount: syncedCount,
+        failedCount: skippedCount + validateErrorCount,
+        total: syncedCount + skippedCount + validateErrorCount,
+        successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
+        failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
+        logMessage: "",
+      }
+    });
 
     return { syncedCount, skippedCount, validateErrorCount };
   }
