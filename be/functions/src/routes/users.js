@@ -1837,5 +1837,98 @@ router.put("/:userId", userController.updateUser);
  */
 router.get("/deletePost/:userId", userController.deleteUser);
 
+/**
+ * @swagger
+ * /users/me/routine-calendar:
+ *   get:
+ *     summary: 한끗 루틴 인증글 캘린더 조회
+ *     description: |
+ *       사용자의 한끗 루틴 인증글을 날짜별로 조회합니다.
+ *       - KST 기준 월 범위로 필터링
+ *       - 인증글만 조회 (후기글 제외)
+ *       - 날짜별로 하나의 게시글만 반환
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *           example: 2025
+ *         description: 년도 (없으면 현재 년도)
+ *       - in: query
+ *         name: month
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 12
+ *           example: 12
+ *         description: 월 (1-12, 없으면 현재 월)
+ *     responses:
+ *       200:
+ *         description: 캘린더 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/StandardResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         year:
+ *                           type: integer
+ *                           example: 2025
+ *                         month:
+ *                           type: integer
+ *                           example: 12
+ *                         days:
+ *                           type: object
+ *                           description: 날짜별 인증글 정보 (YYYY-MM-DD 형식의 키)
+ *                           additionalProperties:
+ *                             type: object
+ *                             properties:
+ *                               communityId:
+ *                                 type: string
+ *                                 example: "community123"
+ *                               postId:
+ *                                 type: string
+ *                                 example: "post456"
+ *                               imageUrl:
+ *                                 type: string
+ *                                 nullable: true
+ *                                 example: "https://example.com/image.jpg"
+ *                           example:
+ *                             "2025-12-01":
+ *                               communityId: "community123"
+ *                               postId: "post456"
+ *                               imageUrl: "https://example.com/image.jpg"
+ *                             "2025-12-03":
+ *                               communityId: "community123"
+ *                               postId: "post789"
+ *                               imageUrl: "https://example.com/image2.jpg"
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: 인증 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/me/routine-calendar", authGuard, userController.getRoutineCalendar);
+
 module.exports = router;
 
