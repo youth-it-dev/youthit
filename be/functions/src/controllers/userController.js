@@ -438,6 +438,37 @@ class UserController {
       return next(error);
     }
   }
+
+  /**
+   * 한끗 루틴 인증글 캘린더 조회
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async getRoutineCalendar(req, res, next) {
+    try {
+      const { uid } = req.user;
+      const { year, month } = req.query;
+
+      // year, month 파라미터가 없으면 현재 년/월 사용
+      const now = new Date();
+      const currentYear = year ? parseInt(year, 10) : now.getFullYear();
+      const currentMonth = month ? parseInt(month, 10) : now.getMonth() + 1;
+
+      if (isNaN(currentYear) || isNaN(currentMonth) || currentMonth < 1 || currentMonth > 12) {
+        const error = new Error('유효하지 않은 year 또는 month 파라미터입니다');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+
+      const result = await userService.getRoutineCalendar(uid, currentYear, currentMonth);
+      
+      return res.success(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 module.exports = new UserController();
