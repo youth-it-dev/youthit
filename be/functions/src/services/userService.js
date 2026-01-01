@@ -24,6 +24,7 @@ class UserService {
     this.firestoreService = new FirestoreService("users");
     this.nicknameService = new NicknameService();
     this.termsService = new TermsService();
+    this.communitiesService = new FirestoreService("communities");
   }
 
   /**
@@ -288,9 +289,7 @@ class UserService {
       // 루틴 종료 체크 및 초기화 (연속일자가 0이 아닐 때만)
       if (user.consecutiveRoutinePosts > 0 && user.currentRoutineCommunityId) {
         try {
-          const FirestoreService = require("./firestoreService");
-          const communityService = new FirestoreService("communities");
-          const community = await communityService.getById(user.currentRoutineCommunityId);
+          const community = await this.communitiesService.getById(user.currentRoutineCommunityId);
           
           if (community && community.endDate) {
             const toDate = (value) => {
@@ -345,6 +344,112 @@ class UserService {
           }
         } catch (error) {
           console.warn("[USER][getUserById] 루틴 종료 체크 실패 (계속 진행):", error.message);
+        }
+      }
+
+      // currentRoutineCommunityId가 없으면 진행 중인 루틴 커뮤니티 찾기
+      if (!user.currentRoutineCommunityId) {
+        try {
+          const PROGRAM_TYPES = {
+            ROUTINE: "ROUTINE",
+          };
+
+          // collectionGroup으로 members 역조회
+          const membersSnapshot = await db
+            .collectionGroup("members")
+            .where("userId", "==", uid)
+            .where("status", "==", "approved")
+            .get();
+
+          if (membersSnapshot.empty) {
+            return user;
+          }
+
+          // 각 멤버의 communityId 추출
+          const communityIds = [];
+          membersSnapshot.forEach((doc) => {
+            const pathSegments = doc.ref.path.split("/");
+            if (pathSegments.length >= 2 && pathSegments[0] === "communities") {
+              const communityId = pathSegments[1];
+              if (communityId && !communityIds.includes(communityId)) {
+                communityIds.push(communityId);
+              }
+            }
+          });
+
+          if (communityIds.length === 0) {
+            return user;
+          }
+
+          // 각 커뮤니티 조회 및 필터링
+          const now = new Date();
+          const toDate = (value) => {
+            if (!value) return null;
+            if (typeof value.toDate === "function") {
+              try {
+                return value.toDate();
+              } catch (_) {
+                return null;
+              }
+            }
+            if (value instanceof Date) {
+              return value;
+            }
+            try {
+              return new Date(value);
+            } catch (_) {
+              return null;
+            }
+          };
+
+          for (const communityId of communityIds) {
+            try {
+              const community = await this.communitiesService.getById(communityId);
+              if (!community) {
+                continue;
+              }
+
+              // ROUTINE 타입 확인
+              if (community.programType !== PROGRAM_TYPES.ROUTINE) {
+                continue;
+              }
+
+              // 진행 중인 커뮤니티 확인
+              const startDate = toDate(community.startDate);
+              const endDate = toDate(community.endDate);
+
+              const isOngoing =
+                (!startDate || startDate <= now) &&
+                (!endDate || endDate >= now);
+
+              if (isOngoing) {
+                // 진행 중인 루틴 커뮤니티 발견
+                user.currentRoutineCommunityId = communityId;
+
+                // Firestore에도 업데이트
+                await this.firestoreService.update(uid, {
+                  currentRoutineCommunityId: communityId,
+                  updatedAt: require("firebase-admin/firestore").FieldValue.serverTimestamp(),
+                });
+
+                console.log(
+                  `[USER][getUserById] 진행 중인 루틴 커뮤니티 설정: ${communityId}`
+                );
+                break; // 첫 번째로 찾은 커뮤니티로 설정하고 종료
+              }
+            } catch (communityError) {
+              console.warn(
+                `[USER][getUserById] 커뮤니티 ${communityId} 조회 실패:`,
+                communityError.message
+              );
+              continue;
+            }
+          }
+        } catch (error) {
+          console.warn(
+            "[USER][getUserById] 진행 중인 루틴 커뮤니티 찾기 실패 (계속 진행):",
+            error.message
+          );
         }
       }
       
