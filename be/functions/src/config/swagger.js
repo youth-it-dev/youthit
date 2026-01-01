@@ -281,6 +281,61 @@ const options = {
             },
           },
         },
+        RoutineCalendarResponse: {
+          type: "object",
+          description: "한끗 루틴 인증글 캘린더 응답",
+          properties: {
+            year: {
+              type: "integer",
+              description: "조회 대상 년도",
+              example: 2025,
+            },
+            month: {
+              type: "integer",
+              description: "조회 대상 월 (1-12)",
+              example: 12,
+            },
+            days: {
+              type: "object",
+              description: "날짜별 인증글 정보 (YYYY-MM-DD 형식의 키)",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  communityId: {
+                    type: "string",
+                    description: "커뮤니티 ID",
+                    example: "community123",
+                  },
+                  postId: {
+                    type: "string",
+                    description: "게시글 ID",
+                    example: "post456",
+                  },
+                  imageUrl: {
+                    type: "string",
+                    nullable: true,
+                    description: "이미지 URL (썸네일 우선, 없으면 오리지널, 둘 다 없으면 null)",
+                    example: "https://example.com/image.jpg",
+                  },
+                },
+                required: ["communityId", "postId"],
+              },
+              example: {
+                "2025-12-31": {
+                  communityId: "community123",
+                  postId: "post456",
+                  imageUrl: "https://example.com/image.jpg",
+                },
+                "2025-12-25": {
+                  communityId: "community123",
+                  postId: "post789",
+                  imageUrl: "https://example.com/image2.jpg",
+                },
+              },
+            },
+          },
+          required: ["year", "month", "days"],
+        },
         Mission: {
           type: "object",
           description: "노션에서 관리되는 미션 데이터",
