@@ -177,6 +177,15 @@ class CommunityService {
     this.firestoreService = new FirestoreService("communities");
   }
 
+  /**
+   * 날짜를 YYYY-MM-DD 형식으로 변환 (KST 기준, 시간 무시)
+   * @param {Date|Timestamp|string} dateValue - 변환할 날짜
+   * @returns {string|null} YYYY-MM-DD 형식의 날짜 문자열 (KST 기준)
+   */
+  static getDateKey(dateValue) {
+    return getDateKey(dateValue);
+  }
+
   static normalizeProgramType(value) {
     if (!value || typeof value !== "string") {
       return null;
