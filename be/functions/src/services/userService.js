@@ -1,6 +1,7 @@
 const {FieldValue} = require("firebase-admin/firestore");
 const {admin, db} = require("../config/database");
 const FirestoreService = require("./firestoreService");
+const CommunityService = require("./communityService");
 const {isAdminUser} = require("../utils/helpers");
 const NicknameService = require("./nicknameService");
 const TermsService = require("./termsService");
@@ -9,7 +10,6 @@ const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = requir
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
-const CommunityService = require("./communityService");
 
 // 기본 프로필 아바타 이미지 URL (공용 이미지)
 const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/cVZGcXR0yH67/Profile_Default_Ah5nnOc4lAVw.png";
@@ -1921,6 +1921,120 @@ class UserService {
    */
   async getMyCompletedCommunities(userId) {
     return this.getMyCommunities(userId, "completed");
+  }
+
+  /**
+   * 한끗 루틴 인증글 캘린더 조회
+   * @param {string} userId - 사용자 ID
+   * @param {number} year - 년도
+   * @param {number} month - 월 (1-12)
+   * @return {Promise<Object>} 캘린더 데이터
+   */
+  async getRoutineCalendar(userId, year, month) {
+    const PROGRAM_TYPES = {
+      ROUTINE: "ROUTINE",
+    };
+    const PROGRAM_TYPE_TO_POST_TYPE = {
+      [PROGRAM_TYPES.ROUTINE]: {
+        cert: "ROUTINE_CERT",
+      },
+    };
+
+    try {
+      // 1. KST 기준 월 범위 계산
+      // KST 기준으로 Date 생성 시, JS Date는 내부적으로 이미 UTC로 변환된 상태
+      const startKst = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00+09:00`);
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      const endKst = new Date(`${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00+09:00`);
+
+      // 2. KST 기준으로 생성한 Date 객체를 그대로 사용 (추가 ±9시간 보정 불필요)
+      const startUtc = startKst;
+      const endUtc = endKst;
+
+      // 3. authoredPosts 조회
+      const authoredPostsService = new FirestoreService(`users/${userId}/authoredPosts`);
+      const allAuthoredPosts = await authoredPostsService.getAll();
+      
+      // 필터: programType === "ROUTINE", isReview === false, createdAt이 UTC 범위 내
+      const filteredAuthoredPosts = allAuthoredPosts.filter(ap => {
+        if (ap.programType !== PROGRAM_TYPES.ROUTINE) return false;
+        if (ap.isReview !== false) return false; // isReview가 false인 것만
+        
+        // createdAt이 UTC 범위 내인지 확인
+        let createdAt;
+        if (typeof ap.createdAt?.toDate === "function") {
+          createdAt = ap.createdAt.toDate();
+        } else if (ap.createdAt) {
+          createdAt = new Date(ap.createdAt);
+        } else {
+          return false;
+        }
+        
+        return createdAt >= startUtc && createdAt < endUtc;
+      });
+
+      // 4. 게시글 정보 조회 및 필터링
+      const postsMap = {};
+      const dateGroups = {};
+
+      for (const authoredPost of filteredAuthoredPosts) {
+        try {
+          // 게시글 조회
+          const postService = new FirestoreService(`communities/${authoredPost.communityId}/posts`);
+          const post = await postService.getById(authoredPost.postId);
+
+          if (!post) {
+            continue;
+          }
+
+          // type === "ROUTINE_CERT" 필터링
+          if (post.type !== PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
+            continue;
+          }
+
+          // 5. KST 기준 날짜 추출
+          const postCreatedAt = post.createdAt || authoredPost.createdAt;
+          let postCreatedAtDate;
+          if (typeof postCreatedAt?.toDate === "function") {
+            postCreatedAtDate = postCreatedAt.toDate();
+          } else if (postCreatedAt) {
+            postCreatedAtDate = new Date(postCreatedAt);
+          } else {
+            continue;
+          }
+          
+          const dateKey = CommunityService.getDateKey(postCreatedAtDate);
+          if (!dateKey) {
+            continue;
+          }
+
+          // 날짜별로 그룹화 (이미 있으면 스킵, 없으면 추가)
+          if (!dateGroups[dateKey]) {
+            // 이미지 URL 결정 (썸네일 우선, 없으면 오리지널)
+            const imageUrl = authoredPost.thumbnailUrl || authoredPost.originalImageUrl || null;
+
+            dateGroups[dateKey] = {
+              communityId: authoredPost.communityId,
+              postId: authoredPost.postId,
+              imageUrl,
+            };
+          }
+        } catch (error) {
+          console.warn(`[getRoutineCalendar] 게시글 조회 실패 (${authoredPost.postId}):`, error.message);
+        }
+      }
+
+      // 6. 응답 구조 생성
+      return {
+        year,
+        month,
+        days: dateGroups,
+      };
+    } catch (error) {
+      console.error('[getRoutineCalendar] 캘린더 조회 실패:', error.message);
+      throw error;
+    }
   }
 }
 
