@@ -2025,11 +2025,18 @@ class UserService {
         }
       }
 
-      // 6. 응답 구조 생성
+      // 6. 응답 구조 생성 
+      const sortedDays = {};
+      Object.keys(dateGroups)
+        .sort()
+        .forEach((dateKey) => {
+          sortedDays[dateKey] = dateGroups[dateKey];
+        });
+
       return {
         year,
         month,
-        days: dateGroups,
+        days: sortedDays,
       };
     } catch (error) {
       console.error('[getRoutineCalendar] 캘린더 조회 실패:', error.message);
