@@ -1704,6 +1704,7 @@ async syncSelectedUsers() {
     const syncedUserIds = [];
     const failedUserIds = [];
     let validateErrorCount = 0;
+    const syncErrorLogs = []; // 동기화 작업 에러 로그
 
     console.log('=== 백업 DB에서 전체 회원 복원 시작 ===');
 
@@ -1750,6 +1751,7 @@ async syncSelectedUsers() {
             console.warn(`[WARN] 사용자ID가 없는 노션 페이지: ${pageId}`);
             skippedCount++;
             failedUserIds.push("unknown");
+            syncErrorLogs.push(`페이지 ${pageId}: 사용자ID가 없어 복원 건너뜀`);
             return { success: false, userId: "unknown", reason: "no_user_id" };
           }
 
@@ -1770,6 +1772,8 @@ async syncSelectedUsers() {
                   }
                 });
               } catch (updateError) {
+                const errorMsg = updateError.message || '알 수 없는 오류';
+                syncErrorLogs.push(`페이지 ${pageId}: 백업 결과 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
                 console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
               }
             }
@@ -1778,6 +1782,7 @@ async syncSelectedUsers() {
             console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
             skippedCount++;
             failedUserIds.push(userId);
+            syncErrorLogs.push(`사용자 ${userId}: Firebase에 존재하지 않아 복원 건너뜀`);
             return { success: false, userId, reason: "not_found_in_firebase" };
           }
 
@@ -1899,9 +1904,12 @@ async syncSelectedUsers() {
                   }
                 });
               } catch (updateError) {
+                const errorMsg = updateError.message || '알 수 없는 오류';
+                syncErrorLogs.push(`페이지 ${pageId}: 백업 결과 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
                 console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
               }
             }
+            syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 기간 없이 정지 사유만 설정되어 복원 중단`);
             return { success: false, userId, reason: "validation_error" };
           }
 
@@ -1924,6 +1932,8 @@ async syncSelectedUsers() {
                   }
                 });
               } catch (updateError) {
+                const errorMsg = updateError.message || '알 수 없는 오류';
+                syncErrorLogs.push(`페이지 ${pageId}: 백업 결과 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
                 console.warn(
                   `[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`,
                   updateError.message
@@ -1931,6 +1941,7 @@ async syncSelectedUsers() {
               }
             }
 
+            syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 시작일만 있고 종료일이 없어 복원 중단`);
             return { success: false, userId, reason: "validation_error" };
           }
 
@@ -1958,10 +1969,13 @@ async syncSelectedUsers() {
                     }
                   });
                 } catch (updateError) {
+                  const errorMsg = updateError.message || '알 수 없는 오류';
+                  syncErrorLogs.push(`페이지 ${pageId}: 백업 결과 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
                   console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
                 }
               }
 
+              syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 시작일 없이 종료일만 설정되어 복원 중단`);
               return { success: false, userId, reason: "validation_error" };
             }
           }
@@ -1981,6 +1995,8 @@ async syncSelectedUsers() {
                 }
               });
             } catch (updateError) {
+              const errorMsg = updateError.message || '알 수 없는 오류';
+              syncErrorLogs.push(`페이지 ${pageId}: 백업 결과 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
               console.warn(`[WARN] 원본 페이지 ${pageId}의 백업 결과 업데이트 실패:`, updateError.message);
             }
           }
@@ -1993,6 +2009,8 @@ async syncSelectedUsers() {
           failedCount++;
           const userId = page.properties["사용자ID"]?.rich_text?.[0]?.plain_text || "unknown";
           failedUserIds.push(userId);
+          const errorMsg = error.message || '알 수 없는 오류';
+          syncErrorLogs.push(`사용자 ${userId}: 복원 실패 - ${errorMsg.substring(0, 100)}`);
           console.error(`사용자 ${userId} 처리 실패:`, error.message);
           return { success: false, userId, error: error.message };
         }
@@ -2027,6 +2045,7 @@ async syncSelectedUsers() {
         successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
         logMessage: "",
+        errorLogs: syncErrorLogs || [] // 에러 로그 (없으면 빈 배열)
       }
     });
 
