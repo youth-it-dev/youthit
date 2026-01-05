@@ -181,69 +181,69 @@ class AdminLogsService {
    * @param {Array<string>} userIds - 사용자 ID 배열
    * @returns {Promise<Array<string>>} 노션 페이지 ID 배열
    */
-   async convertUserIdsToNotionPageIds(userIds) {
-    if (!userIds || userIds.length === 0) {
-      return [];
-    }
+  //  async convertUserIdsToNotionPageIds(userIds) {
+  //   if (!userIds || userIds.length === 0) {
+  //     return [];
+  //   }
 
-    try {
-      const notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
-      if (!notionUserAccountDB) {
-        console.warn('[adminLogsService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
-        return [];
-      }
+  //   try {
+  //     const notionUserAccountDB = process.env.NOTION_USER_ACCOUNT_DB_ID;
+  //     if (!notionUserAccountDB) {
+  //       console.warn('[adminLogsService] NOTION_USER_ACCOUNT_DB_ID 환경변수가 설정되지 않음');
+  //       return [];
+  //     }
 
-      const pageIds = [];
+  //     const pageIds = [];
       
-      // 배치로 사용자 조회 (한 번에 여러 사용자 조회)
-      for (let i = 0; i < userIds.length; i += 100) {
-        const batch = userIds.slice(i, i + 100);
+  //     // 배치로 사용자 조회 (한 번에 여러 사용자 조회)
+  //     for (let i = 0; i < userIds.length; i += 100) {
+  //       const batch = userIds.slice(i, i + 100);
         
-        // 각 사용자 ID에 대해 노션 페이지 조회
-        const batchPromises = batch.map(async (userId) => {
-          try {
-            const response = await fetch(`https://api.notion.com/v1/databases/${notionUserAccountDB}/query`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-                'Notion-Version': '2022-06-28',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                filter: {
-                  property: '사용자ID',
-                  rich_text: { equals: userId }
-                },
-                page_size: 1
-              })
-            });
+  //       // 각 사용자 ID에 대해 노션 페이지 조회
+  //       const batchPromises = batch.map(async (userId) => {
+  //         try {
+  //           const response = await fetch(`https://api.notion.com/v1/databases/${notionUserAccountDB}/query`, {
+  //             method: 'POST',
+  //             headers: {
+  //               'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+  //               'Notion-Version': '2022-06-28',
+  //               'Content-Type': 'application/json',
+  //             },
+  //             body: JSON.stringify({
+  //               filter: {
+  //                 property: '사용자ID',
+  //                 rich_text: { equals: userId }
+  //               },
+  //               page_size: 1
+  //             })
+  //           });
 
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              return data.results[0].id;
-            }
-            return null;
-          } catch (error) {
-            console.warn(`[adminLogsService] 사용자 ${userId}의 노션 페이지 조회 실패:`, error.message);
-            return null;
-          }
-        });
+  //           const data = await response.json();
+  //           if (data.results && data.results.length > 0) {
+  //             return data.results[0].id;
+  //           }
+  //           return null;
+  //         } catch (error) {
+  //           console.warn(`[adminLogsService] 사용자 ${userId}의 노션 페이지 조회 실패:`, error.message);
+  //           return null;
+  //         }
+  //       });
 
-        const batchResults = await Promise.all(batchPromises);
-        pageIds.push(...batchResults.filter(id => id !== null));
+  //       const batchResults = await Promise.all(batchPromises);
+  //       pageIds.push(...batchResults.filter(id => id !== null));
         
-        // 배치 사이 지연 (Notion API rate limit 방지)
-        if (i + 100 < userIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
+  //       // 배치 사이 지연 (Notion API rate limit 방지)
+  //       if (i + 100 < userIds.length) {
+  //         await new Promise(resolve => setTimeout(resolve, 300));
+  //       }
+  //     }
 
-      return pageIds;
-    } catch (error) {
-      console.error('[adminLogsService] 사용자 ID를 노션 페이지 ID로 변환 실패:', error);
-      return [];
-    }
-  }
+  //     return pageIds;
+  //   } catch (error) {
+  //     console.error('[adminLogsService] 사용자 ID를 노션 페이지 ID로 변환 실패:', error);
+  //     return [];
+  //   }
+  // }
 
 
   /**
@@ -259,6 +259,7 @@ class AdminLogsService {
     //const syncedUserIds = metadata.syncedUserIds || [];
     const successUserIds = metadata.successUserIds || [];
     const failedUserIds = metadata.failedUserIds || [];
+    const errorLogs = metadata.errorLogs || []; // 에러 로그 배열
 
     let status = "SUCCESS";
     if (failedCount > 0 && successCount === 0) {
@@ -308,6 +309,27 @@ class AdminLogsService {
       };
     }
 
+    // 에러 메시지 필드 추가 (errorLogs 배열을 쉼표로 구분된 문자열로 변환)
+    if (errorLogs && errorLogs.length > 0) {
+      // 배열을 쉼표로 구분된 문자열로 변환
+      const errorMessage = errorLogs.join(", ");
+      
+      // Notion rich_text 타입은 최대 2,000자까지 저장 가능하므로 초과 시 잘라내기
+      const maxLength = 2000;
+      const truncatedMessage = errorMessage.length > maxLength 
+        ? errorMessage.substring(0, maxLength - 3) + "..." 
+        : errorMessage;
+      
+      notionPage["에러 메시지"] = {
+        rich_text: [{ text: { content: truncatedMessage } }]
+      };
+    } else {
+      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["에러 메시지"] = {
+        rich_text: []
+      };
+    }
+
     /*
     - 동기화된 사용자 ID 목록 (텍스트 타입 - 쉼표로 구분) 해당 타입으로 수정하려고 하였으나,
       노션에서 텍스트 타입에는 최대 2,000자 까지 저장이 가능하여 동기화된 사용자가 많을 경우 오류가 발생
@@ -319,54 +341,54 @@ class AdminLogsService {
       + url : 제한없음
       + relation(관계) : 다른 페이지와 관계 연결 
     */
-
-    //[==기존==]
     // 동기화된 사용자 ID 목록 (다중선택 타입)
-    // if (syncedUserIds.length > 0) {
-    //   notionPage["동기화된 사용자ID"] = {
-    //     multi_select: syncedUserIds.map(userId => ({ name: userId }))
-    //   };
-    // } else {
-    //   // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-    //   notionPage["동기화된 사용자ID"] = {
-    //     multi_select: []
-    //   };
-    // }
-
-    // // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
-    // if (failedUserIds.length > 0) {
-    //   notionPage["실패한 사용자ID"] = {
-    //     multi_select: failedUserIds.map(userId => ({ name: userId }))
-    //   };
-    // } else {
-    //   // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-    //   notionPage["실패한 사용자ID"] = {
-    //     multi_select: []
-    //   };
-    // }
-
-    // 성공한 사용자 관계형 필드 변환
-    let successNotionPageIds = [];
     if (successUserIds && successUserIds.length > 0) {
-      successNotionPageIds = await this.convertUserIdsToNotionPageIds(successUserIds);
+        notionPage["성공한 사용자ID"] = {
+        multi_select: successUserIds.map(userId => ({ name: userId }))
+      };
+    } else {
+      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["성공한 사용자ID"] = {
+        multi_select: []
+      };
     }
+
+    // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
+    if (failedUserIds.length > 0) {
+      notionPage["실패한 사용자ID"] = {
+        multi_select: failedUserIds.map(userId => ({ name: userId }))
+      };
+    } else {
+      // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["실패한 사용자ID"] = {
+        multi_select: []
+      };
+    }
+
+    //[==보류==] : 관계형을 사용하는 경우 배포혼경에서 메모리 부족 문제가 발생해서 보류
+    // // 성공한 사용자 관계형 필드 변환
+    // let successNotionPageIds = [];
+    // if (successUserIds && successUserIds.length > 0) {
+    //   successNotionPageIds = await this.convertUserIdsToNotionPageIds(successUserIds);
+    // }
     
-    notionPage["성공한 사용자"] = {
-      relation: successNotionPageIds.map(pageId => ({ id: pageId }))
-    };
+    // notionPage["성공한 사용자"] = {
+    //   relation: successNotionPageIds.map(pageId => ({ id: pageId }))
+    // };
 
-    // 실패한 사용자 관계형 필드 변환
-    let failedNotionPageIds = [];
-    if (failedUserIds && failedUserIds.length > 0) {
-      failedNotionPageIds = await this.convertUserIdsToNotionPageIds(failedUserIds);
-    }
+    // // 실패한 사용자 관계형 필드 변환
+    // let failedNotionPageIds = [];
+    // if (failedUserIds && failedUserIds.length > 0) {
+    //   failedNotionPageIds = await this.convertUserIdsToNotionPageIds(failedUserIds);
+    // }
 
-    // console.log(`[adminLogsService] 성공한 사용자 ID 목록: ${successUserIds}`);
-    // console.log(`[adminLogsService] 실패한 사용자 Notion 페이지 ID 목록: ${failedNotionPageIds}`);
+    // // console.log(`[adminLogsService] 성공한 사용자 ID 목록: ${successUserIds}`);
+    // // console.log(`[adminLogsService] 실패한 사용자 Notion 페이지 ID 목록: ${failedNotionPageIds}`);
 
-    notionPage["실패한 사용자"] = {
-      relation: failedNotionPageIds.map(pageId => ({ id: pageId }))
-    };
+    // notionPage["실패한 사용자"] = {
+    //   relation: failedNotionPageIds.map(pageId => ({ id: pageId }))
+    // };
+    //[==보류==] : 관계형을 사용하는 경우 배포혼경에서 메모리 부족 문제가 발생해서 보류
 
     return notionPage;
   }
