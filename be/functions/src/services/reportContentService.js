@@ -835,6 +835,7 @@ async syncResolvedReports() {
     userUpdateFailed: 0,
     unknown: 0,
   };
+  const syncErrorLogs = []; // 동기화 작업 에러 로그
 
   try {
     // 1. Notion에서 데이터 조회
@@ -971,6 +972,8 @@ async syncResolvedReports() {
             });
             console.log(`[삭제] 노션 페이지 ${report.notionPageId} 아카이브 완료`);
           } catch (archiveError) {
+            const errorMsg = archiveError.message || '알 수 없는 오류';
+            syncErrorLogs.push(`노션 페이지 ${report.notionPageId}: 아카이브 실패 - ${errorMsg.substring(0, 100)}`);
             console.error(`[삭제 실패] 노션 페이지 ${report.notionPageId}:`, archiveError.message);
           }
         }
@@ -979,6 +982,8 @@ async syncResolvedReports() {
         delete reportsByTarget[key];
         console.log(`[그룹 삭제] ${key} → 신고 카운트 0으로 인해 삭제 처리 완료`);
       } catch (deleteError) {
+        const errorMsg = deleteError.message || '알 수 없는 오류';
+        syncErrorLogs.push(`그룹 ${group.targetId} (${group.targetType}): 삭제 실패 - ${errorMsg.substring(0, 100)}`);
         console.error(`[그룹 삭제 실패] ${group.targetId}:`, deleteError.message);
       }
     }
@@ -1138,6 +1143,8 @@ async syncResolvedReports() {
         processedGroups.add(key);
       }
     } catch (userPenaltyError) {
+      const errorMsg = userPenaltyError.message || '알 수 없는 오류';
+      syncErrorLogs.push(`그룹 ${key}: penaltyCount 증가 실패 - ${errorMsg.substring(0, 100)}`);
       console.error(`[Users] 그룹 ${key}의 penaltyCount 증가 실패:`, userPenaltyError.message);
       // penaltyCount 업데이트 실패는 전체 프로세스를 중단하지 않음
     }
@@ -1335,6 +1342,8 @@ async syncResolvedReports() {
 
          console.log(`[성공] ${targetId} → reportedDatabaseId로 이동 완료`);
        } catch (notionError) {
+         const errorMsg = notionError.message || '알 수 없는 오류';
+         syncErrorLogs.push(`${targetType} ${targetId}${targetUserId ? ` (사용자: ${targetUserId})` : ''}: Notion 이동 실패 - ${errorMsg.substring(0, 100)}`);
          console.error(`[Notion 이동 실패] ${targetId}:`, notionError.message);
 
          failedCount++;
@@ -1360,6 +1369,8 @@ async syncResolvedReports() {
      }
 
    } catch (err) {
+     const errorMsg = err.message || '알 수 없는 오류';
+     syncErrorLogs.push(`${report.targetType || '알 수 없음'} ${report.targetId || '알 수 없음'}: Firebase 동기화 실패 - ${errorMsg.substring(0, 100)}`);
      console.error(`동기화 중 오류 (targetId: ${report.targetId}):`, err);
 
      failedCount++;
@@ -1402,8 +1413,9 @@ async syncResolvedReports() {
         successUserIds: successUserIds, // 성공한 사용자 ID 목록
         failedUserIds: failedUserIds, // 실패한 사용자 ID 목록
         logMessage: "",
+        errorLogs: syncErrorLogs || [], // 에러 로그 (없으면 빈 배열)
         errorCounts: errorCounts, // 에러 상세 정보
-        ...(errorDetails.length > 0 && { errors: errorDetails })
+        //...(errorDetails.length > 0 && { errors: errorDetails })
       }
     });
 
