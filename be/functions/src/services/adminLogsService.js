@@ -45,9 +45,9 @@ class AdminLogsService {
         const batch = snapshot.docs.slice(i, i + BATCH_SIZE);
         console.log(`배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(snapshot.docs.length / BATCH_SIZE)} 처리 중... (${i + 1}-${Math.min(i + BATCH_SIZE, snapshot.docs.length)}번째)`);
   
-        // 배치 내에서 병렬 처리
+        // 배치 내에서 병렬 처리 (배포 환경에서 메모리 문제 발생)
         const batchPromises = batch.map(async (doc) => {
-          try {
+        try {
             const adminLogId = doc.id;
             const adminLog = doc.data();
   
@@ -95,6 +95,8 @@ class AdminLogsService {
           console.log(`${DELAY_MS/1000}초 대기 중...`);
           await new Promise(resolve => setTimeout(resolve, DELAY_MS));
         }
+
+        
       }
   
       console.log(`=== 관리자 로그 동기화 완료 ===`);
