@@ -1103,6 +1103,7 @@ async syncSelectedUsers() {
   const syncedUserIds = []; // 동기화된 사용자 ID 목록
   const failedUserIds = []; // 건너뜀한 사용자 ID 목록
   let validateErrorCount = 0; //값이 잘못된 경우
+  const syncErrorLogs = []; // 동기화 작업 에러 로그
 
   
   // 모든 페이지를 순회하며 "선택" 필드가 체크된 데이터만 조회
@@ -1138,6 +1139,7 @@ async syncSelectedUsers() {
         console.warn(`[WARN] 사용자ID가 없는 노션 페이지: ${pageId}`);
         skippedCount++;
         failedUserIds.push(userId);
+        syncErrorLogs.push(`페이지 ${pageId}: 사용자ID가 없어 동기화 건너뜀`);
         continue;
       }
 
@@ -1149,6 +1151,7 @@ async syncSelectedUsers() {
         console.warn(`[WARN] Firebase에 ${userId} 사용자가 존재하지 않음`);
         skippedCount++;
         failedUserIds.push(userId);
+        syncErrorLogs.push(`사용자 ${userId}: Firebase에 존재하지 않아 동기화 건너뜀`);
         continue;
       }
 
@@ -1170,6 +1173,7 @@ async syncSelectedUsers() {
           );
           validateErrorCount++;
           failedUserIds.push(userId);
+          syncErrorLogs.push(`사용자 ${userId}: 닉네임 "${nickname}"이 다른 사용자(${conflictingDoc.id})와 중복되어 동기화 중단`);
           continue;
         }
       }
@@ -1264,6 +1268,7 @@ async syncSelectedUsers() {
         console.warn(`사용자 ${name}의 자격정지 기간(시작)과 자격정지 기간(종료)가 없는데 정지 사유가 설정되어 있습니다`);
         validateErrorCount++;
         failedUserIds.push(userId);
+        syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 기간 없이 정지 사유만 설정되어 동기화 중단`);
         continue;
       }
 
@@ -1278,6 +1283,7 @@ async syncSelectedUsers() {
         );
         validateErrorCount++;
         failedUserIds.push(userId);
+        syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 시작일만 있고 종료일이 없어 동기화 중단`);
         continue;
       }
 
@@ -1292,6 +1298,7 @@ async syncSelectedUsers() {
               console.warn(`사용자 ${name}의 자격정지 기간(시작)이 없는데 자격정지 기간(종료)이 설정되어 있습니다`);
               validateErrorCount++;
               failedUserIds.push(userId);
+              syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): 자격정지 시작일 없이 종료일만 설정되어 동기화 중단`);
               continue;
           }
                                      
@@ -1417,6 +1424,8 @@ async syncSelectedUsers() {
         await this.updateNotionPageWithRetry(pageId, notionPageUpdate);
         console.log(`[SUCCESS] ${userId} (${name || nickname}) 노션 동기화 완료`);
       } catch (notionUpdateError) {
+        const errorMsg = notionUpdateError.message || '알 수 없는 오류';
+        syncErrorLogs.push(`사용자 ${userId} (${name || nickname}): Notion 페이지 업데이트 실패 - ${errorMsg.substring(0, 100)}`);
         console.warn(`[WARN] 노션 페이지 ${pageId} 업데이트 실패:`, notionUpdateError.message);
       }
 
@@ -1444,6 +1453,7 @@ async syncSelectedUsers() {
       successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
       failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
       logMessage: "",
+      errorLogs: syncErrorLogs || [] // 에러 로그 (없으면 빈 배열)
     }
   });
  
