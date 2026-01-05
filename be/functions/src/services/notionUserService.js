@@ -500,6 +500,7 @@ async syncAllUserAccounts() {
     let failedCount = 0; //동기화 실패 카운트
     const syncedUserIds = [];
     const failedUserIds = [];
+    const syncErrorLogs = []; // 동기화 작업 에러 로그
 
     // 3. 사용자 데이터를 배치로 처리
     for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
@@ -543,6 +544,8 @@ async syncAllUserAccounts() {
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
             );
+            // 신고 카운트 조회 실패는 경고이지만 에러 로그에 간단히 기록
+            syncErrorLogs.push(`사용자 ${userId}: 신고 카운트 조회 실패 - ${countError.message.substring(0, 100)}`);
           }
 
           // 날짜 처리
@@ -640,6 +643,8 @@ async syncAllUserAccounts() {
         } catch (error) {
           failedCount++;
           failedUserIds.push(doc.id);
+          const errorMsg = error.message || '알 수 없는 오류';
+          syncErrorLogs.push(`사용자 ${doc.id}: 동기화 실패 - ${errorMsg.substring(0, 100)}`);
           console.error(`사용자 ${doc.id} 처리 실패:`, error.message);
           return { success: false, userId: doc.id, error: error.message };
         }
@@ -701,6 +706,8 @@ async syncAllUserAccounts() {
             console.log(`[아카이브 성공] 페이지 ${page.pageId} (사용자ID: ${page.userId}, 사유: ${page.reason})`);
           } catch (error) {
             archiveFailedCount++;
+            const errorMsg = error.message || '알 수 없는 오류';
+            syncErrorLogs.push(`페이지 ${page.pageId} (사용자ID: ${page.userId}): 아카이브 실패 - ${errorMsg.substring(0, 100)}`);
             console.error(`[아카이브 실패] 페이지 ${page.pageId} (사용자ID: ${page.userId}):`, error.message);
           }
         }));
@@ -722,14 +729,24 @@ async syncAllUserAccounts() {
     let backupResult = null;
     let backupSuccess = false;
     let backupError = null;
+    const backupErrorLogs = []; // 백업 작업 에러 로그
     try {
       console.log('동기화 완료 후 백업을 시작합니다...');
       backupResult = await this.backupNotionUserDatabase();
       backupSuccess = true;
       console.log(`백업 완료: ${backupResult.backedUp}개 페이지 백업됨 (생성: ${backupResult.created}개, 업데이트: ${backupResult.updated}개, 삭제: ${backupResult.deleted}개, 실패: ${backupResult.failed}개)`);
+
+      // 백업 결과에서 에러 로그 변환
+      if (backupResult.errors && backupResult.errors.length > 0) {
+        backupResult.errors.forEach(err => {
+          const errorMsg = err.error || '알 수 없는 오류';
+          backupErrorLogs.push(`사용자 ${err.userId} (페이지ID: ${err.pageId}): 백업 실패 - ${errorMsg.substring(0, 100)}`);
+        });
+      }
     } catch (error) {
       backupSuccess = false;
       backupError = error.message || '알 수 없는 오류가 발생했습니다';
+      backupErrorLogs.push(`백업 작업 전체 실패: ${backupError.substring(0, 150)}`);
       console.error('백업 실패:', error);
     }
 
@@ -747,9 +764,11 @@ async syncAllUserAccounts() {
         successUserIds: backupResult.successUserIds || [], // 성공한 사용자 ID 목록
         failedUserIds: backupResult.failedUserIds || [], // 실패한 사용자 ID 목록
         logMessage: "",
-        ...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
+        errorLogs: backupErrorLogs || [], // 에러 로그 (없으면 빈 배열)
+        //...(backupResult.errors && backupResult.errors.length > 0 && { errors: backupResult.errors })
       } : {
-        logMessage : backupError
+        logMessage : backupError,
+        errorLogs: backupErrorLogs || [], // 에러 로그 (없으면 빈 배열)
       }
     });
 
@@ -768,6 +787,7 @@ async syncAllUserAccounts() {
         successUserIds: syncedUserIds, // 동기화된 사용자 ID 목록
         failedUserIds: failedUserIds, // 동기화 실패한 사용자 ID 목록
         logMessage: "",
+        errorLogs: syncErrorLogs || [] // 에러 로그 (없으면 빈 배열)
       }
     });
 
