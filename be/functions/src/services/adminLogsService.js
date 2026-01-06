@@ -253,16 +253,22 @@ class AdminLogsService {
     // 상태 계산: SUCCESS, PARTIAL, FAILURE
     const metadata = adminLog.metadata || {};
     //const syncedCount = metadata.syncedCount || 0;
-    const successCount = metadata.successCount || 0;
-    const failedCount = metadata.failedCount || 0;
-    const total = metadata.total || 1;
+    const successCount = metadata.successCount ?? 0; // nullish coalescing 사용
+    const failedCount = metadata.failedCount ?? 0; // nullish coalescing 사용
+    const total = metadata.total ?? 0;
     //const syncedUserIds = metadata.syncedUserIds || [];
     const successUserIds = metadata.successUserIds || [];
     const failedUserIds = metadata.failedUserIds || [];
     const errorLogs = metadata.errorLogs || []; // 에러 로그 배열
 
+    // 에러 메시지가 있는지 확인 (빈 배열이 아니고, 실제로 값이 있는 경우)
+    const hasErrorMessage = errorLogs && errorLogs.length > 0 && errorLogs.some(log => log && log.trim().length > 0);
+
     let status = "SUCCESS";
-    if (failedCount > 0 && successCount === 0) {
+    // 에러 메시지가 있으면 FAILURE로 설정 (최우선)
+    if (hasErrorMessage) {
+      status = "FAILURE";
+    }else if (failedCount > 0 && successCount === 0) {
       status = "FAILURE";
     } else if (successCount > 0 && failedCount > 0) {
       status = "PARTIAL";
@@ -294,10 +300,10 @@ class AdminLogsService {
         number: total
       },
       "성공": {
-        number: successCount || (status === "SUCCESS" ? 1 : 0)
+        number: successCount
       },
       "실패": {
-        number: failedCount || (status === "FAILURE" ? 1 : 0)
+        number: failedCount
       },
       "동기화 시간": { date: { start: new Date().toISOString() } }
     };

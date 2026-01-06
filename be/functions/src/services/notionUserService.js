@@ -132,7 +132,7 @@ class NotionUserService {
             }, 0);
             
             reportCount = postReports + commentReports;
-          } catch (countError) {
+          } catch (countError) { //신고 카운트를 조회하는 과정에서 발생하는 에러
             console.warn(
               `[WARN] 사용자 ${userId}의 신고 카운트 조회 실패: ${countError.message}`
             );
