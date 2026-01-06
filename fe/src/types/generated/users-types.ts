@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Users 관련 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -345,6 +346,17 @@ export type TGETUsersMeRewardsEarnedRes = {
     hasNext?: boolean;
     hasPrevious?: boolean;
   };
+};
+
+export interface TGETUsersMeRoutineCalendarReq {
+  year?: number;
+  month?: number;
+}
+
+export type TGETUsersMeRoutineCalendarRes = {
+  year?: number;
+  month?: number;
+  days?: Record<string, any>;
 };
 
 export interface TPOSTUsersMeSyncKakaoProfileReq {

@@ -105,6 +105,15 @@ export const getUsersMeRewardsEarned = (
   });
 };
 
+export const getUsersMeRoutineCalendar = (
+  request: Types.TGETUsersMeRoutineCalendarReq
+) => {
+  return get<Types.TGETUsersMeRoutineCalendarRes>(
+    `/users/me/routine-calendar`,
+    { params: request }
+  );
+};
+
 export const postUsersMeSyncKakaoProfile = (
   request: Types.TPOSTUsersMeSyncKakaoProfileReq
 ) => {

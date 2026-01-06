@@ -328,6 +328,27 @@ export const useGetUsersMeRewardsEarned = <
   });
 };
 
+export const useGetUsersMeRoutineCalendar = <
+  TData = Types.TGETUsersMeRoutineCalendarRes,
+>(
+  options: {
+    request: Types.TGETUsersMeRoutineCalendarReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETUsersMeRoutineCalendarRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETUsersMeRoutineCalendarRes, Error, TData>({
+    queryKey: usersKeys.getUsersMeRoutineCalendar(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeRoutineCalendar(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
 export const usePostUsersMeSyncKakaoProfile = <
   TContext = unknown,
   TVariables = Types.TPOSTUsersMeSyncKakaoProfileReq,

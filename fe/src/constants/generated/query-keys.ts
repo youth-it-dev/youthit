@@ -22,6 +22,7 @@ import type * as notionusersTypes from "@/types/generated/notionusers-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as qnaTypes from "@/types/generated/qna-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
+import type * as rewardsTypes from "@/types/generated/rewards-types";
 import type * as storeTypes from "@/types/generated/store-types";
 import type * as usersTypes from "@/types/generated/users-types";
 
@@ -322,6 +323,11 @@ export const reportsKeys = {
   ),
 } as const;
 
+// Rewards Query Keys
+export const rewardsKeys = {
+  getRewardsPolicies: __buildKey("rewards", "getRewardsPolicies"),
+} as const;
+
 // Store Query Keys
 export const storeKeys = {
   getStoreProducts: (request: storeTypes.TGETStoreProductsReq) =>
@@ -393,6 +399,13 @@ export const usersKeys = {
     __buildKey("users", "getUsersMeRewardsEarned", {
       path: {},
       query: { page: request.page, size: request.size, filter: request.filter },
+    }),
+  getUsersMeRoutineCalendar: (
+    request: usersTypes.TGETUsersMeRoutineCalendarReq
+  ) =>
+    __buildKey("users", "getUsersMeRoutineCalendar", {
+      path: {},
+      query: { year: request.year, month: request.month },
     }),
   getUsersNicknameAvailability: (
     request: usersTypes.TGETUsersNicknameAvailabilityReq

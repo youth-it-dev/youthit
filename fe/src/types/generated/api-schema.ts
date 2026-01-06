@@ -54,11 +54,25 @@ export interface User {
   createdAt?: string;
   lastLoginAt?: string;
   lastUpdatedAt?: string;
+  participationCounts?: {
+    routine?: number;
+    gathering?: number;
+    tmi?: number;
+  };
+  consecutiveRoutinePosts?: number;
+  currentRoutineCommunityId?: string;
+  lastRoutineAuthDate?: string;
   nickname?: string;
   gender?: string;
   birthDate?: string;
   status?: "pending" | "active" | "suspended";
   bio?: string;
+}
+
+export interface RoutineCalendarResponse {
+  year: number;
+  month: number;
+  days: Record<string, any>;
 }
 
 export interface Mission {
