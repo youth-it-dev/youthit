@@ -1,6 +1,11 @@
 const { db, FieldValue, Timestamp } = require('../config/database');
 const FirestoreService = require('./firestoreService');
-const { getStatusValue, getNumberValue } = require('../utils/notionHelper');
+const {
+  getStatusValue,
+  getNumberValue,
+  getTitleValue,
+  getTextContent,
+} = require('../utils/notionHelper');
 const { toDate, formatDate } = require('../utils/helpers');
 
 const DEFAULT_EXPIRY_DAYS = 120;
@@ -116,6 +121,118 @@ class RewardService {
     } catch (error) {
       console.error('[REWARD ERROR] getRewardByAction:', error.message);
       return 0;
+    }
+  }
+
+  /**
+   * 리워드 정책 조회 (화면 표시용)
+   * - Notion 리워드 정책 DB에서 "정책 적용 상태"가 "적용 완료"이고 나다움 > 0 인 항목만 조회
+   * - 댓글 / 루틴 / 소모임 / TMI 관련 행동만 필터링
+   * - 응답에는 사용자 행동 이름과 포인트만 포함 (내부 actionKey, isActive 등은 포함하지 않음)
+   *
+   * @return {Promise<{policies: Array<{name: string, points: number}>}>}
+   */
+  async getRewardPoliciesForDisplay() {
+    try {
+      const ALLOWED_KEYS = new Set([
+        'comment',
+        'routine_post',
+        'routine_review',
+        'gathering_review_text',
+        'gathering_review_media',
+        'tmi_review',
+      ]);
+
+      const response = await fetch(
+        `https://api.notion.com/v1/databases/${this.rewardPolicyDB}/query`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.notionApiKey}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filter: {
+              and: [
+                {
+                  property: '정책 적용 상태',
+                  status: {
+                    equals: '적용 완료',
+                  },
+                },
+                {
+                  property: '나다움',
+                  number: {
+                    greater_than: 0,
+                  },
+                },
+              ],
+            },
+            page_size: 100,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(
+          `[REWARD] Notion 리워드 정책 조회 실패: ${response.status} ${response.statusText}`
+        );
+        return { policies: [] };
+      }
+
+      const data = await response.json();
+      const results = Array.isArray(data?.results) ? data.results : [];
+
+      const policies = [];
+
+      for (const page of results) {
+        if (!page || !page.properties) continue;
+        const props = page.properties;
+
+        // 내부 필터용 액션 키 (__DEV_ONLY__)
+        const devKeyRaw = getTextContent(props['__DEV_ONLY__']);
+        const devKey = typeof devKeyRaw === 'string' ? devKeyRaw.trim() : '';
+        if (!ALLOWED_KEYS.has(devKey)) {
+          continue;
+        }
+
+        const status = getStatusValue(props['정책 적용 상태']);
+        if (status !== '적용 완료') {
+          continue;
+        }
+
+        const pointsRaw = getNumberValue(props['나다움']);
+        const points =
+          typeof pointsRaw === 'number' && !Number.isNaN(pointsRaw)
+            ? pointsRaw
+            : 0;
+        if (points <= 0) {
+          continue;
+        }
+
+        const nameRaw = getTitleValue(props['사용자 행동']);
+        const name =
+          (typeof nameRaw === 'string' && nameRaw.trim().length > 0
+            ? nameRaw.trim()
+            : devKey) || devKey;
+
+        policies.push({ name, points });
+      }
+
+      // 안정적인 표시를 위해 포인트 내림차순, 같은 포인트는 이름순 정렬
+      policies.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      return { policies };
+    } catch (error) {
+      console.error(
+        '[REWARD ERROR] getRewardPoliciesForDisplay:',
+        error.message
+      );
+      return { policies: [] };
     }
   }
 
