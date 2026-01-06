@@ -50,6 +50,10 @@ const options = {
         name: "Files",
         description: "파일 관리 API",
       },
+      {
+        name: "Rewards",
+        description: "나다움 리워드 정책 API",
+      },
     ],
     servers: [
       {
