@@ -35,10 +35,15 @@ class AdminLogsService {
       // 2. 노션 데이터베이스에서 기존 데이터 조회 (관리자ID 기준)
       const notionAdminLogs = await this.getNotionAdminLogs(this.notionAdminLogDB);
   
+      // Firebase에 있는 adminLogId Set 생성 (빠른 조회를 위해)
+      const firebaseAdminLogIds = new Set(snapshot.docs.map(doc => doc.id));
+
       let successCount = 0;
       let failedCount = 0;
       const successLogIds = [];
       const failedLogIds = [];
+      let archivedCount = 0;
+      const archivedLogIds = [];
   
       // 3. 각 adminLog 데이터를 배치로 처리
       for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
@@ -98,6 +103,46 @@ class AdminLogsService {
 
         
       }
+
+
+      // 4. 노션에만 있고 Firebase에는 없는 항목 아카이브 처리
+      console.log('=== 노션에만 있는 항목 아카이브 처리 시작 ===');
+      const notionOnlyLogIds = Object.keys(notionAdminLogs).filter(adminLogId => !firebaseAdminLogIds.has(adminLogId));
+      
+      if (notionOnlyLogIds.length > 0) {
+        console.log(`아카이브 대상: ${notionOnlyLogIds.length}건`);
+        
+        // 아카이브도 배치로 처리
+        for (let i = 0; i < notionOnlyLogIds.length; i += BATCH_SIZE) {
+          const archiveBatch = notionOnlyLogIds.slice(i, i + BATCH_SIZE);
+          console.log(`아카이브 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(notionOnlyLogIds.length / BATCH_SIZE)} 처리 중...`);
+          
+          const archivePromises = archiveBatch.map(async (adminLogId) => {
+            try {
+              const pageId = notionAdminLogs[adminLogId].pageId;
+              await this.archiveNotionPageWithRetry(pageId);
+              console.log(`[아카이브] 관리자 로그 ${adminLogId} (pageId: ${pageId}) 아카이브 완료`);
+              archivedCount++;
+              archivedLogIds.push(adminLogId);
+              return { success: true, adminLogId };
+            } catch (error) {
+              console.error(`[아카이브 실패] 관리자 로그 ${adminLogId}:`, error.message || error);
+              return { success: false, adminLogId, error: error.message };
+            }
+          });
+          
+          await Promise.all(archivePromises);
+          
+          // 마지막 배치가 아니면 지연
+          if (i + BATCH_SIZE < notionOnlyLogIds.length) {
+            console.log(`${DELAY_MS/1000}초 대기 중...`);
+            await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+          }
+        }
+      } else {
+        console.log('아카이브 대상 없음');
+      }
+
   
       console.log(`=== 관리자 로그 동기화 완료 ===`);
       console.log(`성공: ${successCount}건, 실패: ${failedCount}건`);
@@ -107,6 +152,40 @@ class AdminLogsService {
     } catch (error) {
       console.error('syncAdminLogs 전체 오류:', error);
       throw error;
+    }
+  }
+
+
+  /**
+   * 재시도 로직이 포함된 Notion 페이지 아카이브
+   * @param {string} pageId - Notion 페이지 ID
+   * @param {number} maxRetries - 최대 재시도 횟수
+   */
+  async archiveNotionPageWithRetry(pageId, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.notion.pages.update({
+          page_id: pageId,
+          archived: true,
+        });
+        return; // 성공하면 종료
+      } catch (error) {
+        // conflict_error인 경우에만 재시도
+        const isConflictError = error.code === 'conflict_error' || 
+                                error.message?.includes('Conflict') ||
+                                error.message?.includes('conflict');
+        
+        if (!isConflictError || attempt === maxRetries) {
+          throw new Error(`Notion 페이지 아카이브 최종 실패 (pageId: ${pageId}): ${error.message}`);
+        }
+        
+        console.warn(`Notion 페이지 아카이브 시도 ${attempt}/${maxRetries} 실패 (pageId: ${pageId}):`, error.message);
+        
+        // 지수 백오프: 1초, 2초, 4초...
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`${delay/1000}초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
 
