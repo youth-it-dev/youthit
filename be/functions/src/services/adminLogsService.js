@@ -619,14 +619,14 @@ class AdminLogsService {
    */
     async cleanupAdminLogs(maxRecords = 1000) {
       try {
+
         console.log(`=== adminLogs 컬렉션 정리 시작 (최대 ${maxRecords}개 유지) ===`);
         
         // 1. 전체 문서 개수 확인
-        const snapshot = await db.collection("adminLogs")
-          .orderBy("timestamp", "desc")
+        const countSnapshot = await db.collection("adminLogs")
+          .count()
           .get();
-        
-        const totalCount = snapshot.docs.length;
+        const totalCount = countSnapshot.data().count;
         console.log(`현재 adminLogs 컬렉션 총 개수: ${totalCount}개`);
         
         // 2. 최대 개수 이하면 정리 불필요
@@ -661,13 +661,12 @@ class AdminLogsService {
         console.log(`삭제 대상: ${deleteCount}개`);
         
         // 4. timestamp 기준 오름차순 정렬 (오래된 것부터)
-        const docsToDelete = snapshot.docs
-          .sort((a, b) => {
-            const timestampA = a.data().timestamp?.seconds || a.data().timestamp || 0;
-            const timestampB = b.data().timestamp?.seconds || b.data().timestamp || 0;
-            return timestampA - timestampB;
-          })
-          .slice(0, deleteCount);
+        const deleteSnapshot = await db.collection("adminLogs")
+          .orderBy("timestamp", "asc") // 오름차순으로 변경 (오래된 것부터)
+          .limit(deleteCount) // 삭제할 개수만 가져오기
+          .get();
+        
+        const docsToDelete = deleteSnapshot.docs; // 이미 정렬되어 있음
         
         // 5. 배치로 삭제 (Firestore는 한 번에 최대 500개 삭제 가능)
         const BATCH_DELETE_SIZE = 500;
