@@ -60,18 +60,25 @@ class RewardMonitoringService {
         return pathSegments[1]; // users/{userId}/rewardsHistory/{docId}
       }))];
 
-      // 사용자 정보 batch 조회
+      // 사용자 정보 batch 조회 (병렬 처리로 성능 개선)
       const usersMap = new Map();
+      const chunks = [];
       for (let i = 0; i < userIds.length; i += 10) {
-        const chunk = userIds.slice(i, i + 10);
-        const usersSnapshot = await db.collection('users')
+        chunks.push(userIds.slice(i, i + 10));
+      }
+      
+      const chunkPromises = chunks.map(chunk =>
+        db.collection('users')
           .where('__name__', 'in', chunk)
-          .get();
-        
-        usersSnapshot.docs.forEach(doc => {
+          .get()
+      );
+      
+      const chunkSnapshots = await Promise.all(chunkPromises);
+      chunkSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
           usersMap.set(doc.id, doc.data());
         });
-      }
+      });
 
       // 구매 내역 생성 및 필터링
       const purchaseList = [];
@@ -178,18 +185,25 @@ class RewardMonitoringService {
 
       const userIds = Array.from(userHistoriesMap.keys());
 
-      // 사용자 정보 batch 조회
+      // 사용자 정보 batch 조회 (병렬 처리로 성능 개선)
       const usersMap = new Map();
+      const chunks = [];
       for (let i = 0; i < userIds.length; i += 10) {
-        const chunk = userIds.slice(i, i + 10);
-        const usersSnapshot = await db.collection('users')
+        chunks.push(userIds.slice(i, i + 10));
+      }
+      
+      const chunkPromises = chunks.map(chunk =>
+        db.collection('users')
           .where('__name__', 'in', chunk)
-          .get();
-        
-        usersSnapshot.docs.forEach(doc => {
+          .get()
+      );
+      
+      const chunkSnapshots = await Promise.all(chunkPromises);
+      chunkSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
           usersMap.set(doc.id, doc.data());
         });
-      }
+      });
 
       // 각 사용자별 요약 데이터 생성
       const userSummaries = [];
@@ -308,18 +322,25 @@ class RewardMonitoringService {
 
       const userIds = Array.from(userIdsSet);
 
-      // 사용자 정보 batch 조회
+      // 사용자 정보 batch 조회 (병렬 처리로 성능 개선)
       const usersMap = new Map();
+      const chunks = [];
       for (let i = 0; i < userIds.length; i += 10) {
-        const chunk = userIds.slice(i, i + 10);
-        const usersSnapshot = await db.collection('users')
+        chunks.push(userIds.slice(i, i + 10));
+      }
+      
+      const chunkPromises = chunks.map(chunk =>
+        db.collection('users')
           .where('__name__', 'in', chunk)
-          .get();
-        
-        usersSnapshot.docs.forEach(doc => {
+          .get()
+      );
+      
+      const chunkSnapshots = await Promise.all(chunkPromises);
+      chunkSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
           usersMap.set(doc.id, doc.data());
         });
-      }
+      });
 
       // 히스토리 데이터 생성
       const historyList = relevantDocs.map(doc => {
