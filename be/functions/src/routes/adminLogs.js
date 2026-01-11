@@ -1,5 +1,6 @@
 const express = require("express");
 const adminLogsController = require("../controllers/adminLogsController");
+const { runAdminLogsCleanup } = require("../triggers/adminLogsCleanupScheduler");
 const router = express.Router();
 
 /**
@@ -41,6 +42,18 @@ const router = express.Router();
  *                   example: "관리자 로그 동기화 중 오류가 발생했습니다."
  */
 router.get("/sync/adminLogs", adminLogsController.syncAdminLogs);
+
+
+//테스트용 수동 실행 API 엔드포인트
+router.post("/cleanup", async (req, res) => {
+    try {
+      const { maxRecords } = req.body;
+      const result = await runAdminLogsCleanup();
+      res.success(result, "adminLogs 정리 완료");
+    } catch (error) {
+      res.error(error, "adminLogs 정리 실패");
+    }
+  });
 
 
 module.exports = router;

@@ -331,14 +331,13 @@ class AdminLogsService {
   async buildNotionAdminLogPage(adminLog, adminLogId) {
     // 상태 계산: SUCCESS, PARTIAL, FAILURE
     const metadata = adminLog.metadata || {};
-    //const syncedCount = metadata.syncedCount || 0;
     const successCount = metadata.successCount ?? 0; // nullish coalescing 사용
     const failedCount = metadata.failedCount ?? 0; // nullish coalescing 사용
     const total = metadata.total ?? 0;
-    //const syncedUserIds = metadata.syncedUserIds || [];
     const successUserIds = metadata.successUserIds || [];
     const failedUserIds = metadata.failedUserIds || [];
     const errorLogs = metadata.errorLogs || []; // 에러 로그 배열
+    const logMessage = metadata.logMessage || ""; // 로그 메시지
 
     // 에러 메시지가 있는지 확인 (빈 배열이 아니고, 실제로 값이 있는 경우)
     const hasErrorMessage = errorLogs && errorLogs.length > 0 && errorLogs.some(log => log && log.trim().length > 0);
@@ -411,6 +410,25 @@ class AdminLogsService {
     } else {
       // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
       notionPage["에러 메시지"] = {
+        rich_text: []
+      };
+    }
+
+
+    // 로그 메시지 필드 추가
+    if (logMessage && logMessage.trim().length > 0) {
+      // Notion rich_text 타입은 최대 2,000자까지 저장 가능하므로 초과 시 잘라내기
+      const maxLength = 2000;
+      const truncatedMessage = logMessage.length > maxLength 
+        ? logMessage.substring(0, maxLength - 3) + "..." 
+        : logMessage;
+      
+      notionPage["로그 메시지"] = {
+        rich_text: [{ text: { content: truncatedMessage } }]
+      };
+    } else {
+      // 빈 값인 경우에도 필드를 설정하여 기존 값 초기화
+      notionPage["로그 메시지"] = {
         rich_text: []
       };
     }
@@ -589,6 +607,163 @@ class AdminLogsService {
       // 로그 저장 실패는 메인 작업에 영향을 주지 않도록 에러를 throw하지 않음
     }
   }
+
+
+
+
+    /**
+   * adminLogs 컬렉션 정리 (최대 개수 유지)
+   * timestamp 기준으로 오래된 데이터부터 삭제
+   * @param {number} maxRecords - 유지할 최대 레코드 수 (기본값: 1000)
+   * @returns {Promise<Object>} 정리 결과 (deletedCount, totalCount)
+   */
+    async cleanupAdminLogs(maxRecords = 1000) {
+      try {
+        console.log(`=== adminLogs 컬렉션 정리 시작 (최대 ${maxRecords}개 유지) ===`);
+        
+        // 1. 전체 문서 개수 확인
+        const snapshot = await db.collection("adminLogs")
+          .orderBy("timestamp", "desc")
+          .get();
+        
+        const totalCount = snapshot.docs.length;
+        console.log(`현재 adminLogs 컬렉션 총 개수: ${totalCount}개`);
+        
+        // 2. 최대 개수 이하면 정리 불필요
+        if (totalCount <= maxRecords) {
+          console.log(`최대 개수(${maxRecords}개) 이하이므로 정리 불필요`);
+
+          // 관리자 로그 저장 - 정리 불필요
+          await this.saveAdminLog({
+            adminId: "시스템",
+            action: ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_COMPLETED,
+            targetId: "",
+            timestamp: new Date(),
+            metadata: {
+              successCount: 0,
+              failedCount: 0,
+              total: totalCount + 1, //해당 스케줄 로그 1건 추가
+              logMessage: `정리 불필요 (현재 ${totalCount+1}개, 최대 ${maxRecords}개 유지)`,
+              errorLogs: []
+            }
+          });
+
+          return {
+            deletedCount: 0,
+            totalCount,
+            maxRecords,
+            message: "정리 불필요"
+          };
+        }
+        
+        // 3. 삭제할 문서 개수 계산
+        const deleteCount = totalCount - maxRecords;
+        console.log(`삭제 대상: ${deleteCount}개`);
+        
+        // 4. timestamp 기준 오름차순 정렬 (오래된 것부터)
+        const docsToDelete = snapshot.docs
+          .sort((a, b) => {
+            const timestampA = a.data().timestamp?.seconds || a.data().timestamp || 0;
+            const timestampB = b.data().timestamp?.seconds || b.data().timestamp || 0;
+            return timestampA - timestampB;
+          })
+          .slice(0, deleteCount);
+        
+        // 5. 배치로 삭제 (Firestore는 한 번에 최대 500개 삭제 가능)
+        const BATCH_DELETE_SIZE = 500;
+        let deletedCount = 0;
+        const errors = [];
+        const errorLogs = [];
+        
+        for (let i = 0; i < docsToDelete.length; i += BATCH_DELETE_SIZE) {
+          const batch = docsToDelete.slice(i, i + BATCH_DELETE_SIZE);
+          console.log(`삭제 배치 ${Math.floor(i / BATCH_DELETE_SIZE) + 1}/${Math.ceil(docsToDelete.length / BATCH_DELETE_SIZE)} 처리 중...`);
+          
+          // Firestore batch write 사용 (최대 500개)
+          const firestoreBatch = db.batch();
+          
+          batch.forEach((doc) => {
+            firestoreBatch.delete(doc.ref);
+          });
+          
+          try {
+            await firestoreBatch.commit();
+            deletedCount += batch.length;
+            console.log(`배치 삭제 완료: ${batch.length}개 (총 ${deletedCount}/${deleteCount})`);
+          } catch (error) {
+            console.error(`배치 삭제 실패:`, error.message);
+            const batchNumber = Math.floor(i / BATCH_DELETE_SIZE) + 1;
+            errors.push({
+              batch: Math.floor(i / BATCH_DELETE_SIZE) + 1,
+              error: error.message
+            });
+            errorLogs.push(`배치 ${batchNumber} 삭제 실패: ${error.message}`);
+          }
+          
+          // 배치 사이 지연 (Firestore rate limit 방지)
+          if (i + BATCH_DELETE_SIZE < docsToDelete.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        console.log(`=== adminLogs 컬렉션 정리 완료 ===`);
+        console.log(`삭제된 문서: ${deletedCount}개`);
+        console.log(`남은 문서: ${totalCount - deletedCount}개`);
+        
+        if (errors.length > 0) {
+          console.warn(`삭제 중 오류 발생: ${errors.length}개 배치`);
+        }
+
+         // 관리자 로그 저장 - 정리 작업 완료
+        const hasErrors = errors.length > 0;
+        await this.saveAdminLog({
+          adminId: "시스템",
+          action: hasErrors 
+            ? ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_FAILED 
+            : ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_COMPLETED,
+          targetId: "",
+          timestamp: new Date(),
+          metadata: {
+            successCount: deletedCount,
+            failedCount: errors.length,
+            total: totalCount,
+            logMessage: hasErrors 
+              ? `동기화 과정: 관리자 로그 ${deletedCount}개 삭제 완료 (${errors.length}개 배치 실패)`
+              : `동기화 과정: 관리자 로그 ${deletedCount}개 삭제 완료`,
+            errorLogs: errorLogs.length > 0 ? errorLogs : []
+          }
+        });
+        
+        return {
+          deletedCount,
+          totalCount,
+          maxRecords,
+          remainingCount: totalCount - deletedCount,
+          errors: errors.length > 0 ? errors : undefined,
+          message: `${deletedCount}개 문서 삭제 완료`
+        };
+        
+      } catch (error) {
+        console.error('cleanupAdminLogs 전체 오류:', error);
+
+         // 관리자 로그 저장 - 정리 작업 실패
+        await this.saveAdminLog({
+          adminId: "시스템",
+          action: ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_FAILED,
+          targetId: "",
+          timestamp: new Date(),
+          metadata: {
+            successCount: 0,
+            failedCount: 1,
+            total: 0,
+            logMessage: `동기화 과정: 관리자 로그 정리 작업 실패 - ${error.message}`,
+            errorLogs: [error.message]
+          }
+        });
+
+        throw error;
+      }
+    }
 
 
 
