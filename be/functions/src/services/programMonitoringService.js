@@ -53,19 +53,25 @@ class ProgramMonitoringService {
     
     console.log(`[ProgramMonitoringService] ${programIds.length}개 프로그램 처리 시작`);
     
-    // 프로그램별로 데이터 생성
-    const programGroups = [];
-    
-    for (const progId of programIds) {
+    // 프로그램별로 데이터 생성 (병렬 처리로 성능 개선)
+    const programGroupPromises = programIds.map(async (progId) => {
       try {
         const groupData = await this.generateProgramGroupData(progId, month);
         if (groupData && groupData.participants.length > 0) {
-          programGroups.push(groupData);
+          return groupData;
         }
+        return null;
       } catch (error) {
         console.warn(`[ProgramMonitoringService] 프로그램 ${progId} 처리 실패:`, error.message);
+        if (!error.code) {
+          error.code = 'INTERNAL_ERROR';
+        }
+        return null;
       }
-    }
+    });
+    
+    const allGroupData = await Promise.all(programGroupPromises);
+    const programGroups = allGroupData.filter(group => group !== null);
     
     console.log(`[ProgramMonitoringService] ${programGroups.length}개 프로그램 그룹 생성 완료`);
     
@@ -200,7 +206,7 @@ class ProgramMonitoringService {
   }
 
   /**
-   * 사용자 정보로 보강
+   * 사용자 정보로 보강 (병렬 처리로 성능 개선)
    * @param {string[]} userIds - 사용자 ID 배열
    * @returns {Promise<Array>} [{ userId, nickname, name }]
    */
@@ -209,26 +215,37 @@ class ProgramMonitoringService {
       return [];
     }
     
-    const users = [];
-    
-    // Firestore 'in' 쿼리는 최대 10개씩만 가능
+    // Firestore 'in' 쿼리는 최대 10개씩만 가능, 청크를 병렬로 처리
+    const chunks = [];
     for (let i = 0; i < userIds.length; i += 10) {
-      const chunk = userIds.slice(i, i + 10);
-      const userDocs = await db.collection('users')
-        .where('__name__', 'in', chunk)
-        .get();
-      
-      userDocs.forEach(doc => {
-        const data = doc.data();
-        users.push({
-          userId: doc.id,
-          nickname: data.nickname || '',
-          name: data.name || ''
-        });
-      });
+      chunks.push(userIds.slice(i, i + 10));
     }
     
-    return users;
+    const chunkPromises = chunks.map(async (chunk) => {
+      try {
+        const userDocs = await db.collection('users')
+          .where('__name__', 'in', chunk)
+          .get();
+        
+        return userDocs.docs.map(doc => {
+          const data = doc.data();
+          return {
+            userId: doc.id,
+            nickname: data.nickname || '',
+            name: data.name || ''
+          };
+        });
+      } catch (error) {
+        console.error('[ProgramMonitoringService] enrichWithUserData 청크 조회 실패:', error.message);
+        if (!error.code) {
+          error.code = 'INTERNAL_ERROR';
+        }
+        return [];
+      }
+    });
+    
+    const allUserChunks = await Promise.all(chunkPromises);
+    return allUserChunks.flat();
   }
 
   /**
