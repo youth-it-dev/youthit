@@ -12,7 +12,7 @@ const programMonitoringController = require('../controllers/programMonitoringCon
 /**
  * @swagger
  * /programMonitoring/export:
- *   post:
+ *   get:
  *     summary: 프로그램 참가자 인증 현황 엑셀 다운로드
  *     description: |
  *       특정 프로그램의 참가자들의 일별 인증글 작성 현황을 엑셀 파일로 다운로드합니다.
@@ -29,31 +29,28 @@ const programMonitoringController = require('../controllers/programMonitoringCon
  *       - 둘 다 제공: 프로그램 활동 기간과 해당 월의 교집합
  *       - 둘 중 하나 이상은 필수입니다.
  *       
- *       **노션 웹훅 연동:**
- *       노션 Automation에서 아래와 같이 웹훅을 설정하여 호출할 수 있습니다:
- *       ```json
- *       {
- *         "programId": "{프로그램ID}",
- *         "month": "2024-10"
- *       }
+ *       **노션 버튼 연동:**
+ *       노션에서 아래 URL을 버튼에 연결하면 바로 다운로드가 가능합니다:
+ *       ```
+ *       https://your-api-domain.com/programMonitoring/export?programId={프로그램ID}&month=2024-10
  *       ```
  *     tags: [ProgramMonitoring]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               programId:
- *                 type: string
- *                 description: 프로그램 ID (Notion 페이지 ID 또는 Firestore community ID). 생략 시 전체 프로그램 대상
- *                 example: "1234abcd-5678-efgh-ijkl-9012mnop3456"
- *               month:
- *                 type: string
- *                 pattern: '^\d{4}-\d{2}$'
- *                 description: 조회 월 (YYYY-MM 형식). programId와 month 중 하나 이상 필수
- *                 example: "2024-10"
+ *     parameters:
+ *       - in: query
+ *         name: programId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: 프로그램 ID (Notion 페이지 ID 또는 Firestore community ID). 생략 시 전체 프로그램 대상
+ *         example: "1234abcd-5678-efgh-ijkl-9012mnop3456"
+ *       - in: query
+ *         name: month
+ *         required: false
+ *         schema:
+ *           type: string
+ *           pattern: '^\d{4}-\d{2}$'
+ *         description: 조회 월 (YYYY-MM 형식). programId와 month 중 하나 이상 필수
+ *         example: "2024-10"
  *     responses:
  *       200:
  *         description: 엑셀 파일 다운로드 성공
@@ -101,6 +98,6 @@ const programMonitoringController = require('../controllers/programMonitoringCon
  *                   type: string
  *                   example: "MISSING_FIRESTORE_INDEX"
  */
-router.post('/export', programMonitoringController.exportProgramMonitoring);
+router.get('/export', programMonitoringController.exportProgramMonitoring);
 
 module.exports = router;
