@@ -12,7 +12,7 @@ const rewardMonitoringController = require('../controllers/rewardMonitoringContr
 /**
  * @swagger
  * /rewardMonitoring/export/store-purchases:
- *   get:
+ *   post:
  *     summary: 월별 나다움 스토어 구매 명단 엑셀 다운로드
  *     description: |
  *       특정 월의 나다움 스토어 구매 명단을 엑셀 파일로 다운로드합니다.
@@ -21,16 +21,26 @@ const rewardMonitoringController = require('../controllers/rewardMonitoringContr
  *       | 순번 | 사용자ID | 닉네임 | 이름 | 사용한 나다움 포인트(N) | 상품명 | 구매일 |
  *       |------|----------|--------|------|------------------------|--------|--------|
  *       | 1    | xxx      | 지니   | 홍길동 | 250                   | 문화상품권 2만원권 | 2024-10-10 |
+ *       
+ *       **노션 웹훅 연동:**
+ *       ```json
+ *       { "month": "2024-10" }
+ *       ```
  *     tags: [RewardMonitoring]
- *     parameters:
- *       - in: query
- *         name: month
- *         required: true
- *         schema:
- *           type: string
- *           pattern: '^\d{4}-\d{2}$'
- *         description: 조회 월 (YYYY-MM 형식)
- *         example: "2024-10"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - month
+ *             properties:
+ *               month:
+ *                 type: string
+ *                 pattern: '^\d{4}-\d{2}$'
+ *                 description: 조회 월 (YYYY-MM 형식)
+ *                 example: "2024-10"
  *     responses:
  *       200:
  *         description: 엑셀 파일 다운로드 성공
@@ -44,12 +54,12 @@ const rewardMonitoringController = require('../controllers/rewardMonitoringContr
  *       500:
  *         description: 서버 오류
  */
-router.get('/export/store-purchases', rewardMonitoringController.exportStorePurchases);
+router.post('/export/store-purchases', rewardMonitoringController.exportStorePurchases);
 
 /**
  * @swagger
  * /rewardMonitoring/export/monthly-summary:
- *   get:
+ *   post:
  *     summary: 월별 참여자 나다움 적립/차감 명단 엑셀 다운로드
  *     description: |
  *       지정된 월들의 참여자별 나다움 적립/차감 요약을 엑셀 파일로 다운로드합니다.
@@ -58,15 +68,25 @@ router.get('/export/store-purchases', rewardMonitoringController.exportStorePurc
  *       | 순번 | 사용자ID | 닉네임 | 이름 | 이전 누적 | 9월 적립 | 9월 사용 | 10월 적립 | 10월 사용 | 현재 보유 |
  *       |------|----------|--------|------|----------|---------|---------|----------|----------|----------|
  *       | 1    | xxx      | 지니   | 홍길동 | 302      | 48      | 250     | 254      | 0        | 350      |
+ *       
+ *       **노션 웹훅 연동:**
+ *       ```json
+ *       { "months": "2024-09,2024-10" }
+ *       ```
  *     tags: [RewardMonitoring]
- *     parameters:
- *       - in: query
- *         name: months
- *         required: true
- *         schema:
- *           type: string
- *         description: 조회할 월 목록 (콤마 구분, YYYY-MM 형식)
- *         example: "2024-09,2024-10"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - months
+ *             properties:
+ *               months:
+ *                 type: string
+ *                 description: 조회할 월 목록 (콤마 구분, YYYY-MM 형식)
+ *                 example: "2024-09,2024-10"
  *     responses:
  *       200:
  *         description: 엑셀 파일 다운로드 성공
@@ -80,12 +100,12 @@ router.get('/export/store-purchases', rewardMonitoringController.exportStorePurc
  *       500:
  *         description: 서버 오류
  */
-router.get('/export/monthly-summary', rewardMonitoringController.exportMonthlySummary);
+router.post('/export/monthly-summary', rewardMonitoringController.exportMonthlySummary);
 
 /**
  * @swagger
  * /rewardMonitoring/export/history:
- *   get:
+ *   post:
  *     summary: 나다움 적립/차감 내역 엑셀 다운로드
  *     description: |
  *       특정 월의 나다움 적립/차감 상세 내역을 엑셀 파일로 다운로드합니다.
@@ -94,16 +114,26 @@ router.get('/export/monthly-summary', rewardMonitoringController.exportMonthlySu
  *       | 순번 | 사용자 ID | 사용자 이름 | 발생 일시 | 소멸 예정 일시 | 수량/금액 | 내역 구분 | 사유 | 관리자 메뉴/부가 설명 |
  *       |------|-----------|------------|----------|---------------|----------|----------|------|----------------------|
  *       | 1    | xxx       | 지니       | 2025-12-08 | 2026-04-07   | 1        | 지급     | 디퀘스트 | 한 끗 루틴유스보이스 |
+ *       
+ *       **노션 웹훅 연동:**
+ *       ```json
+ *       { "month": "2024-10" }
+ *       ```
  *     tags: [RewardMonitoring]
- *     parameters:
- *       - in: query
- *         name: month
- *         required: true
- *         schema:
- *           type: string
- *           pattern: '^\d{4}-\d{2}$'
- *         description: 조회 월 (YYYY-MM 형식)
- *         example: "2024-10"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - month
+ *             properties:
+ *               month:
+ *                 type: string
+ *                 pattern: '^\d{4}-\d{2}$'
+ *                 description: 조회 월 (YYYY-MM 형식)
+ *                 example: "2024-10"
  *     responses:
  *       200:
  *         description: 엑셀 파일 다운로드 성공
@@ -117,7 +147,7 @@ router.get('/export/monthly-summary', rewardMonitoringController.exportMonthlySu
  *       500:
  *         description: 서버 오류
  */
-router.get('/export/history', rewardMonitoringController.exportRewardHistory);
+router.post('/export/history', rewardMonitoringController.exportRewardHistory);
 
 module.exports = router;
 

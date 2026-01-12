@@ -21,11 +21,12 @@ function sanitizeFileName(fileName) {
 class RewardMonitoringController {
   /**
    * API 1: 월별 나다움 스토어 구매 명단 다운로드
-   * GET /rewardMonitoring/export/store-purchases?month=2024-10
+   * POST /rewardMonitoring/export/store-purchases
+   * Request Body: { "month": "2024-10" }
    */
   async exportStorePurchases(req, res, next) {
     try {
-      const { month } = req.query;
+      const { month } = req.body;
 
       // 파라미터 검증
       if (!month) {
@@ -78,11 +79,12 @@ class RewardMonitoringController {
 
   /**
    * API 2: 월별 참여자 나다움 적립/차감 명단 다운로드
-   * GET /rewardMonitoring/export/monthly-summary?months=2024-09,2024-10
+   * POST /rewardMonitoring/export/monthly-summary
+   * Request Body: { "months": "2024-09,2024-10" }
    */
   async exportMonthlySummary(req, res, next) {
     try {
-      const { months } = req.query;
+      const { months } = req.body;
 
       // 파라미터 검증
       if (!months) {
@@ -139,11 +141,12 @@ class RewardMonitoringController {
 
   /**
    * API 3: 나다움 적립/차감 내역 다운로드
-   * GET /rewardMonitoring/export/history?month=2024-10
+   * POST /rewardMonitoring/export/history
+   * Request Body: { "month": "2024-10" }
    */
   async exportRewardHistory(req, res, next) {
     try {
-      const { month } = req.query;
+      const { month } = req.body;
 
       // 파라미터 검증
       if (!month) {
