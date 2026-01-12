@@ -25,13 +25,13 @@ class ProgramMonitoringController {
    * @param {Object} res - Express 응답 객체
    * @param {Function} next - Express next 함수
    * 
-   * Query Parameters:
+   * Request Body:
    * - programId: 프로그램 ID (필수)
    * - month: 조회 월 YYYY-MM 형식 (선택)
    */
   async exportProgramMonitoring(req, res, next) {
     try {
-      const { programId, month } = req.query;
+      const { programId, month } = req.body;
 
       // 파라미터 검증: programId 또는 month 중 하나는 필수
       if (!programId && !month) {
