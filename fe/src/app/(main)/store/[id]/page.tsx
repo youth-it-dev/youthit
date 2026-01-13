@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
+import { InquiryFloatingButton } from "@/components/shared/inquiry/InquiryFloatingButton";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
-import Modal from "@/components/shared/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetStoreProductsById } from "@/hooks/generated/store-hooks";
 import { useGetUsersMe } from "@/hooks/generated/users-hooks";
-import useToggle from "@/hooks/shared/useToggle";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import { cn } from "@/utils/shared/cn";
 import { getNotionCoverImage } from "@/utils/shared/getNotionCoverImage";
@@ -230,11 +229,7 @@ const StoreProductDetailPage = () => {
   const productId = params.id as string;
 
   const [shouldLoadNotion, setShouldLoadNotion] = useState(false);
-  const [activeTab, setActiveTab] = useState<"detail" | "inquiry">("detail");
   const [isQuantityPopupOpen, setIsQuantityPopupOpen] = useState(false);
-  const tabRef = useRef<HTMLDivElement>(null);
-  const detailSectionRef = useRef<HTMLDivElement>(null);
-  const inquirySectionRef = useRef<HTMLDivElement>(null);
 
   // TopBar 제어
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
@@ -346,38 +341,6 @@ const StoreProductDetailPage = () => {
     return null;
   };
 
-  // 탭에 해당하는 섹션으로 스크롤
-  const scrollToTabSection = useCallback((tab: "detail" | "inquiry") => {
-    let targetRef: React.RefObject<HTMLDivElement | null> | null = null;
-
-    switch (tab) {
-      case "detail":
-        targetRef = detailSectionRef;
-        break;
-      case "inquiry":
-        targetRef = inquirySectionRef;
-        break;
-    }
-
-    if (!targetRef?.current) return;
-
-    targetRef.current.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, []);
-
-  // 탭 클릭 시 해당 섹션으로 스크롤
-  const handleTabClick = useCallback(
-    (tab: "detail" | "inquiry") => {
-      setActiveTab(tab);
-      setTimeout(() => {
-        scrollToTabSection(tab);
-      }, 0);
-    },
-    [scrollToTabSection]
-  );
-
   // 수량 선택 팝업에서 신청하기 클릭 - 구매 페이지로 이동
   const handlePurchaseConfirm = useCallback(
     (quantity: number) => {
@@ -466,47 +429,8 @@ const StoreProductDetailPage = () => {
         </div>
       </div>
 
-      {/* 탭 네비게이션 */}
-      <div
-        ref={tabRef}
-        className="sticky top-12 z-10 border-b border-gray-200 bg-white"
-      >
-        <div className="flex">
-          <button
-            onClick={() => handleTabClick("detail")}
-            className={cn(
-              "flex-1 border-b-2 px-4 py-3 text-center",
-              activeTab === "detail"
-                ? "border-pink-500 text-pink-500"
-                : "border-transparent text-gray-500"
-            )}
-          >
-            <Typography font="noto" variant="body3B">
-              상세 설명
-            </Typography>
-          </button>
-          <button
-            onClick={() => handleTabClick("inquiry")}
-            className={cn(
-              "flex-1 border-b-2 px-4 py-3 text-center",
-              activeTab === "inquiry"
-                ? "border-pink-500 text-pink-500"
-                : "border-transparent text-gray-500"
-            )}
-          >
-            <Typography font="noto" variant="body3B">
-              상품 문의
-            </Typography>
-          </button>
-        </div>
-      </div>
-
-      {/* 상세 설명 탭 */}
-      <div
-        id="detail"
-        ref={detailSectionRef}
-        style={{ scrollMarginTop: "120px" }}
-      >
+      {/* 상세 설명 */}
+      <div className="pb-24">
         {notionRecordMap ? (
           <div className="notion-page">
             <NotionRenderer
@@ -524,22 +448,8 @@ const StoreProductDetailPage = () => {
         )}
       </div>
 
-      {/* 상품 문의 탭 */}
-      <div
-        id="inquiry"
-        ref={inquirySectionRef}
-        className="p-4"
-        style={{ scrollMarginTop: "120px" }}
-      >
-        <Typography as="h3" font="noto" variant="heading3B" className="mb-4">
-          상품 문의
-        </Typography>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <Typography font="noto" variant="body2R" className="text-gray-500">
-            아직 등록된 문의가 없습니다.
-          </Typography>
-        </div>
-      </div>
+      {/* 문의하기 플로팅 버튼 */}
+      <InquiryFloatingButton />
 
       {/* 하단 고정 버튼 */}
       <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-transparent p-4">

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
+import { InquiryFloatingButton } from "@/components/shared/inquiry/InquiryFloatingButton";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -170,17 +171,8 @@ const AnnouncementDetailPage = () => {
         )}
       </div>
 
-      {/* 댓글 영역 */}
-      <div className="border-t border-gray-200 bg-gray-50 p-4">
-        <Typography as="h3" font="noto" variant="heading3B" className="mb-4">
-          댓글
-        </Typography>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <Typography font="noto" variant="body2R" className="text-gray-500">
-            댓글 기능은 준비 중입니다.
-          </Typography>
-        </div>
-      </div>
+      {/* 문의하기 플로팅 버튼 */}
+      <InquiryFloatingButton />
     </div>
   );
 };
