@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
 import type { ExtendedRecordMap } from "notion-types";
 import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
-import { QnAList } from "@/components/shared/qna/QnAList";
+import { InquiryFloatingButton } from "@/components/shared/inquiry/InquiryFloatingButton";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,10 +16,7 @@ import { PROGRAM_DETAIL_TABS } from "@/constants/shared/_detail-tabs";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetProgramsById } from "@/hooks/generated/programs-hooks";
 import { useGetPrograms } from "@/hooks/generated/programs-hooks";
-import {
-  useGetUsersMe,
-  useGetUsersMeParticipatingCommunities,
-} from "@/hooks/generated/users-hooks";
+import { useGetUsersMeParticipatingCommunities } from "@/hooks/generated/users-hooks";
 import { onAuthStateChange } from "@/lib/auth";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type {
@@ -30,14 +27,11 @@ import { cn } from "@/utils/shared/cn";
 import { formatDateRange, getTimeAgo } from "@/utils/shared/date";
 import { shareContent } from "@/utils/shared/share";
 
-const MAX_INQUIRIES_DISPLAY = 3;
-
 /**
  * @description 프로그램 상세 페이지
  */
 const ProgramDetailPage = () => {
   const params = useParams();
-  const router = useRouter();
   const programId = params.id as string;
 
   const [shouldLoadNotion, setShouldLoadNotion] = useState(false);
@@ -375,16 +369,6 @@ const ProgramDetailPage = () => {
     }
   };
 
-  // 사용자 정보 조회 (QnA 작성자 이름용)
-  // 주의: 조건부 return 이전에 Hook을 호출해야 React Hooks 규칙을 준수합니다
-  const { data: userData } = useGetUsersMe({
-    request: {},
-    select: (data) => data?.user,
-    enabled: !!currentUser,
-  });
-
-  const userName = userData?.nickname || "";
-
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white p-4">
@@ -687,38 +671,8 @@ const ProgramDetailPage = () => {
         </div>
       </div>
 
-      {/* 최하단: 댓글/문의 섹션 */}
-      <div className="border-t border-gray-200 bg-white">
-        <div className="p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <Typography as="h3" font="noto" variant="heading3B">
-              더 궁금한 점이 있으신가요?
-            </Typography>
-            <Link
-              href={`/programs/${programId}/comments`}
-              className="text-pink-500"
-            >
-              <Typography font="noto" variant="body3R">
-                문의 남기기 →
-              </Typography>
-            </Link>
-          </div>
-        </div>
-
-        {/* QnA 목록 (최대 3개, 답글 1개, 좋아요 숨김) */}
-        <QnAList
-          pageId={programId}
-          pageType="program"
-          userName={userName}
-          maxDisplay={3}
-          maxReplies={1}
-          showLike={false}
-          showInput={false}
-          onShowMoreClick={() => {
-            router.push(`/programs/${programId}/comments`);
-          }}
-        />
-      </div>
+      {/* 문의하기 플로팅 버튼 */}
+      <InquiryFloatingButton />
 
       {/* 프로그램 추천 배너 */}
       {recommendedProgramsData && recommendedProgramsData.length > 0 && (
