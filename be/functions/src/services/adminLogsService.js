@@ -1,9 +1,10 @@
 const { Client } = require('@notionhq/client');
 const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
+const { ADMIN_LOG_CONSTANTS } = require("../constants/adminLogConstants");
 
 
-// Notion API rate limit 방지를 위한 배치 처리 설정
+// Notion API rate limit 방지를 위한 배치 처리 설정 (Admin Logs 동기화 하는 경우 사용)
 const DELAY_MS = 1200; // 지연시간 (밀리초)
 const BATCH_SIZE = 500; // 배치 사이즈
 
@@ -591,7 +592,7 @@ class AdminLogsService {
         adminId: adminId,
         action: action,
         targetId: targetId,
-        timestamp: timestamp || new Date(),
+        timestamp: timestamp || FieldValue.serverTimestamp(),
         metadata: metadata || {}
       });
       
@@ -617,7 +618,7 @@ class AdminLogsService {
    * @param {number} maxRecords - 유지할 최대 레코드 수 (기본값: 1000)
    * @returns {Promise<Object>} 정리 결과 (deletedCount, totalCount)
    */
-    async cleanupAdminLogs(maxRecords = 1000) {
+    async cleanupAdminLogs(maxRecords = ADMIN_LOG_CONSTANTS.MAX_ADMIN_LOGS_COUNT) {  
       try {
 
         console.log(`=== adminLogs 컬렉션 정리 시작 (최대 ${maxRecords}개 유지) ===`);
@@ -638,11 +639,11 @@ class AdminLogsService {
             adminId: "시스템",
             action: ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_COMPLETED,
             targetId: "",
-            timestamp: new Date(),
+            //timestamp: new Date(), (saveAdminLog에서 FieldValue.serverTimestamp() 사용)
             metadata: {
               successCount: 0,
               failedCount: 0,
-              total: totalCount + 1, //해당 스케줄 로그 1건 추가
+              total: totalCount + 1, //해당 스케줄링에 대한 로그가 남기 때문에 +1
               logMessage: `정리 불필요 (현재 ${totalCount+1}개, 최대 ${maxRecords}개 유지)`,
               errorLogs: []
             }
@@ -669,7 +670,7 @@ class AdminLogsService {
         const docsToDelete = deleteSnapshot.docs; // 이미 정렬되어 있음
         
         // 5. 배치로 삭제 (Firestore는 한 번에 최대 500개 삭제 가능)
-        const BATCH_DELETE_SIZE = 500;
+        const BATCH_DELETE_SIZE = ADMIN_LOG_CONSTANTS.CLEANUP_BATCH_SIZE;
         let deletedCount = 0;
         const errors = [];
         const errorLogs = [];
@@ -701,7 +702,7 @@ class AdminLogsService {
           
           // 배치 사이 지연 (Firestore rate limit 방지)
           if (i + BATCH_DELETE_SIZE < docsToDelete.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, ADMIN_LOG_CONSTANTS.CLEANUP_BATCH_DELAY_MS));
           }
         }
         
@@ -721,7 +722,7 @@ class AdminLogsService {
             ? ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_FAILED 
             : ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_COMPLETED,
           targetId: "",
-          timestamp: new Date(),
+          //timestamp: new Date(), (saveAdminLog에서 FieldValue.serverTimestamp() 사용)
           metadata: {
             successCount: deletedCount,
             failedCount: errors.length,
@@ -750,12 +751,12 @@ class AdminLogsService {
           adminId: "시스템",
           action: ADMIN_LOG_ACTIONS.ADMIN_LOG_CLEANUP_FAILED,
           targetId: "",
-          timestamp: new Date(),
+          //timestamp: new Date(), (saveAdminLog에서 FieldValue.serverTimestamp() 사용)
           metadata: {
             successCount: 0,
             failedCount: 1,
             total: 0,
-            logMessage: `동기화 과정: 관리자 로그 정리 작업 실패 - ${error.message}`,
+            logMessage: `정리 작업: 관리자 로그 정리 실패 - ${error.message}`,
             errorLogs: [error.message]
           }
         });
