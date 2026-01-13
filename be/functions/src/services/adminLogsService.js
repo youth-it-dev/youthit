@@ -728,8 +728,8 @@ class AdminLogsService {
             failedCount: errors.length,
             total: totalCount,
             logMessage: hasErrors 
-              ? `동기화 과정: 관리자 로그 ${deletedCount}개 삭제 완료 (${errors.length}개 배치 실패)`
-              : `동기화 과정: 관리자 로그 ${deletedCount}개 삭제 완료`,
+              ? `정리 작업: 관리자 로그 ${deletedCount}개 삭제 완료 (${errors.length}개 배치 실패)`
+              : `정리 작업: 관리자 로그 ${deletedCount}개 삭제 완료`,
             errorLogs: errorLogs.length > 0 ? errorLogs : []
           }
         });
