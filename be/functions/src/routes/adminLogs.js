@@ -44,16 +44,16 @@ const router = express.Router();
 router.get("/sync/adminLogs", adminLogsController.syncAdminLogs);
 
 
-//테스트용 수동 실행 API 엔드포인트
-router.post("/cleanup", async (req, res) => {
-    try {
-      const { maxRecords } = req.body;
-      const result = await runAdminLogsCleanup();
-      res.success(result, "adminLogs 정리 완료");
-    } catch (error) {
-      res.error(error, "adminLogs 정리 실패");
-    }
-  });
+//테스트용 수동 실행 API 엔드포인트 (테스트 환경에서만 사용)
+// router.post("/cleanup", async (req, res) => {
+//     try {
+//       const { maxRecords } = req.body;
+//       const result = await runAdminLogsCleanup();
+//       res.success(result, "adminLogs 정리 완료");
+//     } catch (error) {
+//       res.error(error, "adminLogs 정리 실패");
+//     }
+//   });
 
 
 module.exports = router;
