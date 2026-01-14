@@ -434,10 +434,16 @@ class AdminLogsService {
       };
     }
 
+
+    // 동기화된 사용자 ID 목록 (다중선택 타입)
+    // Notion multi_select 필드는 최대 100개까지만 허용
+    const MAX_MULTI_SELECT_ITEMS = 100;
+
     /*
     - 동기화된 사용자 ID 목록 (텍스트 타입 - 쉼표로 구분) 해당 타입으로 수정하려고 하였으나,
       노션에서 텍스트 타입에는 최대 2,000자 까지 저장이 가능하여 동기화된 사용자가 많을 경우 오류가 발생
       따라서 다중성택 타입으로 저장하는 방법을 유지함
+      : 실제 Id가 20글자라고 하면 ','를 기준으로 rich_text 타입으로 저장해도 가능한 id는 100개 내외
       [참고]
       + rich_text(텍스트) : 블록당 최대 2,000자
       + multi_select(다중선택) : 각 옵션 이름 최대 100자, 옵션 개수 제한 없음
@@ -447,8 +453,24 @@ class AdminLogsService {
     */
     // 동기화된 사용자 ID 목록 (다중선택 타입)
     if (successUserIds && successUserIds.length > 0) {
-        notionPage["성공한 사용자ID"] = {
-        multi_select: successUserIds.map(userId => ({ name: userId }))
+      let multiSelectItems;
+      
+      if (successUserIds.length > MAX_MULTI_SELECT_ITEMS) {
+        // 100개를 초과하는 경우 처음 99개 + "..." (총 100개)
+        const limitedSuccessUserIds = successUserIds.slice(0, MAX_MULTI_SELECT_ITEMS - 1);
+        multiSelectItems = [
+          ...limitedSuccessUserIds.map(userId => ({ name: userId })),
+          { name: "..." }
+        ];
+        
+        console.warn(`[adminLogsService] 성공한 사용자ID가 ${successUserIds.length}개로 100개를 초과하여 처음 ${MAX_MULTI_SELECT_ITEMS - 1}개와 "..."만 저장합니다.`);
+      } else {
+        // 100개 이하인 경우 모두 저장
+        multiSelectItems = successUserIds.map(userId => ({ name: userId }));
+      }
+      
+      notionPage["성공한 사용자ID"] = {
+        multi_select: multiSelectItems
       };
     } else {
       // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
@@ -459,8 +481,24 @@ class AdminLogsService {
 
     // 동기화 실패한 사용자 ID 목록 (다중선택 타입)
     if (failedUserIds.length > 0) {
+      let multiSelectItems;
+      
+      if (failedUserIds.length > MAX_MULTI_SELECT_ITEMS) {
+        // 100개를 초과하는 경우 처음 99개 + "..." (총 100개)
+        const limitedFailedUserIds = failedUserIds.slice(0, MAX_MULTI_SELECT_ITEMS - 1);
+        multiSelectItems = [
+          ...limitedFailedUserIds.map(userId => ({ name: userId })),
+          { name: "..." }
+        ];
+        
+        console.warn(`[adminLogsService] 실패한 사용자ID가 ${failedUserIds.length}개로 100개를 초과하여 처음 ${MAX_MULTI_SELECT_ITEMS - 1}개와 "..."만 저장합니다.`);
+      } else {
+        // 100개 이하인 경우 모두 저장
+        multiSelectItems = failedUserIds.map(userId => ({ name: userId }));
+      }
+      
       notionPage["실패한 사용자ID"] = {
-        multi_select: failedUserIds.map(userId => ({ name: userId }))
+        multi_select: multiSelectItems
       };
     } else {
       // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
