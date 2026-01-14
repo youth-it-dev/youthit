@@ -227,27 +227,32 @@ class RewardMonitoringService {
         const monthlyData = {};
         sortedMonths.forEach(month => {
           const { start, end } = this.getMonthRange(month);
-          let earned = 0;  // 적립
-          let used = 0;    // 사용 (스토어 구매)
+          let earned = 0;    // 적립
+          let used = 0;      // 사용 (스토어 구매)
+          let deducted = 0;  // 차감 (스토어 구매 외)
 
           histories.forEach(h => {
             if (h.createdAt && h.createdAt >= start && h.createdAt <= end) {
               if (h.changeType === 'add') {
                 earned += h.amount;
-              } else if (h.changeType === 'deduct' && h.actionKey === 'store') {
-                used += h.amount;
+              } else if (h.changeType === 'deduct') {
+                if (h.actionKey === 'store') {
+                  used += h.amount;
+                } else {
+                  deducted += h.amount;
+                }
               }
             }
           });
 
-          monthlyData[month] = { earned, used };
+          monthlyData[month] = { earned, used, deducted };
         });
 
         // 현재 보유 포인트
         const currentRewards = userData.rewards || 0;
 
         // 히스토리가 있는 사용자만 포함
-        const hasActivity = Object.values(monthlyData).some(m => m.earned > 0 || m.used > 0);
+        const hasActivity = Object.values(monthlyData).some(m => m.earned > 0 || m.used > 0 || m.deducted > 0);
         if (hasActivity || previousTotal > 0 || currentRewards > 0) {
           userSummaries.push({
             userId,

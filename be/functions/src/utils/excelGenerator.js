@@ -266,10 +266,10 @@ class ExcelGenerator {
       return workbook;
     }
 
-    // 헤더 생성: 순번, 사용자ID, 닉네임, 이름, 이전 누적, [월별 적립], 현재 보유
+    // 헤더 생성: 순번, 사용자ID, 닉네임, 이름, 이전 누적, [월별 적립/사용/차감], 현재 보유
     const monthHeaders = months.flatMap(m => {
       const monthNum = m.split('-')[1];
-      return [`${monthNum}월 적립`, `${monthNum}월 사용`];
+      return [`${monthNum}월 적립`, `${monthNum}월 사용`, `${monthNum}월 차감`];
     });
     const headers = ['순번', '사용자ID', '닉네임', '이름', '이전 누적', ...monthHeaders, '현재 보유'];
     const headerRow = worksheet.addRow(headers);
@@ -291,8 +291,8 @@ class ExcelGenerator {
     // 데이터 행 추가
     users.forEach((user, index) => {
       const monthValues = months.flatMap(m => {
-        const monthData = user.monthlyData[m] || { earned: 0, used: 0 };
-        return [monthData.earned, monthData.used];
+        const monthData = user.monthlyData[m] || { earned: 0, used: 0, deducted: 0 };
+        return [monthData.earned, monthData.used, monthData.deducted];
       });
 
       worksheet.addRow([
@@ -314,7 +314,8 @@ class ExcelGenerator {
     const monthTotals = months.flatMap(m => {
       const earned = users.reduce((sum, u) => sum + ((u.monthlyData[m]?.earned) || 0), 0);
       const used = users.reduce((sum, u) => sum + ((u.monthlyData[m]?.used) || 0), 0);
-      return [earned, used];
+      const deducted = users.reduce((sum, u) => sum + ((u.monthlyData[m]?.deducted) || 0), 0);
+      return [earned, used, deducted];
     });
 
     const totalRow = worksheet.addRow([
