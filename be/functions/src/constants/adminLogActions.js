@@ -98,9 +98,11 @@ const ADMIN_LOG_ACTIONS = {
 
     NOTION_REPORT_PROCESS_REQUESTED: "NOTION_REPORT_PROCESS_REQUESTED", // 노션 신고 콘텐츠 처리 요청 (관리자 액션)
     
-
     ADMIN_LOG_CLEANUP_COMPLETED: "ADMIN_LOG_CLEANUP_COMPLETED", // 관리자 로그 정리 완료
     ADMIN_LOG_CLEANUP_FAILED: "ADMIN_LOG_CLEANUP_FAILED", // adminLogs 컬렉션 정리 실패
+
+    NOTION_NADAUM_HISTORY_SYNC_REQUESTED: "NOTION_NADAUM_HISTORY_SYNC_REQUESTED", // 나다움 내역 동기화 요청 (갱신 버튼 클릭)
+
   };
   
   module.exports = {
