@@ -469,12 +469,12 @@ class AdminLogsService {
         multiSelectItems = successUserIds.map(userId => ({ name: userId }));
       }
       
-      notionPage["성공한 사용자ID"] = {
+      notionPage["성공한 ID"] = {
         multi_select: multiSelectItems
       };
     } else {
       // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-      notionPage["성공한 사용자ID"] = {
+      notionPage["성공한 ID"] = {
         multi_select: []
       };
     }
@@ -497,12 +497,12 @@ class AdminLogsService {
         multiSelectItems = failedUserIds.map(userId => ({ name: userId }));
       }
       
-      notionPage["실패한 사용자ID"] = {
+      notionPage["실패한 ID"] = {
         multi_select: multiSelectItems
       };
     } else {
       // 빈 배열인 경우에도 필드를 설정하여 기존 값 초기화
-      notionPage["실패한 사용자ID"] = {
+      notionPage["실패한 ID"] = {
         multi_select: []
       };
     }
