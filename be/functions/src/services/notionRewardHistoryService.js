@@ -1,6 +1,7 @@
 const { Client } = require('@notionhq/client');
 const { db, FieldValue } = require("../config/database");
 const { ADMIN_LOG_ACTIONS } = require("../constants/adminLogActions");
+const adminLogsService = require("./adminLogsService");
 
 // 배치 처리 설정 (notionUserService와 동일)
 const DELAY_MS = 1200; // 지연시간
@@ -153,6 +154,24 @@ class NotionRewardHistoryService {
 
       if (rewardsHistorySnapshot.docs.length === 0) {
         console.log('동기화할 리워드 히스토리가 없습니다.');
+
+        // 관리자 로그 저장 (동기화할 데이터가 없는 경우)
+        await adminLogsService.saveAdminLog({
+          adminId: "Notion 관리자",
+          action: ADMIN_LOG_ACTIONS.NOTION_NADAUM_HISTORY_SYNC_REQUESTED,
+          targetId: "", // 전체 동기화 작업이므로 빈 값
+          timestamp: new Date(),
+          metadata: {
+            successCount: 0,
+            failedCount: 0,
+            total: 0,
+            successUserIds: [],
+            failedUserIds: [],
+            logMessage: "동기화할 리워드 히스토리가 없습니다.",
+            errorLogs: []
+          }
+        });
+
         return { syncedCount: 0, failedCount: 0, total: 0 };
       }
 
@@ -270,6 +289,7 @@ class NotionRewardHistoryService {
       let failedCount = 0;
       const syncedHistoryIds = [];
       const failedHistoryIds = [];
+      const syncErrorLogs = []; // 에러 로그 수집 배열 추가
 
       // 5. 배치 처리로 Notion에 동기화
       for (let i = 0; i < rewardsHistorySnapshot.docs.length; i += BATCH_SIZE) {
@@ -290,6 +310,7 @@ class NotionRewardHistoryService {
               console.warn(`[WARN] userId를 추출할 수 없습니다: ${doc.ref.path}`);
               failedCount++;
               failedHistoryIds.push(historyId);
+              syncErrorLogs.push(`리워드 히스토리 ${historyId}: userId를 추출할 수 없습니다`);
               return { success: false, historyId, error: 'userId_not_found' };
             }
 
@@ -409,6 +430,8 @@ class NotionRewardHistoryService {
             failedCount++;
             const historyId = doc.id;
             failedHistoryIds.push(historyId);
+            const errorMsg = error.message || '알 수 없는 오류';
+            syncErrorLogs.push(`리워드 히스토리 ${historyId}: ${errorMsg.substring(0, 150)}`);
             console.error(`[동기화 실패] 리워드 히스토리 ${historyId}:`, error.message || error);
             return { success: false, historyId, error: error.message };
           }
@@ -431,26 +454,23 @@ class NotionRewardHistoryService {
       console.log(`=== 리워드 히스토리 동기화 완료 ===`);
       console.log(`총 ${syncedCount}개 동기화, 실패: ${failedCount}개`);
 
-      // adminLogs에 동기화 결과 저장
-      try {
-        const logRef = db.collection("adminLogs").doc();
-        await logRef.set({
-          adminId: "Notion 관리자",
-          action: ADMIN_LOG_ACTIONS.REWARD_SYNCED,
-          targetId: "",
-          timestamp: new Date(),
-          metadata: {
-            syncedCount: syncedCount,
-            failedCount: failedCount,
-            total: rewardsHistorySnapshot.docs.length,
-            syncedHistoryIds: syncedHistoryIds,
-            failedHistoryIds: failedHistoryIds,
-          }
-        });
-        console.log(`[adminLogs] 리워드 히스토리 동기화 이력 저장 완료`);
-      } catch (logError) {
-        console.error("[adminLogs] 로그 저장 실패:", logError);
-      }
+
+      // adminLogs 관리자 로그 저장 
+      await adminLogsService.saveAdminLog({
+        adminId: "Notion 관리자",
+        action: ADMIN_LOG_ACTIONS.NOTION_NADAUM_HISTORY_SYNC_REQUESTED,
+        targetId: "", // 전체 동기화 작업이므로 빈 값
+        timestamp: new Date(),
+        metadata: {
+          successCount: syncedCount,
+          failedCount: failedCount,
+          total: rewardsHistorySnapshot.docs.length,
+          successUserIds: syncedHistoryIds,
+          failedUserIds: failedHistoryIds,
+          logMessage: "",
+          errorLogs: syncErrorLogs || [] // 에러 로그 (없으면 빈 배열)
+        }
+      });
 
       return { 
         syncedCount, 
