@@ -8,16 +8,19 @@ import CalendarWeekDayItem from "@/components/my-page/CalendarWeekDayItem";
 import MyPageSkeleton from "@/components/my-page/MyPageSkeleton";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
+import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import {
   WEEK_DAYS,
   CALENDAR_CONSTANTS,
 } from "@/constants/my-page/_my-page-constants";
 import { LINK_URL } from "@/constants/shared/_link-url";
+import { useGetRewardsPolicies } from "@/hooks/generated/rewards-hooks";
 import {
   useGetUsersMe,
   useGetUsersMeRoutineCalendar,
 } from "@/hooks/generated/users-hooks";
+import useToggle from "@/hooks/shared/useToggle";
 import {
   generateCalendarDays,
   generateDateKey,
@@ -34,6 +37,18 @@ const Page = () => {
 
   // 탭 상태 관리
   const [activeTab, setActiveTab] = useState<ActivityTabType>("routine");
+
+  // 나다움 획득 조건 bottom sheet 상태
+  const {
+    isOpen: isRewardPoliciesOpen,
+    open: openRewardPolicies,
+    close: closeRewardPolicies,
+  } = useToggle();
+
+  // 나다움 획득 조건 조회
+  const { data: rewardPoliciesData } = useGetRewardsPolicies({
+    enabled: isRewardPoliciesOpen,
+  });
 
   // 달력 상태 관리
   const today = new Date();
@@ -271,10 +286,7 @@ const Page = () => {
             <div className="h-px bg-gray-200" />
 
             {/* 사용 가능한 나다움 */}
-            <ButtonBase
-              onClick={handlePointsClick}
-              className="flex items-center justify-between px-4 py-4"
-            >
+            <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-1">
                 <Typography
                   font="noto"
@@ -283,9 +295,21 @@ const Page = () => {
                 >
                   사용 가능한 나다움
                 </Typography>
-                <Info className="h-4 w-4 text-gray-400" />
+                <ButtonBase
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openRewardPolicies();
+                  }}
+                  className="flex items-center justify-center"
+                  aria-label="나다움 획득 조건"
+                >
+                  <Info className="h-4 w-4 text-gray-400" />
+                </ButtonBase>
               </div>
-              <div className="flex items-center gap-1">
+              <ButtonBase
+                onClick={handlePointsClick}
+                className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1"
+              >
                 <Typography
                   font="noto"
                   variant="heading3B"
@@ -294,8 +318,8 @@ const Page = () => {
                   {userData?.rewards ?? 0}N
                 </Typography>
                 <ChevronRight className="h-4 w-4 text-gray-900" />
-              </div>
-            </ButtonBase>
+              </ButtonBase>
+            </div>
           </div>
         </div>
       )}
@@ -466,6 +490,35 @@ const Page = () => {
       {activeTab === "all" && (
         <div>{/* 전체 활동 관리 섹션 내용을 여기에 작성 */}</div>
       )}
+
+      {/* 나다움 획득 조건 Bottom Sheet */}
+      <BottomSheet isOpen={isRewardPoliciesOpen} onClose={closeRewardPolicies}>
+        <div className="flex flex-col gap-4 px-5 pb-6">
+          <Typography font="noto" variant="heading2B" className="text-gray-950">
+            나다움 획득 조건
+          </Typography>
+          <div className="flex flex-col gap-3">
+            {rewardPoliciesData?.policies?.map((policy, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="text-gray-700"
+                >
+                  {policy.name}
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="body2B"
+                  className="text-gray-700"
+                >
+                  {policy.points}N
+                </Typography>
+              </div>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 };
