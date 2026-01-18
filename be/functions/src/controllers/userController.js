@@ -344,6 +344,29 @@ class UserController {
   }
 
   /**
+   * 내가 작성한, 좋아요한, 댓글 단 게시글 통합 조회 API
+   */
+  async getMyAllPosts(req, res, next) {
+    try {
+      const {uid} = req.user;
+      const { page = 0, size = 10, type = "all" } = req.query;
+      
+      const result = await userService.getMyAllPosts(uid, {
+        page: parseInt(page),
+        size: parseInt(size),
+        type,
+      });
+      
+      return res.success({
+        posts: result.content || [],
+        pagination: result.pagination || {},
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * 내가 참여 중인 커뮤니티 조회 API
    */
   async getMyParticipatingCommunities(req, res, next) {

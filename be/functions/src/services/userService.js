@@ -1647,6 +1647,85 @@ class UserService {
   }
 
   /**
+   * 내가 작성한, 좋아요한, 댓글 단 게시글 통합 조회
+   * @param {string} userId - 사용자 ID
+   * @param {Object} options - 조회 옵션
+   * @return {Promise<Object>} 게시글 목록과 페이지네이션
+   */
+  async getMyAllPosts(userId, options = {}) {
+    try {
+      const { page = 0, size = 10, type = "all" } = options;
+
+      // 페이지네이션을 위해 충분히 큰 사이즈로 모든 데이터 가져오기
+      // (중복 제거 및 정렬 후 페이지네이션을 적용해야 하므로)
+      const maxSize = 10000; // 최대 10000개까지만 가져오기 (메모리 보호)
+
+      // 3개 서비스 메서드 병렬 호출
+      const [authoredResult, likedResult, commentedResult] = await Promise.all([
+        this.getMyAuthoredPosts(userId, { page: 0, size: maxSize, type }),
+        this.getMyLikedPosts(userId, { page: 0, size: maxSize, type }),
+        this.getMyCommentedPosts(userId, { page: 0, size: maxSize, type }),
+      ]);
+
+      // 모든 게시글 합치기
+      const postMap = new Map(); // postId 기준 중복 제거용
+
+      // 각 결과에서 게시글 추출 및 중복 제거
+      [...(authoredResult.content || []), ...(likedResult.content || []), ...(commentedResult.content || [])].forEach((post) => {
+        if (!post?.id) return;
+        
+        // 중복 제거: 같은 postId가 있으면 무시 (처음 나온 것만 사용)
+        if (!postMap.has(post.id)) {
+          postMap.set(post.id, post);
+        }
+      });
+
+      // Map에서 배열로 변환
+      const allPosts = Array.from(postMap.values());
+
+      // createdAt 기준으로 최신순 정렬
+      allPosts.sort((a, b) => {
+        const dateA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      // 페이지네이션 적용
+      const pageNumber = parseInt(page);
+      const pageSize = parseInt(size);
+      const startIndex = pageNumber * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedPosts = allPosts.slice(startIndex, endIndex);
+
+      // 페이지네이션 정보 계산
+      const totalElements = allPosts.length;
+      const totalPages = Math.ceil(totalElements / pageSize);
+
+      return {
+        content: paginatedPosts,
+        pagination: {
+          pageNumber,
+          pageSize,
+          totalElements,
+          totalPages,
+          hasNext: endIndex < totalElements,
+          hasPrevious: pageNumber > 0,
+          isFirst: pageNumber === 0,
+          isLast: endIndex >= totalElements,
+        },
+      };
+    } catch (error) {
+      console.error("내 게시글 통합 조회 실패:", error.message);
+      if (error.code) {
+        throw error;
+      }
+      const wrapped = new Error("내 게시글 통합 조회에 실패했습니다");
+      wrapped.code = "INTERNAL_ERROR";
+      throw wrapped;
+    }
+  }
+
+  /**
    * 내가 참여한 커뮤니티 조회를 status 기준으로 필터링
    * @param {string} userId - 사용자 ID
    * @param {"ongoing"|"completed"|null} status - 조회 상태 (null이면 필터링 없이 모두 반환)
