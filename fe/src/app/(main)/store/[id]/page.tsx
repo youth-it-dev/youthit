@@ -452,7 +452,7 @@ const StoreProductDetailPage = () => {
       <InquiryFloatingButton />
 
       {/* 하단 고정 버튼 */}
-      <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-transparent p-4">
+      <div className="pb-safe fixed bottom-0 z-20 w-full max-w-[470px] bg-white p-4">
         <button
           onClick={() => setIsQuantityPopupOpen(true)}
           disabled={isInsufficientPoints}
