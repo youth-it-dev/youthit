@@ -48,7 +48,8 @@ const CalendarDayCell = ({
   };
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
         "relative aspect-square overflow-hidden rounded-lg",
         !isCurrentMonth && "invisible",
@@ -60,6 +61,7 @@ const CalendarDayCell = ({
         canCertify && "cursor-pointer"
       )}
       onClick={handleClick}
+      disabled={!canCertify}
     >
       {/* 날짜 숫자 */}
       {!canCertify && (
@@ -98,7 +100,7 @@ const CalendarDayCell = ({
           <Flame className="fill-primary-green text-primary-green h-3 w-3" />
         </div>
       )}
-    </div>
+    </button>
   );
 };
 
