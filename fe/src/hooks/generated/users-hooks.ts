@@ -114,6 +114,25 @@ export const useGetUsersMe = <TData = Types.TGETUsersMeRes>(
   });
 };
 
+export const useGetUsersMeAllPosts = <TData = Types.TGETUsersMeAllPostsRes>(
+  options: {
+    request: Types.TGETUsersMeAllPostsReq;
+  } & Omit<
+    UseQueryOptions<Types.TGETUsersMeAllPostsRes, Error, TData>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  const { request, ...queryOptions } = options;
+  return useQuery<Types.TGETUsersMeAllPostsRes, Error, TData>({
+    queryKey: usersKeys.getUsersMeAllPosts(request),
+    queryFn: async () => {
+      const response = await Api.getUsersMeAllPosts(request);
+      return response.data;
+    },
+    ...queryOptions,
+  });
+};
+
 export const useGetUsersMeCommentedPosts = <
   TData = Types.TGETUsersMeCommentedPostsRes,
 >(

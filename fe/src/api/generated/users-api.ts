@@ -34,6 +34,12 @@ export const getUsersMe = (request: Types.TGETUsersMeReq) => {
   return get<Types.TGETUsersMeRes>(`/users/me`, { params: request });
 };
 
+export const getUsersMeAllPosts = (request: Types.TGETUsersMeAllPostsReq) => {
+  return get<Types.TGETUsersMeAllPostsRes>(`/users/me/all-posts`, {
+    params: request,
+  });
+};
+
 export const getUsersMeCommentedPosts = (
   request: Types.TGETUsersMeCommentedPostsReq
 ) => {

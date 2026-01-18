@@ -55,6 +55,61 @@ export interface TGETUsersMeReq {
 
 export type TGETUsersMeRes = { user?: Schema.User };
 
+export interface TGETUsersMeAllPostsReq {
+  page?: number;
+  size?: number;
+  type?: "all" | "program" | "mission";
+}
+
+export type TGETUsersMeAllPostsRes = {
+  posts?: {
+    id?: string;
+    author?: string;
+    profileImageUrl?: string;
+    title?: string;
+    type?: string;
+    programType?: "ROUTINE" | "GATHERING" | "TMI";
+    isReview?: boolean;
+    channel?: string;
+    category?: string;
+    scheduledDate?: string;
+    isPublic?: boolean;
+    isLocked?: boolean;
+    rewardGiven?: boolean;
+    likesCount?: number;
+    commentsCount?: number;
+    reportsCount?: number;
+    viewCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    community?: {
+      id?: string;
+      name?: string;
+    };
+    timeAgo?: string;
+    communityPath?: string;
+    preview?: {
+      description?: string;
+      thumbnail?: {
+        url?: string;
+        width?: number;
+        height?: number;
+        blurHash?: string;
+      };
+    };
+  }[];
+  pagination?: {
+    pageNumber?: number;
+    pageSize?: number;
+    totalElements?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
+};
+
 export interface TGETUsersMeCommentedPostsReq {
   page?: number;
   size?: number;

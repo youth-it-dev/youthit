@@ -407,6 +407,11 @@ export const usersKeys = {
       path: {},
       query: { token: request.token },
     }),
+  getUsersMeAllPosts: (request: usersTypes.TGETUsersMeAllPostsReq) =>
+    __buildKey("users", "getUsersMeAllPosts", {
+      path: {},
+      query: { page: request.page, size: request.size, type: request.type },
+    }),
   getUsersMeCommentedPosts: (
     request: usersTypes.TGETUsersMeCommentedPostsReq
   ) =>
