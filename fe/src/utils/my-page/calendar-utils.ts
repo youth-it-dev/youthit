@@ -76,7 +76,7 @@ export const generateCalendarDays = (
       date,
       dateKey,
       imageUrl: dayData?.imageUrl,
-      hasPost: Boolean(dayData),
+      hasPost: Boolean(dayData?.imageUrl),
       isConsecutive,
       isCurrentMonth: true,
       isToday,
