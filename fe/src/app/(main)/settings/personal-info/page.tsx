@@ -61,48 +61,54 @@ const PersonalInfoPage = () => {
       onSuccess: () => {
         debug.log("회원 탈퇴 성공");
 
-        // 1. React Query 캐시 모두 제거
-        queryClient.clear();
+        try {
+          // 1. React Query 캐시 모두 제거
+          queryClient.clear();
 
-        // 2. LocalStorage 정리 (Firebase 관련)
-        const allKeys = Object.keys(localStorage);
-        allKeys.forEach((key) => {
-          if (
-            key.startsWith("firebase:authUser:") ||
-            key.startsWith("firebase:refreshToken:") ||
-            key.startsWith("firebase:host:") ||
-            key.startsWith("firebase:heartbeat:")
-          ) {
-            localStorage.removeItem(key);
-          }
-        });
-
-        // 3. 쿠키 정리
-        const clearCookie = (name: string) => {
-          const paths = ["/", window.location.pathname];
-          const domains = [
-            window.location.hostname,
-            "." + window.location.hostname,
-          ];
-
-          paths.forEach((path) => {
-            domains.forEach((domain) => {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
-            });
+          // 2. LocalStorage 정리 (Firebase 관련)
+          const allKeys = Object.keys(localStorage);
+          allKeys.forEach((key) => {
+            if (
+              key.startsWith("firebase:authUser:") ||
+              key.startsWith("firebase:refreshToken:") ||
+              key.startsWith("firebase:host:") ||
+              key.startsWith("firebase:heartbeat:")
+            ) {
+              localStorage.removeItem(key);
+            }
           });
-        };
 
-        document.cookie.split(";").forEach((c) => {
-          const name = c.split("=")[0].trim();
-          clearCookie(name);
-        });
+          // 3. 쿠키 정리
+          const clearCookie = (name: string) => {
+            const paths = ["/", window.location.pathname];
+            const domains = [
+              window.location.hostname,
+              "." + window.location.hostname,
+            ];
 
-        // 4. 모달 닫기
-        setIsDeleteAccountModalOpen(false);
+            paths.forEach((path) => {
+              domains.forEach((domain) => {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
+              });
+            });
+          };
 
-        // 5. 홈 페이지로 리다이렉트 (히스토리 정리)
-        router.replace(LINK_URL.HOME);
+          document.cookie.split(";").forEach((c) => {
+            const name = c.split("=")[0].trim();
+            clearCookie(name);
+          });
+        } catch (cleanupError) {
+          // cleanup 실패 시에도 로그만 남기고 계속 진행
+          debug.error("회원 탈퇴 후 cleanup 중 오류 발생:", cleanupError);
+        } finally {
+          // cleanup 성공/실패 여부와 관계없이 항상 실행
+          // 4. 모달 닫기
+          setIsDeleteAccountModalOpen(false);
+
+          // 5. 홈 페이지로 리다이렉트 (히스토리 정리)
+          router.replace(LINK_URL.HOME);
+        }
       },
       onError: (error) => {
         debug.error("회원 탈퇴 오류:", error);
