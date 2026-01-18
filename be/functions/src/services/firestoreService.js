@@ -38,10 +38,12 @@ class FirestoreService {
     const documents = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
       documents.push({
         id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate().toISOString(),
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
       });
     });
 
