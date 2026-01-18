@@ -313,6 +313,11 @@ const MissionCertifyPageContent = () => {
               queryKey: missionsKeys.getMissionsStats,
             });
 
+            // 마이페이지 캘린더 쿼리 무효화 (인증글 작성으로 달력 상태 변경)
+            queryClient.invalidateQueries({
+              queryKey: ["users", "getUsersMeRoutineCalendar"],
+            });
+
             resolve(postId);
           },
           onError: (err) => {
