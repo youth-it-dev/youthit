@@ -6,10 +6,16 @@ import { Settings, ChevronRight, ChevronLeft, Info, Flame } from "lucide-react";
 import CalendarDayCell from "@/components/my-page/CalendarDayCell";
 import CalendarWeekDayItem from "@/components/my-page/CalendarWeekDayItem";
 import MyPageSkeleton from "@/components/my-page/MyPageSkeleton";
+import PostCard from "@/components/my-page/PostCard";
 import ButtonBase from "@/components/shared/base/button-base";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import ProfileImage from "@/components/shared/ui/profile-image";
+import {
+  ALL_ACTIVITY_FILTERS,
+  DEFAULT_ACTIVITY_POSTS_REQUEST,
+  type AllActivityFilterType,
+} from "@/constants/my-page/_my-page-activity-posts";
 import {
   WEEK_DAYS,
   CALENDAR_CONSTANTS,
@@ -18,6 +24,10 @@ import { LINK_URL } from "@/constants/shared/_link-url";
 import { useGetRewardsPolicies } from "@/hooks/generated/rewards-hooks";
 import {
   useGetUsersMe,
+  useGetUsersMeAllPosts,
+  useGetUsersMeCommentedPosts,
+  useGetUsersMeLikedPosts,
+  useGetUsersMePosts,
   useGetUsersMeRoutineCalendar,
 } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
@@ -37,6 +47,9 @@ const Page = () => {
 
   // 탭 상태 관리
   const [activeTab, setActiveTab] = useState<ActivityTabType>("routine");
+
+  const [activeAllActivityFilter, setActiveAllActivityFilter] =
+    useState<AllActivityFilterType>("all");
 
   // 나다움 획득 조건 bottom sheet 상태
   const {
@@ -72,6 +85,7 @@ const Page = () => {
   });
 
   const hasNickname = Boolean(userData?.nickname?.trim());
+  const hasNoRoutineCertifications = (userData?.certificationPosts ?? 0) === 0;
 
   // 달력 데이터 조회
   const { data: calendarDataFromApi } = useGetUsersMeRoutineCalendar({
@@ -81,6 +95,79 @@ const Page = () => {
     },
     enabled: activeTab === "routine" && hasNickname,
   });
+
+  const allPostsQuery = useGetUsersMeAllPosts({
+    request: DEFAULT_ACTIVITY_POSTS_REQUEST,
+    enabled: activeTab === "all" && activeAllActivityFilter === "all",
+  });
+
+  const postsQuery = useGetUsersMePosts({
+    request: DEFAULT_ACTIVITY_POSTS_REQUEST,
+    enabled: activeTab === "all" && activeAllActivityFilter === "post",
+  });
+
+  const commentedPostsQuery = useGetUsersMeCommentedPosts({
+    request: DEFAULT_ACTIVITY_POSTS_REQUEST,
+    enabled: activeTab === "all" && activeAllActivityFilter === "commented",
+  });
+
+  const likedPostsQuery = useGetUsersMeLikedPosts({
+    request: DEFAULT_ACTIVITY_POSTS_REQUEST,
+    enabled: activeTab === "all" && activeAllActivityFilter === "liked",
+  });
+
+  const activePostsData = useMemo(() => {
+    if (activeAllActivityFilter === "all") return allPostsQuery.data;
+    if (activeAllActivityFilter === "post") return postsQuery.data;
+    if (activeAllActivityFilter === "commented")
+      return commentedPostsQuery.data;
+    return likedPostsQuery.data;
+  }, [
+    activeAllActivityFilter,
+    allPostsQuery.data,
+    commentedPostsQuery.data,
+    likedPostsQuery.data,
+    postsQuery.data,
+  ]);
+
+  const isActivePostsLoading =
+    activeAllActivityFilter === "all"
+      ? allPostsQuery.isLoading
+      : activeAllActivityFilter === "post"
+        ? postsQuery.isLoading
+        : activeAllActivityFilter === "commented"
+          ? commentedPostsQuery.isLoading
+          : likedPostsQuery.isLoading;
+
+  const isActivePostsError =
+    activeAllActivityFilter === "all"
+      ? allPostsQuery.isError
+      : activeAllActivityFilter === "post"
+        ? postsQuery.isError
+        : activeAllActivityFilter === "commented"
+          ? commentedPostsQuery.isError
+          : likedPostsQuery.isError;
+
+  const handlePostClick = (
+    postId?: string,
+    communityId?: string,
+    communityPath?: string
+  ) => {
+    if (!postId) return;
+
+    const communityIdFromPath = communityPath
+      ? communityPath.replace("communities/", "")
+      : undefined;
+    const finalCommunityId = communityId ?? communityIdFromPath;
+
+    const params = new URLSearchParams();
+    if (finalCommunityId) params.set("communityId", finalCommunityId);
+
+    const queryString = params.toString();
+    router.push(
+      `${LINK_URL.COMMUNITY_POST}/${postId}${queryString ? `?${queryString}` : ""}`
+    );
+  };
 
   // 달력 헬퍼 함수들
   const goToPreviousMonth = () => {
@@ -163,6 +250,10 @@ const Page = () => {
   // 설정 버튼 핸들러
   const handleSettingsClick = () => {
     router.push(LINK_URL.SETTINGS);
+  };
+
+  const handleGoToHome = () => {
+    router.push(LINK_URL.HOME);
   };
 
   // 나다움 클릭 핸들러
@@ -324,49 +415,56 @@ const Page = () => {
         </div>
       )}
       {/* 탭메뉴 섹션 - 한끗루틴 현황 / 전체 활동 관리 */}
-      <div className="flex items-center pt-6 pb-4">
-        <ButtonBase
-          onClick={() => setActiveTab("routine")}
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center border-b-2 py-[10px]",
-            activeTab === "routine" ? "border-gray-950" : "border-transparent"
-          )}
-          aria-label="한끗루틴 현황"
-          aria-selected={activeTab === "routine"}
-        >
-          <Typography
-            font="noto"
-            variant={activeTab === "routine" ? "body3B" : "body3R"}
-            className={
-              activeTab === "routine" ? "text-gray-950" : "text-gray-400"
-            }
+      <div className="relative pt-6">
+        <div className="flex items-center">
+          <ButtonBase
+            onClick={() => setActiveTab("routine")}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center border-b-2 py-[10px]",
+              activeTab === "routine" ? "border-gray-950" : "border-transparent"
+            )}
+            aria-label="한끗루틴 현황"
+            aria-selected={activeTab === "routine"}
           >
-            한끗루틴 현황
-          </Typography>
-        </ButtonBase>
+            <Typography
+              font="noto"
+              variant={activeTab === "routine" ? "body3B" : "body3R"}
+              className={
+                activeTab === "routine" ? "text-gray-950" : "text-gray-400"
+              }
+            >
+              한끗루틴 현황
+            </Typography>
+          </ButtonBase>
 
-        <ButtonBase
-          onClick={() => setActiveTab("all")}
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center border-b-2 py-[10px]",
-            activeTab === "all" ? "border-gray-950" : "border-transparent"
-          )}
-          aria-label="전체 활동 관리"
-          aria-selected={activeTab === "all"}
-        >
-          <Typography
-            font="noto"
-            variant={activeTab === "all" ? "body3B" : "body3R"}
-            className={activeTab === "all" ? "text-gray-950" : "text-gray-400"}
+          <ButtonBase
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center border-b-2 py-[10px]",
+              activeTab === "all" ? "border-gray-950" : "border-transparent"
+            )}
+            aria-label="전체 활동 관리"
+            aria-selected={activeTab === "all"}
           >
-            전체 활동 관리
-          </Typography>
-        </ButtonBase>
+            <Typography
+              font="noto"
+              variant={activeTab === "all" ? "body3B" : "body3R"}
+              className={
+                activeTab === "all" ? "text-gray-950" : "text-gray-400"
+              }
+            >
+              전체 활동 관리
+            </Typography>
+          </ButtonBase>
+        </div>
+
+        {/* 탭 메뉴 섹션 하단에만 보이는 그림자 */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px translate-y-full shadow-md" />
       </div>
 
       {/* 탭 컨텐츠 영역 */}
       {activeTab === "routine" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 py-5">
           {/* 통계 카드 */}
           <div className="flex gap-2.5">
             {/* 총 인증 카드 */}
@@ -409,14 +507,19 @@ const Page = () => {
             </div>
           </div>
           {/* 달력 */}
-          <div className="flex flex-col gap-2">
+          <div className="relative flex flex-col gap-2">
             {/* 달력 헤더 */}
             <div className="relative flex items-center">
               {/* 연/월/chevron 버튼 컨테이너 - 가운데 정렬 */}
               <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3">
                 <ButtonBase
                   onClick={goToPreviousMonth}
-                  className="flex items-center justify-center"
+                  disabled={hasNoRoutineCertifications}
+                  className={cn(
+                    "flex items-center justify-center",
+                    hasNoRoutineCertifications &&
+                      "cursor-not-allowed opacity-40"
+                  )}
                   aria-label="이전 달"
                 >
                   <ChevronLeft className="size-4 text-gray-700" />
@@ -430,7 +533,12 @@ const Page = () => {
                 </Typography>
                 <ButtonBase
                   onClick={goToNextMonth}
-                  className="flex items-center justify-center"
+                  disabled={hasNoRoutineCertifications}
+                  className={cn(
+                    "flex items-center justify-center",
+                    hasNoRoutineCertifications &&
+                      "cursor-not-allowed opacity-40"
+                  )}
                   aria-label="다음 달"
                 >
                   <ChevronRight className="size-4 text-gray-700" />
@@ -438,22 +546,29 @@ const Page = () => {
               </div>
               {/* 오늘 버튼 - 오른쪽 정렬 */}
               <div className="ml-auto">
-                <ButtonBase
-                  onClick={goToToday}
-                  disabled={isCurrentMonthToday}
-                  className={cn(
-                    "flex items-center rounded-lg border border-gray-300 bg-white px-2 py-1",
-                    isCurrentMonthToday && "cursor-not-allowed opacity-70"
-                  )}
-                >
-                  <Typography
-                    font="noto"
-                    variant="label2M"
-                    className="text-gray-950"
-                  >
-                    오늘
-                  </Typography>
-                </ButtonBase>
+                {(() => {
+                  const isTodayButtonDisabled =
+                    isCurrentMonthToday || hasNoRoutineCertifications;
+
+                  return (
+                    <ButtonBase
+                      onClick={goToToday}
+                      disabled={isTodayButtonDisabled}
+                      className={cn(
+                        "flex items-center rounded-lg border border-gray-300 bg-white px-2 py-1",
+                        isTodayButtonDisabled && "cursor-not-allowed opacity-70"
+                      )}
+                    >
+                      <Typography
+                        font="noto"
+                        variant="label2M"
+                        className="text-gray-950"
+                      >
+                        오늘
+                      </Typography>
+                    </ButtonBase>
+                  );
+                })()}
               </div>
             </div>
 
@@ -465,30 +580,160 @@ const Page = () => {
             </div>
 
             {/* 달력 그리드 */}
-            <div className="grid grid-cols-7 gap-1">
-              {calendarDays.map((day, index) => (
-                <CalendarDayCell
-                  key={`${day.dateKey}-${index}`}
-                  date={day.date}
-                  dateKey={day.dateKey}
-                  imageUrl={day.imageUrl}
-                  hasPost={day.hasPost}
-                  isConsecutive={day.isConsecutive}
-                  isCurrentMonth={day.isCurrentMonth}
-                  isToday={day.isToday}
-                  currentRoutineCommunityId={
-                    userData?.currentRoutineCommunityId
-                  }
-                  onClick={handleCertifyClick}
-                />
-              ))}
+            <div className="relative">
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((day, index) => (
+                  <CalendarDayCell
+                    key={`${day.dateKey}-${index}`}
+                    date={day.date}
+                    dateKey={day.dateKey}
+                    imageUrl={day.imageUrl}
+                    hasPost={day.hasPost}
+                    isConsecutive={day.isConsecutive}
+                    isCurrentMonth={day.isCurrentMonth}
+                    isToday={day.isToday}
+                    currentRoutineCommunityId={
+                      hasNoRoutineCertifications
+                        ? null
+                        : userData?.currentRoutineCommunityId
+                    }
+                    onClick={
+                      hasNoRoutineCertifications
+                        ? undefined
+                        : handleCertifyClick
+                    }
+                  />
+                ))}
+              </div>
+
+              {/* 총 인증 0일 때: 요일 아래(그리드 영역)만 오버레이 + 홈 유도 */}
+              {hasNoRoutineCertifications && (
+                <div className="absolute -inset-x-5 -inset-y-2 z-10 flex flex-col items-center justify-center gap-2 bg-white/20 px-6 text-center backdrop-blur-xs">
+                  <Typography
+                    font="noto"
+                    variant="body3M"
+                    className="text-gray-600"
+                  >
+                    인증 기록이 없어요.
+                    <br />
+                    한끗루틴을 둘러보고 인증을 시작해보세요.
+                  </Typography>
+
+                  <ButtonBase
+                    onClick={handleGoToHome}
+                    className="rounded-lg border border-gray-300 bg-white px-2 py-1"
+                  >
+                    <Typography
+                      font="noto"
+                      variant="label2M"
+                      className="text-gray-950"
+                    >
+                      홈으로 이동
+                    </Typography>
+                  </ButtonBase>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {activeTab === "all" && (
-        <div>{/* 전체 활동 관리 섹션 내용을 여기에 작성 */}</div>
+        <div className="py-5">
+          {/* 전체 활동 관리 섹션 내용을 여기에 작성 */}
+          <div className="scrollbar-hide flex gap-2 overflow-x-auto bg-white">
+            {ALL_ACTIVITY_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setActiveAllActivityFilter(filter.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-2.5 py-2 whitespace-nowrap transition-colors",
+                  activeAllActivityFilter === filter.id
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-700"
+                )}
+                aria-label={filter.label}
+                aria-pressed={activeAllActivityFilter === filter.id}
+              >
+                <Typography
+                  font="noto"
+                  variant="body2M"
+                  className={cn(
+                    "whitespace-nowrap",
+                    activeAllActivityFilter === filter.id
+                      ? "text-white"
+                      : "text-gray-500"
+                  )}
+                >
+                  {filter.label}
+                </Typography>
+              </button>
+            ))}
+          </div>
+
+          <div className="px-5 pt-4">
+            {isActivePostsLoading && (
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                불러오는 중...
+              </Typography>
+            )}
+
+            {isActivePostsError && !isActivePostsLoading && (
+              <Typography
+                font="noto"
+                variant="body2R"
+                className="text-gray-500"
+              >
+                데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+              </Typography>
+            )}
+
+            {!isActivePostsLoading &&
+              !isActivePostsError &&
+              (activePostsData?.posts?.length ?? 0) === 0 && (
+                <Typography
+                  font="noto"
+                  variant="body2R"
+                  className="text-gray-500"
+                >
+                  게시글이 없어요.
+                </Typography>
+              )}
+          </div>
+
+          {!isActivePostsLoading && !isActivePostsError && (
+            <div className="grid grid-cols-2 gap-3 px-5 pt-4">
+              {activePostsData?.posts?.map((post) => {
+                if (!post?.id) return null;
+                return (
+                  <PostCard
+                    key={post.id}
+                    id={post.id}
+                    imageUrl={post.preview?.thumbnail?.url ?? ""}
+                    title={post.title ?? ""}
+                    description={post.preview?.description ?? ""}
+                    authorName={post.author ?? "-"}
+                    authorProfileUrl={post.profileImageUrl}
+                    likeCount={post.likesCount ?? 0}
+                    commentCount={post.commentsCount ?? 0}
+                    onClick={() =>
+                      handlePostClick(
+                        post.id,
+                        post.community?.id,
+                        post.communityPath
+                      )
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* 나다움 획득 조건 Bottom Sheet */}
