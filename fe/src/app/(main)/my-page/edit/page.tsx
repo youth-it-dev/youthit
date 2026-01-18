@@ -736,23 +736,6 @@ const ProfileEditPage = () => {
             )}
           </div>
         </div>
-
-        <div className="mb-6 flex flex-col gap-1">
-          <Typography
-            font="noto"
-            variant="body2B"
-            className="mb-2 text-gray-900"
-          >
-            {PROFILE_EDIT_LABELS.BIO}
-          </Typography>
-          <Textarea
-            {...register("bio", {
-              maxLength: MAX_BIO_LENGTH,
-            })}
-            placeholder={PROFILE_EDIT_PLACEHOLDERS.BIO}
-            disabled={!isDataLoaded}
-          />
-        </div>
       </main>
 
       <ProfileImageBottomSheet
