@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import DeleteAccountModal from "@/components/my-page/DeleteAccountModal";
 import LogoutModal from "@/components/my-page/LogoutModal";
 import SettingsSection from "@/components/my-page/SettingsSection";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { LINK_URL } from "@/constants/shared/_link-url";
-import { useDeleteAccount } from "@/hooks/auth/useDeleteAccount";
 import { useLogout } from "@/hooks/auth/useLogout";
 import { usePostUsersMeMarketingTermsToggle } from "@/hooks/generated/users-hooks";
 import { requestNotificationPermission, useFCM } from "@/hooks/shared/useFCM";
@@ -27,15 +25,11 @@ const SettingsPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
-    useState(false);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [isMarketingConsentEnabled, setIsMarketingConsentEnabled] =
     useState(false);
 
   const { mutate: logoutMutate } = useLogout();
-  const { mutate: deleteAccountMutate, isPending: isDeleting } =
-    useDeleteAccount();
   const { mutate: pushNotificationToggleMutate } =
     usePostUsersMePushNotificationToggleWithToken();
   const { mutate: marketingTermsToggleMutate } =
@@ -97,68 +91,6 @@ const SettingsPage = () => {
 
   const handleLogoutCancel = () => {
     setIsLogoutModalOpen(false);
-  };
-
-  const handleDeleteAccount = () => {
-    setIsDeleteAccountModalOpen(true);
-  };
-
-  /**
-   * @description 회원 탈퇴 확인 버튼 클릭 시
-   */
-  const handleDeleteAccountConfirm = () => {
-    deleteAccountMutate(undefined, {
-      onSuccess: () => {
-        debug.log("회원 탈퇴 성공");
-
-        // 1. React Query 캐시 모두 제거
-        queryClient.clear();
-
-        // 2. LocalStorage 정리 (Firebase 관련)
-        const allKeys = Object.keys(localStorage);
-        allKeys.forEach((key) => {
-          if (
-            key.startsWith("firebase:authUser:") ||
-            key.startsWith("firebase:refreshToken:") ||
-            key.startsWith("firebase:host:") ||
-            key.startsWith("firebase:heartbeat:")
-          ) {
-            localStorage.removeItem(key);
-          }
-        });
-
-        // 3. 쿠키 정리
-        const clearCookie = (name: string) => {
-          const paths = ["/", window.location.pathname];
-          const domains = [
-            window.location.hostname,
-            "." + window.location.hostname,
-          ];
-
-          paths.forEach((path) => {
-            domains.forEach((domain) => {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`;
-            });
-          });
-        };
-
-        document.cookie.split(";").forEach((c) => {
-          const name = c.split("=")[0].trim();
-          clearCookie(name);
-        });
-
-        // 4. 모달 닫기
-        setIsDeleteAccountModalOpen(false);
-
-        // 5. 홈 페이지로 리다이렉트 (히스토리 정리)
-        router.replace(LINK_URL.HOME);
-      },
-      onError: (error) => {
-        debug.error("회원 탈퇴 오류:", error);
-        // 에러 발생 시 모달은 열어두어 재시도 가능하도록 함
-      },
-    });
   };
 
   const handlePersonalInfoClick = () => {
@@ -284,7 +216,7 @@ const SettingsPage = () => {
 
   const settingsItems = [
     {
-      text: "개인 정보 관리",
+      text: "계정 관리",
       iconUrl: IMAGE_URL.ICON.settings.userRound.url,
       onClick: handlePersonalInfoClick,
       showArrow: true,
@@ -319,12 +251,6 @@ const SettingsPage = () => {
       onClick: handleLogout,
       showArrow: true,
     },
-    {
-      text: "유스-잇 떠나기",
-      iconUrl: IMAGE_URL.ICON.settings.doorOpen.url,
-      onClick: handleDeleteAccount,
-      showArrow: true,
-    },
   ];
 
   return (
@@ -349,18 +275,6 @@ const SettingsPage = () => {
         isOpen={isLogoutModalOpen}
         onClose={handleLogoutCancel}
         onConfirm={handleLogoutConfirm}
-      />
-
-      {/* 회원 탈퇴 모달 */}
-      <DeleteAccountModal
-        isOpen={isDeleteAccountModalOpen}
-        isLoading={isDeleting}
-        nickname={userData?.nickname}
-        onConfirm={handleDeleteAccountConfirm}
-        onClose={() => {
-          if (isDeleting) return;
-          setIsDeleteAccountModalOpen(false);
-        }}
       />
     </div>
   );

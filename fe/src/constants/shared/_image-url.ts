@@ -56,7 +56,7 @@ const ICON = {
   settings: {
     userRound: {
       url: "/icons/user-round.svg",
-      alt: "개인 정보 관리",
+      alt: "계정 관리",
     },
     wallet: {
       url: "/icons/wallet.svg",
