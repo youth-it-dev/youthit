@@ -639,7 +639,7 @@ const Page = () => {
       )}
 
       {activeTab === "all" && (
-        <div className="py-5">
+        <div className="flex flex-col gap-4 py-5">
           {/* 전체 활동 관리 섹션 내용을 여기에 작성 */}
           <div className="scrollbar-hide flex gap-2 overflow-x-auto bg-white">
             {ALL_ACTIVITY_FILTERS.map((filter) => (
@@ -672,42 +672,32 @@ const Page = () => {
             ))}
           </div>
 
-          <div className="px-5 pt-4">
-            {isActivePostsLoading && (
+          {isActivePostsLoading && (
+            <Typography font="noto" variant="body2R" className="text-gray-500">
+              불러오는 중...
+            </Typography>
+          )}
+
+          {isActivePostsError && !isActivePostsLoading && (
+            <Typography font="noto" variant="body2R" className="text-gray-500">
+              데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+            </Typography>
+          )}
+
+          {!isActivePostsLoading &&
+            !isActivePostsError &&
+            (activePostsData?.posts?.length ?? 0) === 0 && (
               <Typography
                 font="noto"
                 variant="body2R"
                 className="text-gray-500"
               >
-                불러오는 중...
+                게시글이 없어요.
               </Typography>
             )}
-
-            {isActivePostsError && !isActivePostsLoading && (
-              <Typography
-                font="noto"
-                variant="body2R"
-                className="text-gray-500"
-              >
-                데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
-              </Typography>
-            )}
-
-            {!isActivePostsLoading &&
-              !isActivePostsError &&
-              (activePostsData?.posts?.length ?? 0) === 0 && (
-                <Typography
-                  font="noto"
-                  variant="body2R"
-                  className="text-gray-500"
-                >
-                  게시글이 없어요.
-                </Typography>
-              )}
-          </div>
 
           {!isActivePostsLoading && !isActivePostsError && (
-            <div className="grid grid-cols-2 gap-3 px-5 pt-4">
+            <div className="grid grid-cols-2 gap-3">
               {activePostsData?.posts?.map((post) => {
                 if (!post?.id) return null;
                 return (
