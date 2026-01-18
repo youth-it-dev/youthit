@@ -308,7 +308,7 @@ const Page = () => {
               </div>
               <ButtonBase
                 onClick={handlePointsClick}
-                className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1"
+                className="flex items-center gap-1"
               >
                 <Typography
                   font="noto"
