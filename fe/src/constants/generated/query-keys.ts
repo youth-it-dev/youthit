@@ -19,9 +19,11 @@ import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
 import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
+import type * as programmonitoringTypes from "@/types/generated/programmonitoring-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as qnaTypes from "@/types/generated/qna-types";
 import type * as reportsTypes from "@/types/generated/reports-types";
+import type * as rewardmonitoringTypes from "@/types/generated/rewardmonitoring-types";
 import type * as rewardsTypes from "@/types/generated/rewards-types";
 import type * as storeTypes from "@/types/generated/store-types";
 import type * as usersTypes from "@/types/generated/users-types";
@@ -254,6 +256,17 @@ export const notionusersKeys = {
   ),
 } as const;
 
+// ProgramMonitoring Query Keys
+export const programmonitoringKeys = {
+  getProgrammonitoringExport: (
+    request: programmonitoringTypes.TGETProgramMonitoringExportReq
+  ) =>
+    __buildKey("programmonitoring", "getProgrammonitoringExport", {
+      path: {},
+      query: { programId: request.programId, month: request.month },
+    }),
+} as const;
+
 // Programs Query Keys
 export const programsKeys = {
   getPrograms: (request: programsTypes.TGETProgramsReq) =>
@@ -321,6 +334,31 @@ export const reportsKeys = {
     "reports",
     "getReportcontentSyncNotionReports"
   ),
+} as const;
+
+// RewardMonitoring Query Keys
+export const rewardmonitoringKeys = {
+  getRewardmonitoringExportHistory: (
+    request: rewardmonitoringTypes.TGETRewardMonitoringExportHistoryReq
+  ) =>
+    __buildKey("rewardmonitoring", "getRewardmonitoringExportHistory", {
+      path: {},
+      query: { month: request.month },
+    }),
+  getRewardmonitoringExportMonthlySummary: (
+    request: rewardmonitoringTypes.TGETRewardMonitoringExportMonthlySummaryReq
+  ) =>
+    __buildKey("rewardmonitoring", "getRewardmonitoringExportMonthlySummary", {
+      path: {},
+      query: { months: request.months },
+    }),
+  getRewardmonitoringExportStorePurchases: (
+    request: rewardmonitoringTypes.TGETRewardMonitoringExportStorePurchasesReq
+  ) =>
+    __buildKey("rewardmonitoring", "getRewardmonitoringExportStorePurchases", {
+      path: {},
+      query: { month: request.month },
+    }),
 } as const;
 
 // Rewards Query Keys
