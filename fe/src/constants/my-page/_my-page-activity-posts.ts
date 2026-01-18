@@ -11,7 +11,7 @@ export const ALL_ACTIVITY_FILTERS = [
 
 export type AllActivityFilterType = (typeof ALL_ACTIVITY_FILTERS)[number]["id"];
 
-const DEFAULT_ACTIVITY_POSTS_PAGE = 1;
+const DEFAULT_ACTIVITY_POSTS_PAGE = 0;
 const DEFAULT_ACTIVITY_POSTS_PAGE_SIZE = 20;
 
 export const DEFAULT_ACTIVITY_POSTS_REQUEST = {
