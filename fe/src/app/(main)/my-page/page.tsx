@@ -332,7 +332,7 @@ const Page = () => {
                   variant="body3M"
                   className="text-gray-600"
                 >
-                  {userData?.certificationPosts ?? 0}번
+                  {userData?.participationCounts?.routine ?? 0}번
                 </Typography>
               </div>
 
