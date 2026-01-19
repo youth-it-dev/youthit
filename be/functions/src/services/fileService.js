@@ -500,6 +500,7 @@ class FileService {
     try {
       // 썸네일 생성 (300x300, fit: inside, quality: 80)
       const thumbnailBuffer = await sharp(originalBuffer)
+        .rotate() 
         .resize(300, 300, {
           fit: "inside",
           withoutEnlargement: true,
