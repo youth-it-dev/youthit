@@ -37,24 +37,46 @@ const router = express.Router();
  *       200:
  *         description: 동기화 완료
  *         content:
- *           text/plain:
+ *           application/json:
  *             schema:
- *               type: string
- *               example: |
- *                 [리워드 정책 동기화 완료]
- *                 총 3건 처리
- *                 성공: 3건
- *                 실패: 0건
- *                 동기화된 정책: comment, routine_post, mission_cert
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "리워드 정책 동기화 완료"
+ *                     totalCount:
+ *                       type: number
+ *                       example: 3
+ *                     successCount:
+ *                       type: number
+ *                       example: 3
+ *                     failedCount:
+ *                       type: number
+ *                       example: 0
+ *                     syncedPolicies:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["comment", "routine_post", "mission_cert"]
  *       500:
  *         description: 서버 오류
  *         content:
- *           text/plain:
+ *           application/json:
  *             schema:
- *               type: string
- *               example: |
- *                 [오류 발생]
- *                 리워드 정책 동기화 중 오류가 발생했습니다.
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "리워드 정책 동기화 중 오류가 발생했습니다"
  */
 router.post('/sync', notionRewardPolicyController.syncRewardPolicy);
 

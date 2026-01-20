@@ -22,21 +22,21 @@ class NotionRewardPolicyController {
 
       const result = await rewardPolicySyncService.syncSelectedPolicies();
 
-      // text/plain 응답 (Notion 버튼 호출 시 결과 확인용)
       const syncedPolicies = result.results
         .filter(r => r.success)
-        .map(r => r.actionKey)
-        .join(', ');
+        .map(r => r.actionKey);
 
-      const message = `[리워드 정책 동기화 완료]\n총 ${result.totalCount}건 처리\n성공: ${result.successCount}건\n실패: ${result.failedCount}건${syncedPolicies ? `\n동기화된 정책: ${syncedPolicies}` : ''}`;
-
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.send(message);
+      res.success({
+        message: '리워드 정책 동기화 완료',
+        totalCount: result.totalCount,
+        successCount: result.successCount,
+        failedCount: result.failedCount,
+        syncedPolicies,
+      });
     } catch (error) {
       console.error('[NotionRewardPolicyController] 동기화 오류:', error.message);
-      res.status(500)
-        .setHeader('Content-Type', 'text/plain; charset=utf-8')
-        .send(`[오류 발생]\n${error.message || '리워드 정책 동기화 중 오류가 발생했습니다.'}`);
+      error.code = error.code || 'NOTION_SYNC_FAILED';
+      next(error);
     }
   }
 }
