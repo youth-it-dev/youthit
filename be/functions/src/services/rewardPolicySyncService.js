@@ -125,16 +125,19 @@ class RewardPolicySyncService {
   /**
    * 성공한 항목의 '선택' 체크박스 해제
    * @param {Array} successResults - 성공한 결과 목록
+   * @return {Promise<Object>} 체크박스 해제 결과 { successCount, failedCount, failures }
    */
   async resetSelectionCheckboxes(successResults) {
     const BATCH_SIZE = 5;
+    const failures = [];
+    let successCount = 0;
 
     for (let i = 0; i < successResults.length; i += BATCH_SIZE) {
       const batch = successResults.slice(i, i + BATCH_SIZE);
 
-      await Promise.allSettled(
-        batch.map(result =>
-          fetch(`https://api.notion.com/v1/pages/${result.pageId}`, {
+      const settledResults = await Promise.allSettled(
+        batch.map(async (result) => {
+          const response = await fetch(`https://api.notion.com/v1/pages/${result.pageId}`, {
             method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${this.notionApiKey}`,
@@ -146,16 +149,45 @@ class RewardPolicySyncService {
                 '선택': { checkbox: false },
               },
             }),
-          })
-        )
+          });
+
+          if (!response.ok) {
+            const errorBody = await response.text().catch(() => 'Unable to read response body');
+            throw new Error(`HTTP ${response.status}: ${errorBody}`);
+          }
+
+          return { pageId: result.pageId, actionKey: result.actionKey };
+        })
       );
+
+      // 결과 처리
+      settledResults.forEach((settledResult, index) => {
+        const original = batch[index];
+        if (settledResult.status === 'fulfilled') {
+          successCount++;
+        } else {
+          const errorMessage = settledResult.reason?.message || 'Unknown error';
+          console.error(`[RewardPolicySyncService] 체크박스 해제 실패 - pageId: ${original.pageId}, actionKey: ${original.actionKey}, error: ${errorMessage}`);
+          failures.push({
+            pageId: original.pageId,
+            actionKey: original.actionKey,
+            error: errorMessage,
+          });
+        }
+      });
 
       if (i + BATCH_SIZE < successResults.length) {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
-    console.log(`[RewardPolicySyncService] ${successResults.length}건 선택 체크박스 해제 완료`);
+    console.log(`[RewardPolicySyncService] 선택 체크박스 해제 완료 - 성공: ${successCount}건, 실패: ${failures.length}건`);
+
+    return {
+      successCount,
+      failedCount: failures.length,
+      failures,
+    };
   }
 
   /**
