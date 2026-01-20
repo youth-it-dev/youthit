@@ -912,25 +912,7 @@ class RewardService {
       } else if (filter === 'expired') {
         filteredDocs = allDocs.filter(({ doc }) => {
           const data = doc.data();
-          if (data.isProcessed !== true) {
-            return false;
-          }
-          
-          let expiresAt = null;
-          if (data.expiresAt?.toDate) {
-            expiresAt = data.expiresAt.toDate();
-          } else if (data.expiresAt) {
-            const parsed = new Date(data.expiresAt);
-            if (!Number.isNaN(parsed.getTime())) {
-              expiresAt = parsed;
-            }
-          } else {
-            const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-            expiresAt = new Date(createdAt);
-            expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
-          }
-          
-          return expiresAt && expiresAt <= now;
+          return data.changeType === 'deduct' && data.actionKey === 'expiration';
         });
       }
       
