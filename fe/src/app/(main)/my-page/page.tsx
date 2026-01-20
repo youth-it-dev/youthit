@@ -571,8 +571,10 @@ const Page = () => {
                     date={day.date}
                     dateKey={day.dateKey}
                     imageUrl={day.imageUrl}
+                    postId={day.postId}
                     hasPost={day.hasPost}
                     isConsecutive={day.isConsecutive}
+                    consecutiveDayNumber={day.consecutiveDayNumber}
                     isCurrentMonth={day.isCurrentMonth}
                     isToday={day.isToday}
                     currentRoutineCommunityId={
@@ -580,10 +582,16 @@ const Page = () => {
                         ? null
                         : userData?.currentRoutineCommunityId
                     }
-                    onClick={
+                    onCertifyClick={
                       hasNoRoutineCertifications
                         ? undefined
                         : handleCertifyClick
+                    }
+                    onPostClick={(postId) =>
+                      handlePostClick(
+                        postId,
+                        userData?.currentRoutineCommunityId
+                      )
                     }
                   />
                 ))}
