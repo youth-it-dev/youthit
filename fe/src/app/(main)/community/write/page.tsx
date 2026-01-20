@@ -486,6 +486,11 @@ const WritePageContent = () => {
             },
           });
 
+          // 캘린더 목록 데이터 쿼리 무효화
+          queryClient.invalidateQueries({
+            queryKey: ["users", "getUsersMeRoutineCalendar"],
+          });
+
           resolve({ postId, communityId });
         },
         onError: (err) => {
