@@ -207,7 +207,7 @@ const ProgramSelectBottomSheet = ({
                 variant="heading2B"
                 className="text-gray-950"
               >
-                참여중인 프로그램
+                참여 중인 프로그램
               </Typography>
               <Typography
                 font="noto"
