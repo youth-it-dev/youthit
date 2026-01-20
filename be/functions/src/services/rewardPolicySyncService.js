@@ -1,4 +1,4 @@
-const { db, FieldValue } = require('../config/database');
+const FirestoreService = require('./firestoreService');
 const { getNumberValue, getTextContent } = require('../utils/notionHelper');
 
 const REWARD_POLICIES_COLLECTION = 'rewardPolicies';
@@ -10,8 +10,7 @@ const REWARD_POLICIES_COLLECTION = 'rewardPolicies';
  */
 class RewardPolicySyncService {
   constructor() {
-    this.db = db;
-    this.collectionName = REWARD_POLICIES_COLLECTION;
+    this.firestoreService = new FirestoreService(REWARD_POLICIES_COLLECTION);
     this.rewardPolicyDB = process.env.NOTION_REWARD_POLICY_DB_ID;
     this.notionApiKey = process.env.NOTION_API_KEY;
   }
@@ -106,13 +105,10 @@ class RewardPolicySyncService {
 
     for (const policy of policies) {
       try {
-        const docRef = this.db.collection(this.collectionName).doc(policy.actionKey);
-        await docRef.set(
-          {
-            points: policy.points,
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true }
+        await this.firestoreService.setDocument(
+          REWARD_POLICIES_COLLECTION,
+          policy.actionKey,
+          { points: policy.points }
         );
 
         console.log(`[REWARD POLICY SYNC] ${policy.actionKey} → points: ${policy.points}`);
