@@ -6,8 +6,11 @@ const rewardPolicySyncService = require('../services/rewardPolicySyncService');
  */
 class NotionRewardPolicyController {
   /**
-   * 리워드 정책 동기화 (Notion → Firestore)
+   * 선택된 리워드 정책 동기화 (Notion → Firestore)
    * POST /notionRewardPolicy/sync
+   * 
+   * Notion 리워드 정책 DB에서 '선택' 체크박스가 체크된 정책만 Firestore에 동기화
+   * 성공한 항목은 '선택' 체크박스 자동 해제
    * 
    * @param {Object} req - Express request
    * @param {Object} res - Express response
@@ -15,55 +18,25 @@ class NotionRewardPolicyController {
    */
   async syncRewardPolicy(req, res, next) {
     try {
-      // 1. payload 정규화 및 검증
-      const normalized = rewardPolicySyncService.normalizePayload(req.body);
+      console.log('[NotionRewardPolicyController] 리워드 정책 동기화 요청 시작');
 
-      // 2. Firestore 업서트
-      const result = await rewardPolicySyncService.upsertRewardPolicy(normalized);
+      const result = await rewardPolicySyncService.syncSelectedPolicies();
 
-      // 3. 성공 응답
-      res.success({
-        message: '리워드 정책 동기화 완료',
-        actionKey: result.actionKey,
-        points: result.points,
-        updatedAt: result.updatedAt,
-      });
+      // text/plain 응답 (Notion 버튼 호출 시 결과 확인용)
+      const syncedPolicies = result.results
+        .filter(r => r.success)
+        .map(r => r.actionKey)
+        .join(', ');
+
+      const message = `[리워드 정책 동기화 완료]\n총 ${result.totalCount}건 처리\n성공: ${result.successCount}건\n실패: ${result.failedCount}건${syncedPolicies ? `\n동기화된 정책: ${syncedPolicies}` : ''}`;
+
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(message);
     } catch (error) {
-      console.error('[Controller Error] syncRewardPolicy:', error);
-      next(error);
-    }
-  }
-
-  /**
-   * 특정 리워드 정책 조회
-   * GET /notionRewardPolicy/:actionKey
-   * 
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next middleware
-   */
-  async getRewardPolicy(req, res, next) {
-    try {
-      const { actionKey } = req.params;
-
-      if (!actionKey) {
-        const error = new Error('actionKey가 필요합니다');
-        error.code = 'BAD_REQUEST';
-        throw error;
-      }
-
-      const policy = await rewardPolicySyncService.getRewardPolicy(actionKey);
-
-      if (!policy) {
-        const error = new Error(`리워드 정책을 찾을 수 없습니다: ${actionKey}`);
-        error.code = 'NOT_FOUND';
-        throw error;
-      }
-
-      res.success(policy);
-    } catch (error) {
-      console.error('[Controller Error] getRewardPolicy:', error);
-      next(error);
+      console.error('[NotionRewardPolicyController] 동기화 오류:', error.message);
+      res.status(500)
+        .setHeader('Content-Type', 'text/plain; charset=utf-8')
+        .send(`[오류 발생]\n${error.message || '리워드 정책 동기화 중 오류가 발생했습니다.'}`);
     }
   }
 }

@@ -14,136 +14,48 @@ const router = express.Router();
  * @swagger
  * /notionRewardPolicy/sync:
  *   post:
- *     summary: 리워드 정책 동기화 (Notion → Firestore)
+ *     summary: 선택된 리워드 정책 동기화 (Notion → Firestore)
  *     description: |
- *       Notion 자동화에서 호출하여 리워드 정책을 Firestore에 동기화합니다.
- *       - actionKey: 정책 식별자 (예: "comment", "mission_cert", "consecutive_days_5")
- *       - points: 리워드 포인트 (0 이상의 정수)
+ *       Notion 리워드 정책 DB에서 '선택' 체크박스가 체크된 정책만 Firestore에 동기화합니다.
  *       
- *       **Notion 자동화 설정:**
- *       1. 정책 DB의 행이 생성/수정될 때 트리거
- *       2. HTTP 요청 전송:
- *          - URL: https://<domain>/notionRewardPolicy/sync
- *          - Method: POST
- *          - Body: { "actionKey": "{{__DEV_ONLY__}}", "points": {{나다움}} }
+ *       **사용 방법:**
+ *       1. Notion 리워드 정책 DB에 '선택' 체크박스 속성 추가
+ *       2. 동기화할 정책에 체크
+ *       3. Notion 버튼으로 이 API 호출
+ *       4. 성공한 정책의 '선택' 체크박스 자동 해제
+ *       
+ *       **Notion 버튼 설정:**
+ *       - URL: https://<domain>/notionRewardPolicy/sync
+ *       - Method: POST (body 없음)
+ *       
+ *       **Firestore 저장 형식:**
+ *       - Collection: `rewardPolicies`
+ *       - Document ID: `__DEV_ONLY__` 값 (예: "comment")
+ *       - Fields: { points: number, updatedAt: Timestamp }
  *     tags: [NotionRewardPolicy]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - actionKey
- *               - points
- *             properties:
- *               actionKey:
- *                 type: string
- *                 description: 정책 식별자 (__DEV_ONLY__ 필드 값)
- *                 example: "comment"
- *               points:
- *                 type: number
- *                 description: 리워드 포인트
- *                 example: 10
  *     responses:
  *       200:
- *         description: 동기화 성공
+ *         description: 동기화 완료
  *         content:
- *           application/json:
+ *           text/plain:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     message:
- *                       type: string
- *                       example: "리워드 정책 동기화 완료"
- *                     actionKey:
- *                       type: string
- *                       example: "comment"
- *                     points:
- *                       type: number
- *                       example: 10
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-01-20T12:00:00.000Z"
- *       400:
- *         description: 잘못된 요청 (actionKey 누락 등)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                   example: 400
- *                 message:
- *                   type: string
- *                   example: "actionKey는 필수이며 문자열이어야 합니다"
+ *               type: string
+ *               example: |
+ *                 [리워드 정책 동기화 완료]
+ *                 총 3건 처리
+ *                 성공: 3건
+ *                 실패: 0건
+ *                 동기화된 정책: comment, routine_post, mission_cert
  *       500:
  *         description: 서버 오류
  *         content:
- *           application/json:
+ *           text/plain:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                   example: 500
- *                 message:
- *                   type: string
- *                   example: "리워드 정책 동기화 중 오류가 발생했습니다"
+ *               type: string
+ *               example: |
+ *                 [오류 발생]
+ *                 리워드 정책 동기화 중 오류가 발생했습니다.
  */
 router.post('/sync', notionRewardPolicyController.syncRewardPolicy);
-
-/**
- * @swagger
- * /notionRewardPolicy/{actionKey}:
- *   get:
- *     summary: 특정 리워드 정책 조회
- *     description: actionKey로 특정 리워드 정책을 조회합니다.
- *     tags: [NotionRewardPolicy]
- *     parameters:
- *       - in: path
- *         name: actionKey
- *         required: true
- *         schema:
- *           type: string
- *         description: 정책 식별자
- *         example: comment
- *     responses:
- *       200:
- *         description: 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                   example: 200
- *                 data:
- *                   type: object
- *                   properties:
- *                     actionKey:
- *                       type: string
- *                       example: "comment"
- *                     points:
- *                       type: number
- *                       example: 1
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       404:
- *         description: 정책을 찾을 수 없음
- *       500:
- *         description: 서버 오류
- */
-router.get('/:actionKey', notionRewardPolicyController.getRewardPolicy);
 
 module.exports = router;
