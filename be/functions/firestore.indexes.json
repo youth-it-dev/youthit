@@ -396,6 +396,14 @@
       ]
     },
     {
+      "collectionGroup": "rewardsHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "postId", "order": "ASCENDING" },
+        { "fieldPath": "changeType", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "missionPosts",
       "queryScope": "COLLECTION",
       "fields": [
