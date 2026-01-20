@@ -1030,10 +1030,9 @@ class RewardService {
               isProcessed: true
             });
 
-            // ② 사용자 리워드 차감 및 패널티 카운트 증가 (0 미만 방지)
+            // ② 사용자 리워드 차감 (0 미만 방지)
             transaction.update(userRef, {
               rewards: FieldValue.increment(-deducted),
-              penaltyCount: FieldValue.increment(1),
               updatedAt: FieldValue.serverTimestamp()
             });
 
@@ -1122,10 +1121,9 @@ class RewardService {
               isProcessed: true
             });
 
-            // ② 사용자 리워드 차감 및 패널티 카운트 증가 (0 미만 방지)
+            // ② 사용자 리워드 차감 (0 미만 방지)
             transaction.update(userRef, {
               rewards: FieldValue.increment(-deducted),
-              penaltyCount: FieldValue.increment(1),
               updatedAt: FieldValue.serverTimestamp()
             });
 
