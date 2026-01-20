@@ -514,12 +514,7 @@ const Page = () => {
               <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-3">
                 <ButtonBase
                   onClick={goToPreviousMonth}
-                  disabled={hasNoRoutineCertifications}
-                  className={cn(
-                    "flex items-center justify-center",
-                    hasNoRoutineCertifications &&
-                      "cursor-not-allowed opacity-40"
-                  )}
+                  className="flex items-center justify-center"
                   aria-label="이전 달"
                 >
                   <ChevronLeft className="size-4 text-gray-700" />
@@ -533,12 +528,7 @@ const Page = () => {
                 </Typography>
                 <ButtonBase
                   onClick={goToNextMonth}
-                  disabled={hasNoRoutineCertifications}
-                  className={cn(
-                    "flex items-center justify-center",
-                    hasNoRoutineCertifications &&
-                      "cursor-not-allowed opacity-40"
-                  )}
+                  className="flex items-center justify-center"
                   aria-label="다음 달"
                 >
                   <ChevronRight className="size-4 text-gray-700" />
@@ -546,29 +536,22 @@ const Page = () => {
               </div>
               {/* 오늘 버튼 - 오른쪽 정렬 */}
               <div className="ml-auto">
-                {(() => {
-                  const isTodayButtonDisabled =
-                    isCurrentMonthToday || hasNoRoutineCertifications;
-
-                  return (
-                    <ButtonBase
-                      onClick={goToToday}
-                      disabled={isTodayButtonDisabled}
-                      className={cn(
-                        "flex items-center rounded-lg border border-gray-300 bg-white px-2 py-1",
-                        isTodayButtonDisabled && "cursor-not-allowed opacity-70"
-                      )}
-                    >
-                      <Typography
-                        font="noto"
-                        variant="label2M"
-                        className="text-gray-950"
-                      >
-                        오늘
-                      </Typography>
-                    </ButtonBase>
-                  );
-                })()}
+                <ButtonBase
+                  onClick={goToToday}
+                  disabled={isCurrentMonthToday}
+                  className={cn(
+                    "flex items-center rounded-lg border border-gray-300 bg-white px-2 py-1",
+                    isCurrentMonthToday && "cursor-not-allowed opacity-70"
+                  )}
+                >
+                  <Typography
+                    font="noto"
+                    variant="label2M"
+                    className="text-gray-950"
+                  >
+                    오늘
+                  </Typography>
+                </ButtonBase>
               </div>
             </div>
 
