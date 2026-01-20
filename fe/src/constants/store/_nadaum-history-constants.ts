@@ -41,7 +41,21 @@ export const CHANGE_TYPE = {
  */
 export const ACTION_KEY = {
   EXPIRATION: "expiration",
+  COMMENT_DELETION: "comment",
+  POST_DELETION: "post",
 } as const satisfies Record<string, ActionKey>;
+
+/**
+ * @description 삭제로 표시할 액션 키 목록 (게시글/댓글 삭제 포함)
+ */
+export const DELETION_ACTION_KEYS: readonly string[] = [
+  ACTION_KEY.COMMENT_DELETION,
+  ACTION_KEY.POST_DELETION,
+  "routine_post",
+  "routine_review",
+  "gathering_review_media",
+  "tmi_review",
+] as const;
 
 /**
  * @description 히스토리 타입별 라벨 매핑
