@@ -216,7 +216,7 @@ const Page = () => {
                 variant="label2M"
                 className="text-gray-400"
               >
-                소멸 예정인 나다움
+                이번 달 소멸 예정인 나다움
               </Typography>
               <Typography
                 font="noto"
