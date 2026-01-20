@@ -11,6 +11,7 @@ import BottomSheet from "@/components/shared/ui/bottom-sheet";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   ACTION_KEY,
+  DELETION_ACTION_KEYS,
   EXPIRATION_DESCRIPTION_TEMPLATE,
   HISTORY_TYPE_LABEL,
   NADAUM_GUIDE_TEXT,
@@ -123,10 +124,17 @@ const Page = () => {
             description = EXPIRATION_DESCRIPTION_TEMPLATE(expirationDate);
           }
         } else if (item.changeType === CHANGE_TYPE.DEDUCT) {
-          // actionKey로 사용/소멸 구분
+          // actionKey로 사용/소멸/삭제 구분
+          const isDeletion = DELETION_ACTION_KEYS.includes(
+            (item.actionKey as string) ?? ""
+          );
+
           if (item.actionKey === ACTION_KEY.EXPIRATION) {
             type = PAGE_FILTER.EXPIRE;
             label = HISTORY_TYPE_LABEL[PAGE_FILTER.EXPIRE];
+          } else if (isDeletion) {
+            type = PAGE_FILTER.USE;
+            label = "게시글/댓글 삭제";
           } else {
             type = PAGE_FILTER.USE;
             label = HISTORY_TYPE_LABEL[PAGE_FILTER.USE];

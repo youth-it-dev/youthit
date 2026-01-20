@@ -833,10 +833,9 @@ class RewardService {
       
       const addSnapshot = await addQuery.get();
       
-      // 2. 차감 내역 조회 (changeType: "deduct" && actionKey: "additional_point" | "store" | "expiration")
+      // 2. 차감 내역 조회 (changeType: "deduct")
       const deductQuery = rewardsHistoryRef
         .where('changeType', '==', 'deduct')
-        .where('actionKey', 'in', ['additional_point', 'store', 'expiration'])
         .orderBy('createdAt', 'desc');
       
       const deductSnapshot = await deductQuery.get();
