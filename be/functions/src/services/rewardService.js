@@ -22,6 +22,14 @@ const ACTION_TYPE_MAP = {
   'consecutive_days_5': 'CONSECUTIVE-DAYS-5',
 };
 
+// 커뮤니티당 1번만 리워드 지급되는 액션 목록 (리뷰 타입)
+const ONCE_PER_COMMUNITY_ACTIONS = new Set([
+  'routine_review',
+  'gathering_review_text',
+  'gathering_review_media',
+  'tmi_review',
+]);
+
 // 액션 키 → 리워드 사유 매핑 (rewardsHistory의 reason 필드용)
 const ACTION_REASON_MAP = {
   'comment': '댓글 작성',
@@ -352,6 +360,11 @@ class RewardService {
 
       historyData.expiresAt = expiresAtTimestamp;
 
+      // 리뷰 타입의 경우 삭제 시 조회를 위해 postId 필드 추가
+      if (options?.postId) {
+        historyData.postId = options.postId;
+      }
+
       transaction.set(historyRef, historyData);
 
       // users/{userId}.rewards 증가
@@ -599,21 +612,38 @@ class RewardService {
       // 3. historyId 생성 (타입 코드 기반)
       const typeCode = ACTION_TYPE_MAP[actionKey] || 'REWARD';
       
-      // consecutive_days_5는 userId를 targetId로 사용
+      // 커뮤니티당 1번만 리워드 지급되는 액션 (리뷰 타입)
+      const isOncePerCommunity = ONCE_PER_COMMUNITY_ACTIONS.has(actionKey);
+      
       let targetId;
-      if (actionKey === 'consecutive_days_5') {
+      let historyId;
+      let additionalOptions = {};
+      
+      if (isOncePerCommunity) {
+        // 리뷰 타입: communityId 기반 historyId (커뮤니티당 1번)
+        if (!metadata.communityId) {
+          const error = new Error('리뷰 리워드는 communityId가 필요합니다');
+          error.code = 'BAD_REQUEST';
+          throw error;
+        }
+        targetId = metadata.communityId;
+        historyId = `${typeCode}-${targetId}`;
+        // 삭제 시 조회를 위해 postId 필드 추가
+        additionalOptions.postId = metadata.postId;
+      } else if (actionKey === 'consecutive_days_5') {
+        // consecutive_days_5는 userId를 targetId로 사용
         targetId = userId;
+        historyId = `${typeCode}-${targetId}`;
       } else {
+        // 그 외: postId 또는 commentId 기반
         targetId = metadata.commentId || metadata.postId || metadata.targetId;
+        if (!targetId) {
+          const error = new Error('commentId, postId, 또는 targetId가 필요합니다');
+          error.code = 'BAD_REQUEST';
+          throw error;
+        }
+        historyId = `${typeCode}-${targetId}`;
       }
-      
-      if (!targetId) {
-        const error = new Error('commentId, postId, 또는 targetId가 필요합니다');
-        error.code = 'BAD_REQUEST';
-        throw error;
-      }
-      
-      const historyId = `${typeCode}-${targetId}`;
 
       // 4. reason 생성 (ACTION_REASON_MAP에서 가져오기)
       const reason = ACTION_REASON_MAP[actionKey] || '리워드 적립';
@@ -626,7 +656,8 @@ class RewardService {
         historyId, 
         actionTimestamp,
         true, // checkDuplicate
-        reason
+        reason,
+        additionalOptions
       );
 
       // 6. 중복 체크 결과 처리
@@ -1074,6 +1105,10 @@ class RewardService {
    */
   async handleRewardOnPostDeletion(userId, postId, postType, postMedia, transaction) {
     try {
+      // 리뷰 타입 확인 (커뮤니티당 1번 리워드, postId 필드로 조회 필요)
+      const REVIEW_POST_TYPES = ['ROUTINE_REVIEW', 'GATHERING_REVIEW', 'TMI_REVIEW', 'TMI'];
+      const isReviewType = REVIEW_POST_TYPES.includes(postType);
+
       // TYPE_CODE 결정
       let typeCode;
       if (postType === 'ROUTINE_CERT') {
@@ -1090,15 +1125,39 @@ class RewardService {
         return; // 리워드 대상이 아닌 타입
       }
 
-      const historyId = `${typeCode}-${postId}`;
-      const historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
-      const historyDoc = await transaction.get(historyRef);
+      let historyRef;
+      let historyDoc;
+      let historyData;
 
-      if (!historyDoc.exists) {
-        return; // 리워드 히스토리가 없으면 스킵
+      if (isReviewType) {
+        // 리뷰 타입: postId 필드로 쿼리해서 찾기 (historyId가 communityId 기반이므로)
+        const rewardsHistoryRef = db.collection(`users/${userId}/rewardsHistory`);
+        const snapshot = await transaction.get(
+          rewardsHistoryRef
+            .where('postId', '==', postId)
+            .where('changeType', '==', 'add')
+            .limit(1)
+        );
+
+        if (snapshot.empty) {
+          return; // 리워드 히스토리가 없으면 스킵
+        }
+
+        historyDoc = snapshot.docs[0];
+        historyRef = historyDoc.ref;
+        historyData = historyDoc.data();
+      } else {
+        // 그 외 타입: 기존대로 historyId로 직접 조회
+        const historyId = `${typeCode}-${postId}`;
+        historyRef = db.collection(`users/${userId}/rewardsHistory`).doc(historyId);
+        historyDoc = await transaction.get(historyRef);
+
+        if (!historyDoc.exists) {
+          return; // 리워드 히스토리가 없으면 스킵
+        }
+
+        historyData = historyDoc.data();
       }
-
-      const historyData = historyDoc.data();
       
       // 조건 확인: isProcessed === false && changeType === 'add'
       if (!historyData.isProcessed && historyData.changeType === 'add') {
