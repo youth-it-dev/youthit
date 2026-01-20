@@ -24,8 +24,7 @@ const policies = [
   { key: 'comment', name: '댓글 작성' },
   { key: 'routine_post', name: '루틴 인증글' },
   { key: 'routine_review', name: '루틴 후기글' },
-  { key: 'gathering_review_text', name: '소모임 후기글 (텍스트)' },
-  { key: 'gathering_review_media', name: '소모임 후기글 (사진 포함)' },
+  { key: 'gathering_review_media', name: '소모임 후기글' },
   { key: 'tmi_review', name: 'TMI 프로젝트 후기글' },
 ];
 

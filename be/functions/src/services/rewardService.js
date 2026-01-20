@@ -15,7 +15,6 @@ const ACTION_TYPE_MAP = {
   'comment': 'COMMENT',
   'routine_post': 'ROUTINE-POST',
   'routine_review': 'ROUTINE-REVIEW',
-  'gathering_review_text': 'GATHERING-TEXT',
   'gathering_review_media': 'GATHERING-MEDIA',
   'tmi_review': 'TMI',
   'mission_cert': 'MISSION-CERT',
@@ -25,7 +24,6 @@ const ACTION_TYPE_MAP = {
 // 커뮤니티당 1번만 리워드 지급되는 액션 목록 (리뷰 타입)
 const ONCE_PER_COMMUNITY_ACTIONS = new Set([
   'routine_review',
-  'gathering_review_text',
   'gathering_review_media',
   'tmi_review',
 ]);
@@ -35,8 +33,7 @@ const ACTION_REASON_MAP = {
   'comment': '댓글 작성',
   'routine_post': '한끗루틴 인증',
   'routine_review': '한끗루틴 후기',
-  'gathering_review_text': '소모임 후기',
-  'gathering_review_media': '소모임 포토 후기',
+  'gathering_review_media': '소모임 후기',
   'tmi_review': 'TMI 후기',
   'mission_cert': '미션 인증',
   'consecutive_days_5': '연속 미션 5일 달성',
@@ -146,7 +143,6 @@ class RewardService {
         'comment',
         'routine_post',
         'routine_review',
-        'gathering_review_text',
         'gathering_review_media',
         'tmi_review',
       ]);
@@ -493,16 +489,7 @@ class RewardService {
     } else if (type === 'ROUTINE_REVIEW') {
       return await this.grantActionReward(userId, 'routine_review', { postId, communityId });
     } else if (type === 'GATHERING_REVIEW') {
-      // 이미지 포함 여부 체크
-      let hasImage = Array.isArray(media) && media.length > 0;
-      
-      if (!hasImage && content) {
-        const contentWithoutCodeBlocks = content.replace(/```[\s\S]*?```/g, '');
-        hasImage = /<\s*img\b/i.test(contentWithoutCodeBlocks);
-      }
-      
-      const actionKey = hasImage ? 'gathering_review_media' : 'gathering_review_text';
-      return await this.grantActionReward(userId, actionKey, { postId, communityId });
+      return await this.grantActionReward(userId, 'gathering_review_media', { postId, communityId });
     } else if (type === 'TMI_REVIEW' || type === 'TMI') {
       return await this.grantActionReward(userId, 'tmi_review', { postId, communityId });
     }
@@ -1115,9 +1102,7 @@ class RewardService {
       } else if (postType === 'ROUTINE_REVIEW') {
         typeCode = 'ROUTINE-REVIEW';
       } else if (postType === 'GATHERING_REVIEW') {
-        // media 필드만 확인
-        const hasMedia = Array.isArray(postMedia) && postMedia.length > 0;
-        typeCode = hasMedia ? 'GATHERING-MEDIA' : 'GATHERING-TEXT';
+        typeCode = 'GATHERING-MEDIA';
       } else if (postType === 'TMI_REVIEW' || postType === 'TMI') {
         typeCode = 'TMI';
       } else {

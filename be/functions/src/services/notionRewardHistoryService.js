@@ -19,7 +19,6 @@ const TARGET_ACTION_KEYS = [
   'comment',
   'routine_post',
   'routine_review',
-  'gathering_review_text',
   'gathering_review_media',
   'tmi_review',
   'store',

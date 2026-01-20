@@ -9,7 +9,7 @@ const router = express.Router();
  *     summary: 리워드 히스토리 동기화
  *     description: |
  *       Firestore의 전체 사용자 리워드 히스토리를 조회하여 Notion 데이터베이스와 동기화합니다.
- *       - additional_point, comment, routine_post, routine_review, gathering_review_text, gathering_review_media, tmi_review 액션키 대상
+ *       - additional_point, comment, routine_post, routine_review, gathering_review_media, tmi_review 액션키 대상
  *       - add/deduct changeType 구분하여 지급/차감 타입으로 매핑
  *       - 회원 관리 테이블과 연동하여 사용자 정보 포함
  *     tags: [NotionRewardHistory]
