@@ -256,12 +256,10 @@ const PostDetailPageContent = () => {
         },
       });
 
-      // 미션 인증글 삭제 시 마이페이지 캘린더 쿼리 무효화
-      if (communityId === "mission") {
-        queryClient.invalidateQueries({
-          queryKey: ["users", "getUsersMeRoutineCalendar"],
-        });
-      }
+      // 캘린더 목록 데이터 쿼리 무효화
+      queryClient.invalidateQueries({
+        queryKey: ["users", "getUsersMeRoutineCalendar"],
+      });
 
       // 삭제 확인 모달 닫기
       closeDeleteModal();
