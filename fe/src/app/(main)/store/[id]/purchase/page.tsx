@@ -332,7 +332,7 @@ const StorePurchasePage = () => {
   // 하단 버튼 렌더링
   const renderBottomButton = useCallback(() => {
     const buttonBaseClass =
-      "w-full rounded-lg bg-main-600 px-4 py-3 text-white transition-colors hover:bg-main-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
+      "w-full rounded-lg bg-main-600 px-4 py-3 text-white transition-colors hover:bg-main-700 disabled:bg-gray-300 disabled:hover:bg-gray-300";
 
     switch (currentStep) {
       case "recipient-info": {
