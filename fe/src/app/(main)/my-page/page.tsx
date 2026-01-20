@@ -29,6 +29,7 @@ import {
   useGetUsersMeLikedPosts,
   useGetUsersMePosts,
   useGetUsersMeRoutineCalendar,
+  useGetUsersMeParticipatingCommunities,
 } from "@/hooks/generated/users-hooks";
 import useToggle from "@/hooks/shared/useToggle";
 import {
@@ -85,7 +86,25 @@ const Page = () => {
   });
 
   const hasNickname = Boolean(userData?.nickname?.trim());
-  const hasNoRoutineCertifications = (userData?.certificationPosts ?? 0) === 0;
+
+  // 참여 중인 커뮤니티 조회
+  const { data: participatingCommunitiesData } =
+    useGetUsersMeParticipatingCommunities({
+      enabled: Boolean(userData) && hasNickname,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    });
+
+  // 참여 중인 루틴 커뮤니티가 있는지 확인
+  const hasParticipatingRoutine = useMemo(() => {
+    if (!participatingCommunitiesData) return false;
+    return (participatingCommunitiesData.routine?.items?.length ?? 0) > 0;
+  }, [participatingCommunitiesData]);
+
+  // 인증 기록이 없고 참여 중인 루틴도 없을 때만 true
+  const hasNoRoutineCertifications =
+    (userData?.certificationPosts ?? 0) === 0 && !hasParticipatingRoutine;
 
   // 달력 데이터 조회
   const { data: calendarDataFromApi } = useGetUsersMeRoutineCalendar({
@@ -211,8 +230,15 @@ const Page = () => {
   // 인증 페이지로 이동하는 핸들러
   const handleCertifyClick = () => {
     if (!userData?.currentRoutineCommunityId) return;
+
+    // 참여 중인 루틴 커뮤니티에서 현재 루틴의 이름 찾기
+    const currentRoutine = participatingCommunitiesData?.routine?.items?.find(
+      (item) => item.id === userData.currentRoutineCommunityId
+    );
+    const communityName = currentRoutine?.name || "";
+
     router.push(
-      `/community/write?communityId=${userData.currentRoutineCommunityId}&isReview=false`
+      `/community/write?communityId=${userData.currentRoutineCommunityId}&communityName=${encodeURIComponent(communityName)}&category=한끗루틴&isReview=false`
     );
   };
 
