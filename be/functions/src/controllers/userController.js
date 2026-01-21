@@ -398,13 +398,23 @@ class UserController {
   async getRewardsEarned(req, res, next) {
     try {
       const {uid} = req.user;
-      const { page = 0, size = 20, filter = 'all' } = req.query;
+      const { page = 0, size = 20, filter = 'all', month } = req.query;
       
-      const result = await rewardService.getRewardsEarned(uid, {
+      const options = {
         page: parseInt(page),
         size: parseInt(size),
         filter,
-      });
+      };
+      
+      // month 파라미터가 있으면 숫자로 변환하여 추가
+      if (month !== undefined) {
+        const monthNum = parseInt(month);
+        if (!isNaN(monthNum)) {
+          options.month = monthNum;
+        }
+      }
+      
+      const result = await rewardService.getRewardsEarned(uid, options);
       
       return res.success(result);
     } catch (error) {

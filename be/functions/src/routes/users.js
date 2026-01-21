@@ -1355,6 +1355,13 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *           enum: [all, earned, used, expired]
  *           default: all
  *         description: 필터 타입 (all=전체, earned=적립, used=사용, expired=소멸)
+ *       - in: query
+ *         name: month
+ *         schema:
+ *           type: integer
+ *           enum: [1, 3, 6, 12]
+ *         description: 기간 필터링 (1=1개월, 3=3개월, 6=6개월, 12=1년). 지정하지 않으면 전체 기간 조회
+ *         example: 3
  *     responses:
  *       200:
  *         description: 조회 성공
