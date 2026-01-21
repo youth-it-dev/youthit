@@ -847,8 +847,25 @@ class RewardService {
       
       let startDate = null;
       if (month) {
-        startDate = new Date(now);
-        startDate.setMonth(startDate.getMonth() - month);
+        // setMonth는 말일 오버플로우로 날짜가 튀는 문제가 있어 보정 로직을 사용합니다.
+        const subtractMonthsClamped = (date, monthsToSubtract) => {
+          const originalDay = date.getDate();
+          const target = new Date(date);
+          // 1) 먼저 1일로 맞춘 뒤 month 이동
+          target.setDate(1);
+          target.setMonth(target.getMonth() - monthsToSubtract);
+          // 2) target 월의 마지막 날짜 계산
+          const lastDayOfTargetMonth = new Date(
+            target.getFullYear(),
+            target.getMonth() + 1,
+            0
+          ).getDate();
+          // 3) 원래 일자 vs 말일 중 작은 값으로 clamp
+          target.setDate(Math.min(originalDay, lastDayOfTargetMonth));
+          return target;
+        };
+
+        startDate = subtractMonthsClamped(now, month);
         startDate.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
       }
       
@@ -868,7 +885,14 @@ class RewardService {
       
       addQuery = addQuery.orderBy('createdAt', 'desc');
       
-      const addSnapshot = await addQuery.get();
+      // expiringThisMonth는 전체 적립 내역 기준으로 집계되어야 하므로, 별도 스냅샷을 사용합니다.
+      const [addSnapshot, addSnapshotForExpiringThisMonth] = await Promise.all([
+        addQuery.get(),
+        rewardsHistoryRef
+          .where('changeType', '==', 'add')
+          .orderBy('createdAt', 'desc')
+          .get(),
+      ]);
       
       // 2. 차감 내역 조회 (changeType: "deduct")
       let deductQuery = rewardsHistoryRef
@@ -888,7 +912,7 @@ class RewardService {
       const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       
       let expiringThisMonth = 0;
-      addSnapshot.docs.forEach((doc) => {
+      addSnapshotForExpiringThisMonth.docs.forEach((doc) => {
         const data = doc.data();
         
         // changeType === 'add'이고 isProcessed === false인 항목만
