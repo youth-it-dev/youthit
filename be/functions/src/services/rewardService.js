@@ -885,17 +885,12 @@ class RewardService {
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-      const expiringSnapshotPromise = rewardsHistoryRef
+      const expiringQuery = rewardsHistoryRef
         .where('changeType', '==', 'add')
         .where('isProcessed', '==', false)
         .where('expiresAt', '>=', currentMonthStart)
         .where('expiresAt', '<=', currentMonthEnd)
-        .get();
-      
-      const [addSnapshot, expiringSnapshot] = await Promise.all([
-        addQuery.get(),
-        expiringSnapshotPromise,
-      ]);
+        .orderBy('expiresAt', 'asc');
       
       // 2. 차감 내역 조회 (changeType: "deduct")
       let deductQuery = rewardsHistoryRef
@@ -907,8 +902,12 @@ class RewardService {
       }
       
       deductQuery = deductQuery.orderBy('createdAt', 'desc');
-      
-      const deductSnapshot = await deductQuery.get();
+
+      const [addSnapshot, expiringSnapshot, deductSnapshot] = await Promise.all([
+        addQuery.get(),
+        expiringQuery.get(),
+        deductQuery.get(),
+      ]);
       
       // 3. 해당 월 소멸 예정 포인트 계산 (changeType=add, isProcessed=false, expiresAt 이번 달)
       let expiringThisMonth = 0;
