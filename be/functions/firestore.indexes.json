@@ -251,6 +251,16 @@
     },
     {
       "collectionGroup": "rewardsHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "changeType", "order": "ASCENDING" },
+        { "fieldPath": "isProcessed", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rewardsHistory",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "actionKey", "order": "ASCENDING" },
