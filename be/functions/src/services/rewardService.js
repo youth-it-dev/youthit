@@ -827,17 +827,27 @@ class RewardService {
    * @return {Promise<Object>} 조회 결과 { history, pagination }
    */
   async getRewardsEarned(userId, options = {}) {
-    const { page = 0, size = 20, filter = 'all' } = options;
+    const { page = 0, size = 20, filter = 'all', month } = options;
     
     // 입력 검증
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
       throw new Error('유효하지 않은 userId입니다');
     }
   
+    if (month !== undefined && ![1, 3, 6, 12].includes(month)) {
+      throw new Error('month는 1, 3, 6, 12 중 하나여야 합니다');
+    }
 
     try {
       const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
       const now = new Date();
+      
+      let startDate = null;
+      if (month) {
+        startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - month);
+        startDate.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+      }
       
       // 0. 사용자 문서에서 사용 가능한 나다움 포인트 조회
       const userRef = db.collection('users').doc(userId);
@@ -845,16 +855,28 @@ class RewardService {
       const availableRewards = userDoc.exists ? (userDoc.data().rewards || 0) : 0;
       
       // 1. 지급 내역 조회 (changeType: "add")
-      const addQuery = rewardsHistoryRef
-        .where('changeType', '==', 'add')
-        .orderBy('createdAt', 'desc');
+      let addQuery = rewardsHistoryRef
+        .where('changeType', '==', 'add');
+      
+      // 기간 필터링 적용
+      if (startDate) {
+        addQuery = addQuery.where('createdAt', '>=', startDate);
+      }
+      
+      addQuery = addQuery.orderBy('createdAt', 'desc');
       
       const addSnapshot = await addQuery.get();
       
       // 2. 차감 내역 조회 (changeType: "deduct")
-      const deductQuery = rewardsHistoryRef
-        .where('changeType', '==', 'deduct')
-        .orderBy('createdAt', 'desc');
+      let deductQuery = rewardsHistoryRef
+        .where('changeType', '==', 'deduct');
+      
+      // 기간 필터링 적용
+      if (startDate) {
+        deductQuery = deductQuery.where('createdAt', '>=', startDate);
+      }
+      
+      deductQuery = deductQuery.orderBy('createdAt', 'desc');
       
       const deductSnapshot = await deductQuery.get();
       
