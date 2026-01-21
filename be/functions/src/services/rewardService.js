@@ -835,7 +835,10 @@ class RewardService {
     }
   
     if (month !== undefined && ![1, 3, 6, 12].includes(month)) {
-      throw new Error('month는 1, 3, 6, 12 중 하나여야 합니다');
+      const error = new Error('month는 1, 3, 6, 12 중 하나여야 합니다');
+      error.code = 'BAD_REQUEST';
+      error.statusCode = 400;
+      throw error;
     }
 
     try {
