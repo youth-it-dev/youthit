@@ -847,20 +847,16 @@ class RewardService {
       
       let startDate = null;
       if (month) {
-        // setMonth는 말일 오버플로우로 날짜가 튀는 문제가 있어 보정 로직을 사용합니다.
         const subtractMonthsClamped = (date, monthsToSubtract) => {
           const originalDay = date.getDate();
           const target = new Date(date);
-          // 1) 먼저 1일로 맞춘 뒤 month 이동
           target.setDate(1);
           target.setMonth(target.getMonth() - monthsToSubtract);
-          // 2) target 월의 마지막 날짜 계산
           const lastDayOfTargetMonth = new Date(
             target.getFullYear(),
             target.getMonth() + 1,
             0
           ).getDate();
-          // 3) 원래 일자 vs 말일 중 작은 값으로 clamp
           target.setDate(Math.min(originalDay, lastDayOfTargetMonth));
           return target;
         };
@@ -878,20 +874,27 @@ class RewardService {
       let addQuery = rewardsHistoryRef
         .where('changeType', '==', 'add');
       
-      // 기간 필터링 적용
+      // 기간 필터링 적용 (history 용)
       if (startDate) {
         addQuery = addQuery.where('createdAt', '>=', startDate);
       }
       
       addQuery = addQuery.orderBy('createdAt', 'desc');
+
+      // 소멸 예정 집계용 쿼리 (기간 필터와 무관, expiresAt 기준)
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      const expiringSnapshotPromise = rewardsHistoryRef
+        .where('changeType', '==', 'add')
+        .where('isProcessed', '==', false)
+        .where('expiresAt', '>=', currentMonthStart)
+        .where('expiresAt', '<=', currentMonthEnd)
+        .get();
       
-      // expiringThisMonth는 전체 적립 내역 기준으로 집계되어야 하므로, 별도 스냅샷을 사용합니다.
-      const [addSnapshot, addSnapshotForExpiringThisMonth] = await Promise.all([
+      const [addSnapshot, expiringSnapshot] = await Promise.all([
         addQuery.get(),
-        rewardsHistoryRef
-          .where('changeType', '==', 'add')
-          .orderBy('createdAt', 'desc')
-          .get(),
+        expiringSnapshotPromise,
       ]);
       
       // 2. 차감 내역 조회 (changeType: "deduct")
@@ -907,38 +910,11 @@ class RewardService {
       
       const deductSnapshot = await deductQuery.get();
       
-      // 3. 해당 월 소멸 예정 포인트 계산
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      
+      // 3. 해당 월 소멸 예정 포인트 계산 (changeType=add, isProcessed=false, expiresAt 이번 달)
       let expiringThisMonth = 0;
-      addSnapshotForExpiringThisMonth.docs.forEach((doc) => {
+      expiringSnapshot.docs.forEach((doc) => {
         const data = doc.data();
-        
-        // changeType === 'add'이고 isProcessed === false인 항목만
-        if (data.changeType !== 'add' || data.isProcessed === true) {
-          return;
-        }
-        
-        // expiresAt 계산
-        let expiresAt = null;
-        if (data.expiresAt?.toDate) {
-          expiresAt = data.expiresAt.toDate();
-        } else if (data.expiresAt) {
-          const parsed = new Date(data.expiresAt);
-          if (!Number.isNaN(parsed.getTime())) {
-            expiresAt = parsed;
-          }
-        } else {
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-          expiresAt = new Date(createdAt);
-          expiresAt.setDate(expiresAt.getDate() + DEFAULT_EXPIRY_DAYS);
-        }
-        
-        // 현재 월 내에 만료되는지 확인
-        if (expiresAt && expiresAt >= currentMonthStart && expiresAt <= currentMonthEnd) {
-          expiringThisMonth += data.amount || 0;
-        }
+        expiringThisMonth += data.amount || 0;
       });
       
       // 3. 두 결과 합치기 및 정렬 (메모리에서)
