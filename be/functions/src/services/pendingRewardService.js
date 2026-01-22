@@ -1,4 +1,4 @@
-const { db, FieldValue } = require('../config/database');
+const { db, FieldValue, Timestamp, now } = require('../config/database');
 const { ADMIN_LOG_ACTIONS } = require('../constants/adminLogActions');
 const adminLogsService = require('./adminLogsService');
 const notionPendingRewardService = require('./notionPendingRewardService');
@@ -133,11 +133,11 @@ class PendingRewardService {
    */
   async getPendingRewards(limit = 100) {
     try {
-      const now = new Date();
+      const serverTimestampNow = now();
       
       const snapshot = await this.collectionRef
         .where('status', '==', PENDING_STATUS.PENDING)
-        .where('nextRetryAt', '<=', now)
+        .where('nextRetryAt', '<=', serverTimestampNow)
         .orderBy('nextRetryAt', 'asc')
         .limit(limit)
         .get();
@@ -170,8 +170,8 @@ class PendingRewardService {
         }
 
         const data = doc.data();
-        if (data.status !== PENDING_STATUS.PENDING) {
-          return false; // 이미 처리 중이거나 완료됨
+        if (data.status !== PENDING_STATUS.PENDING && data.status !== PENDING_STATUS.FAILED) {
+          return false;
         }
 
         transaction.update(docRef, {
@@ -306,7 +306,7 @@ class PendingRewardService {
         } else {
           // 다음 재시도를 위해 대기 상태로 복귀 (지수 백오프: 1분, 2분, 4분, 8분, 16분)
           const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000; // 밀리초
-          const nextRetryAt = new Date(Date.now() + nextRetryDelay);
+          const nextRetryAt = Timestamp.fromMillis(Date.now() + nextRetryDelay);
 
           transaction.update(docRef, {
             status: PENDING_STATUS.PENDING,
@@ -360,14 +360,14 @@ class PendingRewardService {
         }
       } else {
         const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000;
-        const nextRetryAt = new Date(Date.now() + nextRetryDelay);
+        const nextRetryAt = Timestamp.fromMillis(Date.now() + nextRetryDelay);
 
         console.warn('[PENDING REWARD] 재시도 예정:', { 
           docId, 
           userId: data.userId, 
           actionKey: data.actionKey, 
           retryCount: newRetryCount,
-          nextRetryAt: nextRetryAt.toISOString(),
+          nextRetryAt: nextRetryAt.toDate().toISOString(),
         });
 
         // Notion 상태 업데이트 (재시도 대기)
