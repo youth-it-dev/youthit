@@ -7,6 +7,12 @@ const {
   getTextContent,
 } = require('../utils/notionHelper');
 const { toDate, formatDate } = require('../utils/helpers');
+const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const tz = require('dayjs/plugin/timezone');
+
+dayjs.extend(utc);
+dayjs.extend(tz);
 
 const DEFAULT_EXPIRY_DAYS = 120;
 
@@ -882,8 +888,20 @@ class RewardService {
       addQuery = addQuery.orderBy('createdAt', 'desc');
 
       // 소멸 예정 집계용 쿼리 (기간 필터와 무관, expiresAt 기준)
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const nowKST = dayjs().tz('Asia/Seoul');
+      
+      const currentMonthStart = nowKST
+        .startOf('month')
+        .utc()
+        .toDate();
+      
+      const currentMonthEnd = nowKST
+        .endOf('month')
+        .utc()
+        .toDate();
+      
+      // 시간대 확인 로그
+      console.log(`[REWARD HISTORY] currentMonthStart: ${currentMonthStart.toISOString()} (UTC), currentMonthEnd: ${currentMonthEnd.toISOString()} (UTC)`);
 
       const expiringQuery = rewardsHistoryRef
         .where('changeType', '==', 'add')
