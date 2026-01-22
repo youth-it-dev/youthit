@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pendingRewardController = require('../controllers/pendingRewardController');
+const authGuard = require('../middleware/authGuard');
 
 /**
  * @swagger
@@ -17,6 +18,8 @@ const pendingRewardController = require('../controllers/pendingRewardController'
  *     description: |
  *       나다움 부여 실패 또는 대기 중인 항목 목록을 조회합니다.
  *     tags: [PendingRewards]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: status
@@ -69,7 +72,7 @@ const pendingRewardController = require('../controllers/pendingRewardController'
  *                   items:
  *                     type: object
  */
-router.get('/list', pendingRewardController.getList);
+router.get('/list', authGuard, pendingRewardController.getList);
 
 /**
  * @swagger
@@ -79,6 +82,8 @@ router.get('/list', pendingRewardController.getList);
  *     description: |
  *       상태별 나다움 재시도 건수를 조회합니다.
  *     tags: [PendingRewards]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: 조회 성공
@@ -96,7 +101,7 @@ router.get('/list', pendingRewardController.getList);
  *                 failed:
  *                   type: integer
  */
-router.get('/stats', pendingRewardController.getStats);
+router.get('/stats', authGuard, pendingRewardController.getStats);
 
 /**
  * @swagger
