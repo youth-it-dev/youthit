@@ -849,9 +849,12 @@ class RewardService {
 
     try {
       const rewardsHistoryRef = this.firestoreService.db.collection(`users/${userId}/rewardsHistory`);
-      const now = new Date();
+      const nowKST = dayjs().tz('Asia/Seoul');
+      const now = new Date(); // 만료 여부 확인용
       
       let startDate = null;
+      let endDate = null;
+      
       if (month) {
         const subtractMonthsClamped = (date, monthsToSubtract) => {
           const originalDay = date.getDate();
@@ -869,6 +872,10 @@ class RewardService {
 
         startDate = subtractMonthsClamped(now, month);
         startDate.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+      } else {
+        // month 필터가 없으면: 이번 달(KST) 기준으로 조회
+        startDate = nowKST.startOf('month').utc().toDate();
+        endDate = nowKST.endOf('month').utc().toDate();
       }
       
       // 0. 사용자 문서에서 사용 가능한 나다움 포인트 조회
@@ -884,12 +891,13 @@ class RewardService {
       if (startDate) {
         addQuery = addQuery.where('createdAt', '>=', startDate);
       }
+      if (endDate) {
+        addQuery = addQuery.where('createdAt', '<=', endDate);
+      }
       
       addQuery = addQuery.orderBy('createdAt', 'desc');
 
       // 소멸 예정 집계용 쿼리 (기간 필터와 무관, expiresAt 기준)
-      const nowKST = dayjs().tz('Asia/Seoul');
-      
       const currentMonthStart = nowKST
         .startOf('month')
         .utc()
@@ -902,6 +910,11 @@ class RewardService {
       
       // 시간대 확인 로그
       console.log(`[REWARD HISTORY] currentMonthStart: ${currentMonthStart.toISOString()} (UTC), currentMonthEnd: ${currentMonthEnd.toISOString()} (UTC)`);
+      if (startDate && endDate) {
+        console.log(`[REWARD HISTORY] 조회 기간: ${startDate.toISOString()} (UTC) ~ ${endDate.toISOString()} (UTC)`);
+      } else if (startDate) {
+        console.log(`[REWARD HISTORY] 조회 기간: ${startDate.toISOString()} (UTC) ~ 현재`);
+      }
 
       const expiringQuery = rewardsHistoryRef
         .where('changeType', '==', 'add')
@@ -917,6 +930,9 @@ class RewardService {
       // 기간 필터링 적용
       if (startDate) {
         deductQuery = deductQuery.where('createdAt', '>=', startDate);
+      }
+      if (endDate) {
+        deductQuery = deductQuery.where('createdAt', '<=', endDate);
       }
       
       deductQuery = deductQuery.orderBy('createdAt', 'desc');
