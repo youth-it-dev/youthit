@@ -1,5 +1,6 @@
 const { Client } = require('@notionhq/client');
 const FirestoreService = require('./firestoreService');
+const { fetchWithTimeout } = require('../utils/helpers');
 
 // Notion 버전
 const NOTION_VERSION = process.env.NOTION_VERSION || "2022-06-28";
@@ -58,6 +59,7 @@ class NotionPendingRewardService {
     this.userAccountDbId = NOTION_USER_ACCOUNT_DB_ID;
     this.notionApiKey = NOTION_API_KEY;
     this.userService = new FirestoreService('users');
+    this.NOTION_API_TIMEOUT = 15000; // 15초
   }
 
   /**
@@ -71,7 +73,7 @@ class NotionPendingRewardService {
     }
 
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://api.notion.com/v1/databases/${this.userAccountDbId}/query`,
         {
           method: 'POST',
@@ -89,7 +91,9 @@ class NotionPendingRewardService {
             },
             page_size: 1
           }),
-        }
+        },
+        this.NOTION_API_TIMEOUT,
+        'Notion API 타임아웃'
       );
 
       if (!response.ok) {
@@ -116,7 +120,7 @@ class NotionPendingRewardService {
    */
   async getUserInfo(userId) {
     try {
-      const userData = await this.userService.getDocument('users', userId);
+      const userData = await this.userService.getById(userId);
       if (userData) {
         return {
           name: userData.name || '',
@@ -401,7 +405,7 @@ class NotionPendingRewardService {
       console.log('[NotionPendingRewardService] 선택된 항목 조회 시작...');
 
       while (hasMore) {
-        const response = await fetch(
+        const response = await fetchWithTimeout(
           `https://api.notion.com/v1/databases/${this.pendingRewardsDbId}/query`,
           {
             method: 'POST',
@@ -420,7 +424,9 @@ class NotionPendingRewardService {
               page_size: 100,
               start_cursor: startCursor,
             }),
-          }
+          },
+          this.NOTION_API_TIMEOUT,
+          'Notion API 타임아웃'
         );
 
         if (!response.ok) {
