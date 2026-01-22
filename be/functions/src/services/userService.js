@@ -10,6 +10,12 @@ const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = requir
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
+const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const tz = require('dayjs/plugin/timezone');
+
+dayjs.extend(utc);
+dayjs.extend(tz);
 
 // 기본 프로필 아바타 이미지 URL (공용 이미지)
 const DEFAULT_PROFILE_AVATAR_URL = "https://storage.googleapis.com/youthvoice-2025.firebasestorage.app/files/cVZGcXR0yH67/Profile_Default_Ah5nnOc4lAVw.png";
@@ -2125,15 +2131,15 @@ class UserService {
 
     try {
       // 1. KST 기준 월 범위 계산
-      // KST 기준으로 Date 생성 시, JS Date는 내부적으로 이미 UTC로 변환된 상태
-      const startKst = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00+09:00`);
+      const nowKST = dayjs().tz('Asia/Seoul');
+      const startKST = nowKST.year(year).month(month - 1).date(1).startOf('day');
       const nextMonth = month === 12 ? 1 : month + 1;
       const nextYear = month === 12 ? year + 1 : year;
-      const endKst = new Date(`${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00+09:00`);
+      const endKST = dayjs().tz('Asia/Seoul').year(nextYear).month(nextMonth - 1).date(1).startOf('day');
 
-      // 2. KST 기준으로 생성한 Date 객체를 그대로 사용 (추가 ±9시간 보정 불필요)
-      const startUtc = startKst;
-      const endUtc = endKst;
+      // 2. KST 기준으로 계산한 날짜를 UTC로 변환하여 Firestore 쿼리에 사용
+      const startUtc = startKST.utc().toDate();
+      const endUtc = endKST.utc().toDate();
 
       // 3. authoredPosts 조회
       const authoredPostsService = new FirestoreService(`users/${userId}/authoredPosts`);
