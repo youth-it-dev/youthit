@@ -1,6 +1,10 @@
 const PendingRewardService = require('../services/pendingRewardService');
 const notionPendingRewardService = require('../services/notionPendingRewardService');
 
+// 상수
+const MAX_LIMIT = 1000;
+const DEFAULT_LIMIT = 100;
+
 /**
  * Pending Reward Controller
  * 나다움 부여 실패 건 관리 API
@@ -12,19 +16,38 @@ class PendingRewardController {
    */
   async getList(req, res, next) {
     try {
-      const { status = 'all', limit = 100 } = req.query;
+      const { status = 'all' } = req.query;
+      
+      // limit 파라미터 검증
+      const rawLimit = req.query.limit;
+      let limit = DEFAULT_LIMIT;
+      
+      if (rawLimit !== undefined) {
+        const parsedLimit = parseInt(rawLimit, 10);
+        
+        if (isNaN(parsedLimit) || parsedLimit < 0) {
+          const error = new Error('limit 파라미터는 0 이상의 숫자여야 합니다');
+          error.code = 'BAD_REQUEST';
+          error.statusCode = 400;
+          return next(error);
+        }
+        
+        // 최대값 제한
+        limit = Math.min(parsedLimit, MAX_LIMIT);
+      }
+
       const pendingRewardService = new PendingRewardService();
 
       let result;
       if (status === 'failed') {
-        result = await pendingRewardService.getFailedRewards(parseInt(limit));
+        result = await pendingRewardService.getFailedRewards(limit);
       } else if (status === 'pending') {
-        result = await pendingRewardService.getPendingRewards(parseInt(limit));
+        result = await pendingRewardService.getPendingRewards(limit);
       } else {
         // 전체 조회 (failed + pending)
         const [failed, pending] = await Promise.all([
-          pendingRewardService.getFailedRewards(parseInt(limit)),
-          pendingRewardService.getPendingRewards(parseInt(limit)),
+          pendingRewardService.getFailedRewards(limit),
+          pendingRewardService.getPendingRewards(limit),
         ]);
         result = { failed, pending };
       }
