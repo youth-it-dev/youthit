@@ -97,24 +97,27 @@ class PendingRewardService {
         }
       } catch (notionError) {
         console.warn('[PENDING REWARD] Notion 연동 실패 (무시):', notionError.message);
-        // Notion 실패해도 메인 로직에 영향 없음
       }
 
-      // 관리자 로그 기록
-      await adminLogsService.saveAdminLog({
-        adminId: 'system',
-        action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_FAILED,
-        targetId: userId,
-        metadata: {
-          successCount: 0,
-          failedCount: 1,
-          pendingRewardId: docRef.id,
-          actionKey,
-          error,
-          errorCode,
-          ...metadata,
-        },
-      });
+      // 관리자 로그 기록 (실패해도 메인 로직에 영향 없도록)
+      try {
+        await adminLogsService.saveAdminLog({
+          adminId: 'system',
+          action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_FAILED,
+          targetId: userId,
+          metadata: {
+            successCount: 0,
+            failedCount: 1,
+            pendingRewardId: docRef.id,
+            actionKey,
+            error,
+            errorCode,
+            ...metadata,
+          },
+        });
+      } catch (adminLogError) {
+        console.error('[PENDING REWARD] 관리자 로그 기록 실패 (무시):', adminLogError.message);
+      }
 
       return docRef.id;
     } catch (saveError) {
@@ -236,20 +239,25 @@ class PendingRewardService {
         }
       }
 
-      // 관리자 로그 기록
-      await adminLogsService.saveAdminLog({
-        adminId: 'system',
-        action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_SUCCESS,
-        targetId: data.userId,
-        metadata: {
-          successCount: 1,
-          failedCount: 0,
-          pendingRewardId: docId,
-          actionKey: data.actionKey,
-          retryCount: (data.retryCount || 0) + 1,
-          grantedAmount: amount,
-        },
-      });
+      // 관리자 로그 기록 (실패해도 메인 로직에 영향 없도록)
+      try {
+        await adminLogsService.saveAdminLog({
+          adminId: 'system',
+          action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_SUCCESS,
+          targetId: data.userId,
+          metadata: {
+            successCount: 1,
+            failedCount: 0,
+            pendingRewardId: docId,
+            actionKey: data.actionKey,
+            retryCount: (data.retryCount || 0) + 1,
+            grantedAmount: amount,
+          },
+        });
+      } catch (adminLogError) {
+        console.error('[PENDING REWARD] 관리자 로그 기록 실패 (무시):', adminLogError.message);
+        // adminLog 실패해도 메인 로직은 성공으로 처리
+      }
     } catch (error) {
       console.error('[PENDING REWARD] 완료 처리 실패:', error.message);
       throw error;
@@ -331,21 +339,25 @@ class PendingRewardService {
           }
         }
 
-        // 관리자 로그 기록
-        await adminLogsService.saveAdminLog({
-          adminId: 'system',
-          action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_FAILED,
-          targetId: data.userId,
-          metadata: {
-            successCount: 0,
-            failedCount: 1,
-            pendingRewardId: docId,
-            actionKey: data.actionKey,
-            retryCount: newRetryCount,
-            lastError: error,
-            lastErrorCode: errorCode,
-          },
-        });
+        // 관리자 로그 기록 (실패해도 메인 로직에 영향 없도록)
+        try {
+          await adminLogsService.saveAdminLog({
+            adminId: 'system',
+            action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_FAILED,
+            targetId: data.userId,
+            metadata: {
+              successCount: 0,
+              failedCount: 1,
+              pendingRewardId: docId,
+              actionKey: data.actionKey,
+              retryCount: newRetryCount,
+              lastError: error,
+              lastErrorCode: errorCode,
+            },
+          });
+        } catch (adminLogError) {
+          console.error('[PENDING REWARD] 관리자 로그 기록 실패 (무시):', adminLogError.message);
+        }
       } else {
         const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000;
         const nextRetryAt = new Date(Date.now() + nextRetryDelay);
@@ -515,7 +527,30 @@ class PendingRewardService {
 
     } catch (error) {
       console.error('[PENDING REWARD] 수동 재시도 실행 실패:', error.message);
-      await this.markAsFailed(docId, error.message, error.code || 'UNKNOWN');
+      
+      // markAsFailed 호출 (실패 시 fallback으로 직접 상태 업데이트)
+      try {
+        await this.markAsFailed(docId, error.message, error.code || 'UNKNOWN');
+      } catch (markAsFailedError) {
+        console.error(`[PENDING REWARD] markAsFailed 실패 (fallback 시도): docId=${docId}`, markAsFailedError.message);
+        
+        // Fallback: 직접 상태를 FAILED로 업데이트 (PROCESSING 상태로 남지 않도록)
+        try {
+          const docRef = this.collectionRef.doc(docId);
+          await docRef.update({
+            status: PENDING_STATUS.FAILED,
+            lastError: error.message,
+            lastErrorCode: error.code || 'UNKNOWN',
+            failedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          console.log(`[PENDING REWARD] Fallback 상태 업데이트 성공: docId=${docId}`);
+        } catch (fallbackError) {
+          console.error(`[PENDING REWARD] Fallback 상태 업데이트도 실패: docId=${docId}`, fallbackError.message);
+          // 모든 시도 실패해도 원래 에러는 반환
+        }
+      }
+      
       return { success: false, error: error.message };
     }
   }
