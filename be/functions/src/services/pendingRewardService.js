@@ -665,7 +665,9 @@ class PendingRewardService {
           
           if (result.success) {
             successCount++;
-            successNotionPageIds.push(item.notionPageId);
+            if (item.notionPageId) {
+              successNotionPageIds.push(item.notionPageId);
+            }
           } else {
             failCount++;
           }
