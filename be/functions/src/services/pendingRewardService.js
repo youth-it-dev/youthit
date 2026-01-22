@@ -190,25 +190,40 @@ class PendingRewardService {
    * 리워드 부여 성공 시 처리
    * @param {string} docId - 문서 ID
    * @param {number} amount - 부여된 리워드 금액
+   * @param {Object} existingData - 이미 조회한 문서 데이터 (선택, 불필요한 읽기 방지)
    * @return {Promise<void>}
    */
-  async markAsCompleted(docId, amount = 0) {
+  async markAsCompleted(docId, amount = 0, existingData = null) {
     try {
       const docRef = this.collectionRef.doc(docId);
-      const doc = await docRef.get();
-      
-      if (!doc.exists) {
+
+      const data = await db.runTransaction(async (transaction) => {
+        let docData;
+        
+        if (existingData) {
+          // 이미 데이터가 있으면 재사용 (불필요한 읽기 방지)
+          docData = existingData;
+        } else {
+          const doc = await transaction.get(docRef);
+          if (!doc.exists) {
+            return null;
+          }
+          docData = doc.data();
+        }
+
+        transaction.update(docRef, {
+          status: PENDING_STATUS.COMPLETED,
+          completedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          grantedAmount: amount,
+        });
+
+        return docData;
+      });
+
+      if (!data) {
         return;
       }
-
-      const data = doc.data();
-
-      await docRef.update({
-        status: PENDING_STATUS.COMPLETED,
-        completedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        grantedAmount: amount,
-      });
 
       console.log('[PENDING REWARD] 재시도 성공:', { docId, userId: data.userId, actionKey: data.actionKey });
 
@@ -231,7 +246,7 @@ class PendingRewardService {
           failedCount: 0,
           pendingRewardId: docId,
           actionKey: data.actionKey,
-          retryCount: data.retryCount + 1,
+          retryCount: (data.retryCount || 0) + 1,
           grantedAmount: amount,
         },
       });
@@ -246,32 +261,65 @@ class PendingRewardService {
    * @param {string} docId - 문서 ID
    * @param {string} error - 에러 메시지
    * @param {string} errorCode - 에러 코드
+   * @param {Object} existingData - 이미 조회한 문서 데이터 (선택, 불필요한 읽기 방지)
    * @return {Promise<void>}
    */
-  async markAsFailed(docId, error, errorCode) {
+  async markAsFailed(docId, error, errorCode, existingData = null) {
     try {
       const docRef = this.collectionRef.doc(docId);
-      const doc = await docRef.get();
-      
-      if (!doc.exists) {
+
+      const result = await db.runTransaction(async (transaction) => {
+        let docData;
+        
+        if (existingData) {
+          // 이미 데이터가 있으면 재사용 (불필요한 읽기 방지)
+          docData = existingData;
+        } else {
+          const doc = await transaction.get(docRef);
+          if (!doc.exists) {
+            return null;
+          }
+          docData = doc.data();
+        }
+
+        const newRetryCount = (docData.retryCount || 0) + 1;
+        const isFinalFailure = newRetryCount >= RETRY_LIMITS.maxRetries;
+
+        if (isFinalFailure) {
+          // 최종 실패
+          transaction.update(docRef, {
+            status: PENDING_STATUS.FAILED,
+            retryCount: newRetryCount,
+            lastError: error,
+            lastErrorCode: errorCode,
+            failedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          // 다음 재시도를 위해 대기 상태로 복귀 (지수 백오프: 1분, 2분, 4분, 8분, 16분)
+          const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000; // 밀리초
+          const nextRetryAt = new Date(Date.now() + nextRetryDelay);
+
+          transaction.update(docRef, {
+            status: PENDING_STATUS.PENDING,
+            retryCount: newRetryCount,
+            lastError: error,
+            lastErrorCode: errorCode,
+            nextRetryAt,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        return { data: docData, newRetryCount, isFinalFailure };
+      });
+
+      if (!result) {
         return;
       }
 
-      const data = doc.data();
-      const newRetryCount = (data.retryCount || 0) + 1;
-      const isFinalFailure = newRetryCount >= RETRY_LIMITS.maxRetries;
+      const { data, newRetryCount, isFinalFailure } = result;
 
       if (isFinalFailure) {
-        // 최종 실패
-        await docRef.update({
-          status: PENDING_STATUS.FAILED,
-          retryCount: newRetryCount,
-          lastError: error,
-          lastErrorCode: errorCode,
-          failedAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-
         console.error('[PENDING REWARD] 최종 실패:', { docId, userId: data.userId, actionKey: data.actionKey, retryCount: newRetryCount });
 
         // Notion 상태 업데이트 (최종 실패)
@@ -299,18 +347,8 @@ class PendingRewardService {
           },
         });
       } else {
-        // 다음 재시도를 위해 대기 상태로 복귀 (지수 백오프: 1분, 2분, 4분, 8분, 16분)
-        const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000; // 밀리초
+        const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000;
         const nextRetryAt = new Date(Date.now() + nextRetryDelay);
-
-        await docRef.update({
-          status: PENDING_STATUS.PENDING,
-          retryCount: newRetryCount,
-          lastError: error,
-          lastErrorCode: errorCode,
-          nextRetryAt,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
 
         console.warn('[PENDING REWARD] 재시도 예정:', { 
           docId, 

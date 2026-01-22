@@ -61,7 +61,7 @@ async function runRewardRetry() {
 
         if (result.success) {
           // 성공
-          await pendingRewardService.markAsCompleted(pending.id, result.amount);
+          await pendingRewardService.markAsCompleted(pending.id, result.amount, pending);
           successCount++;
           console.log(`[rewardRetryScheduler] 재시도 성공: ${pending.id}`, {
             userId: pending.userId,
@@ -70,7 +70,7 @@ async function runRewardRetry() {
           });
         } else {
           // 실패
-          await pendingRewardService.markAsFailed(pending.id, result.error, result.errorCode);
+          await pendingRewardService.markAsFailed(pending.id, result.error, result.errorCode, pending);
           failCount++;
           failedIds.push(pending.id);
           console.warn(`[rewardRetryScheduler] 재시도 실패: ${pending.id}`, {
@@ -86,7 +86,7 @@ async function runRewardRetry() {
       } catch (itemError) {
         // 개별 항목 처리 에러
         console.error(`[rewardRetryScheduler] 항목 처리 에러: ${pending.id}`, itemError.message);
-        await pendingRewardService.markAsFailed(pending.id, itemError.message, itemError.code || 'UNKNOWN');
+        await pendingRewardService.markAsFailed(pending.id, itemError.message, itemError.code || 'UNKNOWN', pending);
         failCount++;
         failedIds.push(pending.id);
       }
