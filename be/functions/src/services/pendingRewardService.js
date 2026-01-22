@@ -440,29 +440,36 @@ class PendingRewardService {
    */
   async manualRetry(docId) {
     try {
-      const docRef = this.collectionRef.doc(docId);
-      const doc = await docRef.get();
+      const collectionRef = this.collectionRef;
+      const docRef = collectionRef.doc(docId);
 
-      if (!doc.exists) {
-        return false;
-      }
+      const logData = await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(docRef);
 
-      const data = doc.data();
-      
-      // pending, failed 상태만 수동 재시도 가능 (processing, completed는 불가)
-      if (data.status !== PENDING_STATUS.FAILED && data.status !== PENDING_STATUS.PENDING) {
-        return false;
-      }
+        if (!doc.exists) {
+          return null;
+        }
 
-      // 상태를 pending으로 변경하고 재시도 카운트 리셋
-      await docRef.update({
-        status: PENDING_STATUS.PENDING,
-        retryCount: 0,
-        nextRetryAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        const data = doc.data();
+        if (data.status !== PENDING_STATUS.PENDING && data.status !== PENDING_STATUS.FAILED) {
+          return null;
+        }
+
+        transaction.update(docRef, {
+          status: PENDING_STATUS.PENDING,
+          retryCount: 0,
+          nextRetryAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        return { userId: data.userId, actionKey: data.actionKey };
       });
 
-      console.log('[PENDING REWARD] 수동 재시도 설정:', { docId, userId: data.userId, actionKey: data.actionKey });
+      if (!logData) {
+        return false;
+      }
+
+      console.log('[PENDING REWARD] 수동 재시도 설정:', { docId, userId: logData.userId, actionKey: logData.actionKey });
       return true;
     } catch (error) {
       console.error('[PENDING REWARD] 수동 재시도 설정 실패:', error.message);
