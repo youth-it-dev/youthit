@@ -5,6 +5,12 @@ const {sanitizeContent} = require("../utils/sanitizeHelper");
 const fileService = require("./fileService");
 const {isAdminUser} = require("../utils/helpers");
 const {NOTIFICATION_LINKS} = require("../constants/urlConstants");
+const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const tz = require('dayjs/plugin/timezone');
+
+dayjs.extend(utc);
+dayjs.extend(tz);
 
 const PROGRAM_TYPES = {
   ROUTINE: "ROUTINE",
@@ -97,12 +103,9 @@ function getDateKey(dateValue) {
     if (isNaN(date.getTime())) {
       return null;
     }
-    // UTC 시간에 9시간을 더해서 KST로 변환
-    const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-    const year = kstDate.getUTCFullYear();
-    const month = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(kstDate.getUTCDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    // dayjs를 사용하여 KST 기준으로 변환
+    const kstDate = dayjs(date).tz('Asia/Seoul');
+    return kstDate.format('YYYY-MM-DD');
   } catch (error) {
     console.warn("[getDateKey] 날짜 변환 실패:", error);
     return null;
@@ -114,14 +117,9 @@ function getDateKey(dateValue) {
  * @returns {{todayKey: string, yesterdayKey: string}}
  */
 function getTodayAndYesterdayKeys() {
-  const today = new Date();
-  const todayKey = getDateKey(today);
-  
-  // todayKey를 KST 기준 Date 객체로 변환 후 하루 빼기
-  const todayKstDate = new Date(todayKey + 'T00:00:00+09:00');
-  const yesterdayKstDate = new Date(todayKstDate);
-  yesterdayKstDate.setDate(yesterdayKstDate.getDate() - 1);
-  const yesterdayKey = getDateKey(yesterdayKstDate);
+  const nowKST = dayjs().tz('Asia/Seoul');
+  const todayKey = nowKST.format('YYYY-MM-DD');
+  const yesterdayKey = nowKST.subtract(1, 'day').format('YYYY-MM-DD');
   
   return { todayKey, yesterdayKey };
 }
