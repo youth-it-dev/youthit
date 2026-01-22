@@ -872,11 +872,21 @@ class RewardService {
 
         startDate = subtractMonthsClamped(now, month);
         startDate.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+        endDate = now; // month 필터가 있을 때는 오늘까지
       } else {
         // month 필터가 없으면: 이번 달(KST) 기준으로 조회
         startDate = nowKST.startOf('month').utc().toDate();
         endDate = nowKST.endOf('month').utc().toDate();
       }
+      
+      // KST 기준 날짜 포맷팅 (YYYY.MM.DD)
+      const formatDateKST = (date) => {
+        if (!date) return null;
+        return dayjs(date).tz('Asia/Seoul').format('YYYY.MM.DD');
+      };
+      
+      const startDateKST = formatDateKST(startDate);
+      const endDateKST = formatDateKST(endDate);
       
       // 0. 사용자 문서에서 사용 가능한 나다움 포인트 조회
       const userRef = db.collection('users').doc(userId);
@@ -1022,6 +1032,10 @@ class RewardService {
         availableRewards,
         expiringThisMonth,
         history,
+        period: {
+          startDate: startDateKST,
+          endDate: endDateKST,
+        },
         pagination: {
           pageNumber: page,
           pageSize: size,

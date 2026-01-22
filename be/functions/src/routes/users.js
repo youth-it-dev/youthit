@@ -1384,6 +1384,18 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *                       type: number
  *                       description: 해당 월에 소멸 예정인 나다움 포인트
  *                       example: 120
+ *                     period:
+ *                       type: object
+ *                       description: 조회 기간 (KST 기준)
+ *                       properties:
+ *                         startDate:
+ *                           type: string
+ *                           description: 시작일 (YYYY.MM.DD 형식, KST 기준)
+ *                           example: "2025.12.22"
+ *                         endDate:
+ *                           type: string
+ *                           description: 종료일 (YYYY.MM.DD 형식, KST 기준)
+ *                           example: "2026.01.22"
  *                     history:
  *                       type: array
  *                       items:
