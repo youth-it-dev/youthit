@@ -123,6 +123,11 @@ async function runRewardRetry() {
     return result;
 
   } catch (error) {
+    // 에러 코드가 없으면 기본값 설정
+    if (!error.code) {
+      error.code = 'NADAUM_RETRY_SCHEDULER_ERROR';
+    }
+
     console.error("[rewardRetryScheduler] 재시도 작업 실패:", error);
 
     // 관리자 로그 기록
@@ -135,6 +140,7 @@ async function runRewardRetry() {
         failedCount: failCount + 1,
         totalProcessed,
         error: error.message,
+        errorCode: error.code,
       },
     });
 
