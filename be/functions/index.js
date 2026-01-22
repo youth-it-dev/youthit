@@ -35,6 +35,7 @@ const notificationRoutes = require("./src/routes/notifications");
 const adminLogsRoutes = require("./src/routes/adminLogs");
 const programMonitoringRoutes = require("./src/routes/programMonitoring");
 const rewardMonitoringRoutes = require("./src/routes/rewardMonitoring");
+const pendingRewardsRoutes = require("./src/routes/pendingRewards");
 
 
 if (!admin.apps.length) {
@@ -231,6 +232,7 @@ app.use("/notifications", notificationRoutes);
 app.use("/adminLogs", adminLogsRoutes);
 app.use("/programMonitoring", programMonitoringRoutes);
 app.use("/rewardMonitoring", rewardMonitoringRoutes);
+app.use("/pendingRewards", pendingRewardsRoutes);
 
 // 에러 핸들러 (마지막에 등록)
 app.use(errorHandler);
