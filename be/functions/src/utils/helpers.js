@@ -399,6 +399,35 @@ async function isAdminUser(userId) {
   }
 }
 
+/**
+ * 타임아웃이 설정된 fetch 헬퍼 함수
+ * @param {string} url - 요청 URL
+ * @param {Object} options - fetch 옵션
+ * @param {number} timeoutMs - 타임아웃 시간 (밀리초, 기본값: 10000)
+ * @param {string} errorMessage - 타임아웃 에러 메시지 (기본값: "API 요청 시간 초과")
+ * @returns {Promise<Response>} fetch Response 객체
+ * @throws {Error} 타임아웃 또는 기타 에러
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000, errorMessage = "API 요청 시간 초과") {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const resp = await fetch(url, {...options, signal: controller.signal});
+    clearTimeout(timeoutId);
+    return resp;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      const err = new Error(errorMessage);
+      err.status = 504;
+      err.code = "TIMEOUT";
+      throw err;
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   // Validation
   validateMissionStatus,
@@ -428,6 +457,9 @@ module.exports = {
 
   // 사용자 권한
   isAdminUser,
+
+  // HTTP 요청
+  fetchWithTimeout,
 
 };
 
