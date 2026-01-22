@@ -34,6 +34,40 @@ const pendingRewardController = require('../controllers/pendingRewardController'
  *     responses:
  *       200:
  *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 failed:
+ *                   type: array
+ *                   description: 최종 실패한 항목 목록
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: 문서 ID
+ *                       userId:
+ *                         type: string
+ *                         description: 사용자 ID
+ *                       actionKey:
+ *                         type: string
+ *                         description: 액션 키
+ *                       status:
+ *                         type: string
+ *                         description: 상태
+ *                       retryCount:
+ *                         type: integer
+ *                         description: 재시도 횟수
+ *                       lastError:
+ *                         type: string
+ *                         description: 마지막 에러 메시지
+ *                 pending:
+ *                   type: array
+ *                   description: 재시도 대기 중인 항목 목록
+ *                   items:
+ *                     type: object
  */
 router.get('/list', pendingRewardController.getList);
 
@@ -80,6 +114,44 @@ router.get('/stats', pendingRewardController.getStats);
  *     responses:
  *       200:
  *         description: 일괄 재시도 완료
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalProcessed:
+ *                   type: integer
+ *                   description: 처리된 총 항목 수
+ *                 successCount:
+ *                   type: integer
+ *                   description: 성공한 항목 수
+ *                 failCount:
+ *                   type: integer
+ *                   description: 실패한 항목 수
+ *                 results:
+ *                   type: array
+ *                   description: 각 항목별 처리 결과
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: 문서 ID
+ *                       userId:
+ *                         type: string
+ *                         description: 사용자 ID
+ *                       actionKey:
+ *                         type: string
+ *                         description: 액션 키
+ *                       success:
+ *                         type: boolean
+ *                         description: 성공 여부
+ *                       amount:
+ *                         type: integer
+ *                         description: 부여된 나다움 (성공 시)
+ *                       error:
+ *                         type: string
+ *                         description: 에러 메시지 (실패 시)
  */
 router.post('/retry-all', pendingRewardController.retryAll);
 
