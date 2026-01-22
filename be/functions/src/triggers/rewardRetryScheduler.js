@@ -86,7 +86,15 @@ async function runRewardRetry() {
       } catch (itemError) {
         // 개별 항목 처리 에러
         console.error(`[rewardRetryScheduler] 항목 처리 에러: ${pending.id}`, itemError.message);
-        await pendingRewardService.markAsFailed(pending.id, itemError.message, itemError.code || 'UNKNOWN', pending);
+        
+        // markAsFailed 호출 (실패해도 루프는 계속 진행)
+        try {
+          await pendingRewardService.markAsFailed(pending.id, itemError.message, itemError.code || 'UNKNOWN', pending);
+        } catch (markAsFailedError) {
+          console.error(`[rewardRetryScheduler] markAsFailed 실패 (무시): pending.id=${pending.id}`, markAsFailedError.message);
+          // markAsFailed 실패해도 루프는 계속 진행
+        }
+        
         failCount++;
         failedIds.push(pending.id);
       }
@@ -107,18 +115,23 @@ async function runRewardRetry() {
 
     console.log("[rewardRetryScheduler] 재시도 작업 완료", result);
 
-    // 관리자 로그 기록
-    await adminLogsService.saveAdminLog({
-      adminId: 'system',
-      action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_COMPLETED,
-      targetId: null,
-      metadata: {
-        successCount,
-        failedCount: failCount,
-        totalProcessed,
-        stats,
-      },
-    });
+    // 관리자 로그 기록 (실패해도 메인 로직에 영향 없도록)
+    try {
+      await adminLogsService.saveAdminLog({
+        adminId: 'system',
+        action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_COMPLETED,
+        targetId: null,
+        metadata: {
+          successCount,
+          failedCount: failCount,
+          totalProcessed,
+          stats,
+        },
+      });
+    } catch (adminLogError) {
+      console.error("[rewardRetryScheduler] 관리자 로그 기록 실패 (무시):", adminLogError.message);
+      // adminLog 실패해도 스케줄러는 성공으로 처리
+    }
 
     return result;
 
@@ -130,19 +143,24 @@ async function runRewardRetry() {
 
     console.error("[rewardRetryScheduler] 재시도 작업 실패:", error);
 
-    // 관리자 로그 기록
-    await adminLogsService.saveAdminLog({
-      adminId: 'system',
-      action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_FAILED,
-      targetId: null,
-      metadata: {
-        successCount,
-        failedCount: failCount + 1,
-        totalProcessed,
-        error: error.message,
-        errorCode: error.code,
-      },
-    });
+    // 관리자 로그 기록 (실패해도 원래 에러는 그대로 throw)
+    try {
+      await adminLogsService.saveAdminLog({
+        adminId: 'system',
+        action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_FAILED,
+        targetId: null,
+        metadata: {
+          successCount,
+          failedCount: failCount + 1,
+          totalProcessed,
+          error: error.message,
+          errorCode: error.code,
+        },
+      });
+    } catch (adminLogError) {
+      console.error("[rewardRetryScheduler] 관리자 로그 기록 실패 (무시):", adminLogError.message);
+      // adminLog 실패해도 원래 에러는 그대로 throw
+    }
 
     throw error;
   }
