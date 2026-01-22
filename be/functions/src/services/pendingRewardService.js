@@ -1,6 +1,7 @@
 const { db, FieldValue } = require('../config/database');
 const { ADMIN_LOG_ACTIONS } = require('../constants/adminLogActions');
 const adminLogsService = require('./adminLogsService');
+const notionPendingRewardService = require('./notionPendingRewardService');
 
 // 컬렉션명
 const PENDING_REWARDS_COLLECTION = 'pendingRewards';
@@ -76,6 +77,28 @@ class PendingRewardService {
       await docRef.set(pendingReward);
 
       console.log('[PENDING REWARD] 저장 완료:', { docId: docRef.id, userId, actionKey });
+
+      // Notion에 페이지 생성 (실시간 연동)
+      try {
+        const notionPageId = await notionPendingRewardService.createPendingRewardPage({
+          docId: docRef.id,
+          userId,
+          actionKey,
+          targetId: targetId || null,
+          lastError: error,
+          lastErrorCode: errorCode,
+          retryCount: 0,
+        });
+
+        // Notion 페이지 ID를 Firestore에 저장
+        if (notionPageId) {
+          await docRef.update({ notionPageId });
+          console.log('[PENDING REWARD] Notion 페이지 ID 저장 완료:', { docId: docRef.id, notionPageId });
+        }
+      } catch (notionError) {
+        console.warn('[PENDING REWARD] Notion 연동 실패 (무시):', notionError.message);
+        // Notion 실패해도 메인 로직에 영향 없음
+      }
 
       // 관리자 로그 기록
       await adminLogsService.saveAdminLog({
@@ -189,6 +212,15 @@ class PendingRewardService {
 
       console.log('[PENDING REWARD] 재시도 성공:', { docId, userId: data.userId, actionKey: data.actionKey });
 
+      // Notion 상태 업데이트 (성공)
+      if (data.notionPageId) {
+        try {
+          await notionPendingRewardService.markAsCompleted(data.notionPageId, amount);
+        } catch (notionError) {
+          console.warn('[PENDING REWARD] Notion 상태 업데이트 실패 (무시):', notionError.message);
+        }
+      }
+
       // 관리자 로그 기록
       await adminLogsService.saveAdminLog({
         adminId: 'system',
@@ -242,6 +274,15 @@ class PendingRewardService {
 
         console.error('[PENDING REWARD] 최종 실패:', { docId, userId: data.userId, actionKey: data.actionKey, retryCount: newRetryCount });
 
+        // Notion 상태 업데이트 (최종 실패)
+        if (data.notionPageId) {
+          try {
+            await notionPendingRewardService.markAsFailed(data.notionPageId, error, errorCode, newRetryCount);
+          } catch (notionError) {
+            console.warn('[PENDING REWARD] Notion 상태 업데이트 실패 (무시):', notionError.message);
+          }
+        }
+
         // 관리자 로그 기록
         await adminLogsService.saveAdminLog({
           adminId: 'system',
@@ -278,6 +319,15 @@ class PendingRewardService {
           retryCount: newRetryCount,
           nextRetryAt: nextRetryAt.toISOString(),
         });
+
+        // Notion 상태 업데이트 (재시도 대기)
+        if (data.notionPageId) {
+          try {
+            await notionPendingRewardService.markAsPending(data.notionPageId, error, errorCode, newRetryCount);
+          } catch (notionError) {
+            console.warn('[PENDING REWARD] Notion 상태 업데이트 실패 (무시):', notionError.message);
+          }
+        }
       }
     } catch (updateError) {
       console.error('[PENDING REWARD] 실패 처리 오류:', updateError.message);
