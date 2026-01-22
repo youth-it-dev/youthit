@@ -83,14 +83,14 @@ class PendingRewardService {
         action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_FAILED,
         targetId: userId,
         metadata: {
+          successCount: 0,
+          failedCount: 1,
           pendingRewardId: docRef.id,
           actionKey,
           error,
           errorCode,
           ...metadata,
         },
-        successCount: 0,
-        failedCount: 1,
       });
 
       return docRef.id;
@@ -195,13 +195,13 @@ class PendingRewardService {
         action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_SUCCESS,
         targetId: data.userId,
         metadata: {
+          successCount: 1,
+          failedCount: 0,
           pendingRewardId: docId,
           actionKey: data.actionKey,
           retryCount: data.retryCount + 1,
           grantedAmount: amount,
         },
-        successCount: 1,
-        failedCount: 0,
       });
     } catch (error) {
       console.error('[PENDING REWARD] 완료 처리 실패:', error.message);
@@ -248,14 +248,14 @@ class PendingRewardService {
           action: ADMIN_LOG_ACTIONS.NADAUM_GRANT_RETRY_FAILED,
           targetId: data.userId,
           metadata: {
+            successCount: 0,
+            failedCount: 1,
             pendingRewardId: docId,
             actionKey: data.actionKey,
             retryCount: newRetryCount,
             lastError: error,
             lastErrorCode: errorCode,
           },
-          successCount: 0,
-          failedCount: 1,
         });
       } else {
         // 다음 재시도를 위해 대기 상태로 복귀 (지수 백오프: 1분, 2분, 4분, 8분, 16분)

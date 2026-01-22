@@ -113,13 +113,11 @@ async function runRewardRetry() {
       action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_COMPLETED,
       targetId: null,
       metadata: {
-        totalProcessed,
         successCount,
-        failCount,
+        failedCount: failCount,
+        totalProcessed,
         stats,
       },
-      successCount,
-      failedCount: failCount,
     });
 
     return result;
@@ -133,13 +131,11 @@ async function runRewardRetry() {
       action: ADMIN_LOG_ACTIONS.NADAUM_RETRY_SCHEDULER_FAILED,
       targetId: null,
       metadata: {
-        error: error.message,
-        totalProcessed,
         successCount,
-        failCount,
+        failedCount: failCount + 1,
+        totalProcessed,
+        error: error.message,
       },
-      successCount,
-      failedCount: failCount + 1,
     });
 
     throw error;
