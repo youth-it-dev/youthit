@@ -519,6 +519,148 @@ class PendingRewardService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * 전체 실패/대기 건 일괄 재시도
+   * @param {number} limit - 조회 개수 제한 (기본값: 100)
+   * @return {Promise<Object>} 처리 결과 { totalProcessed, successCount, failCount, results }
+   */
+  async retryAll(limit = 100) {
+    try {
+      // 실패 + 대기 중인 건 모두 조회
+      const [failedList, pendingList] = await Promise.all([
+        this.getFailedRewards(limit),
+        this.getPendingRewards(limit),
+      ]);
+
+      const allItems = [...failedList, ...pendingList];
+
+      if (allItems.length === 0) {
+        return {
+          totalProcessed: 0,
+          successCount: 0,
+          failCount: 0,
+          results: [],
+          message: '재시도할 항목이 없습니다',
+        };
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      const results = [];
+
+      for (const item of allItems) {
+        try {
+          const result = await this.executeManualRetry(item.id);
+          
+          if (result.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+
+          results.push({
+            id: item.id,
+            userId: item.userId,
+            actionKey: item.actionKey,
+            success: result.success,
+            amount: result.amount,
+            error: result.error,
+          });
+
+          // Rate limit 방지
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (itemError) {
+          failCount++;
+          results.push({
+            id: item.id,
+            userId: item.userId,
+            actionKey: item.actionKey,
+            success: false,
+            error: itemError.message,
+          });
+        }
+      }
+
+      return {
+        totalProcessed: allItems.length,
+        successCount,
+        failCount,
+        results,
+      };
+    } catch (error) {
+      console.error('[PENDING REWARD] 전체 재시도 실패:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 선택된 항목 일괄 재시도
+   * @param {Array<Object>} selectedItems - 선택된 항목 목록 [{ docId, notionPageId }]
+   * @return {Promise<Object>} 처리 결과 { totalProcessed, successCount, failCount, results, successNotionPageIds }
+   */
+  async retrySelected(selectedItems) {
+    try {
+      if (selectedItems.length === 0) {
+        return {
+          totalProcessed: 0,
+          successCount: 0,
+          failCount: 0,
+          results: [],
+          successNotionPageIds: [],
+          message: '선택된 항목이 없습니다',
+        };
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      const results = [];
+      const successNotionPageIds = [];
+
+      for (const item of selectedItems) {
+        try {
+          const result = await this.executeManualRetry(item.docId);
+          
+          if (result.success) {
+            successCount++;
+            successNotionPageIds.push(item.notionPageId);
+          } else {
+            failCount++;
+          }
+
+          results.push({
+            docId: item.docId,
+            notionPageId: item.notionPageId,
+            success: result.success,
+            amount: result.amount,
+            error: result.error,
+          });
+
+          // Rate limit 방지
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (itemError) {
+          failCount++;
+          results.push({
+            docId: item.docId,
+            notionPageId: item.notionPageId,
+            success: false,
+            error: itemError.message,
+          });
+        }
+      }
+
+      return {
+        totalProcessed: selectedItems.length,
+        successCount,
+        failCount,
+        results,
+        successNotionPageIds,
+      };
+    } catch (error) {
+      console.error('[PENDING REWARD] 선택 항목 재시도 실패:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = PendingRewardService;
