@@ -84,56 +84,9 @@ class PendingRewardController {
       console.log('[PendingRewardController] 전체 재시도 요청');
 
       const pendingRewardService = new PendingRewardService();
-      
-      // 실패 + 대기 중인 건 모두 조회
-      const [failedList, pendingList] = await Promise.all([
-        pendingRewardService.getFailedRewards(100),
-        pendingRewardService.getPendingRewards(100),
-      ]);
+      const summary = await pendingRewardService.retryAll(100);
 
-      const allItems = [...failedList, ...pendingList];
-
-      if (allItems.length === 0) {
-        return res.success({
-          totalProcessed: 0,
-          successCount: 0,
-          failCount: 0,
-          message: '재시도할 항목이 없습니다',
-        }, '재시도할 항목 없음');
-      }
-
-      let successCount = 0;
-      let failCount = 0;
-      const results = [];
-
-      for (const item of allItems) {
-        const result = await pendingRewardService.executeManualRetry(item.id);
-        
-        if (result.success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-
-        results.push({
-          id: item.id,
-          userId: item.userId,
-          actionKey: item.actionKey,
-          success: result.success,
-          amount: result.amount,
-          error: result.error,
-        });
-
-        // Rate limit 방지
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      res.success({
-        totalProcessed: allItems.length,
-        successCount,
-        failCount,
-        results,
-      }, '나다움 일괄 재시도 완료');
+      res.success(summary, summary.message || '나다움 일괄 재시도 완료');
     } catch (error) {
       console.error('[PendingRewardController] retryAll 오류:', error.message);
       next(error);
@@ -162,59 +115,19 @@ class PendingRewardController {
 
       console.log(`[PendingRewardController] 선택된 항목 ${selectedItems.length}건 재시도 시작`);
 
+      // 2. 서비스에서 일괄 재시도 실행
       const pendingRewardService = new PendingRewardService();
-      let successCount = 0;
-      let failCount = 0;
-      const results = [];
-      const successNotionPageIds = [];
-
-      // 2. 각 항목 재시도
-      for (const item of selectedItems) {
-        try {
-          const result = await pendingRewardService.executeManualRetry(item.docId);
-          
-          if (result.success) {
-            successCount++;
-            successNotionPageIds.push(item.notionPageId);
-          } else {
-            failCount++;
-          }
-
-          results.push({
-            docId: item.docId,
-            notionPageId: item.notionPageId,
-            success: result.success,
-            amount: result.amount,
-            error: result.error,
-          });
-
-          // Rate limit 방지
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (itemError) {
-          failCount++;
-          results.push({
-            docId: item.docId,
-            notionPageId: item.notionPageId,
-            success: false,
-            error: itemError.message,
-          });
-        }
-      }
+      const summary = await pendingRewardService.retrySelected(selectedItems);
 
       // 3. 성공한 항목의 Notion 체크박스 해제
       // (markAsCompleted에서 이미 처리되지만, 혹시 누락된 경우를 위해)
-      if (successNotionPageIds.length > 0) {
-        await notionPendingRewardService.resetSelectionCheckboxes(successNotionPageIds);
+      if (summary.successNotionPageIds && summary.successNotionPageIds.length > 0) {
+        await notionPendingRewardService.resetSelectionCheckboxes(summary.successNotionPageIds);
       }
 
-      console.log(`[PendingRewardController] Notion 선택 항목 재시도 완료 - 성공: ${successCount}, 실패: ${failCount}`);
+      console.log(`[PendingRewardController] Notion 선택 항목 재시도 완료 - 성공: ${summary.successCount}, 실패: ${summary.failCount}`);
 
-      res.success({
-        totalProcessed: selectedItems.length,
-        successCount,
-        failCount,
-        results,
-      }, 'Notion 선택 항목 일괄 재시도 완료');
+      res.success(summary, summary.message || 'Notion 선택 항목 일괄 재시도 완료');
     } catch (error) {
       console.error('[PendingRewardController] retrySelected 오류:', error.message);
       next(error);
