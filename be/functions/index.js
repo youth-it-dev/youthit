@@ -60,6 +60,9 @@ const {
 const {
   adminLogsCleanupScheduler,
 } = require("./src/triggers/adminLogsCleanupScheduler");
+const {
+  rewardRetryScheduler,
+} = require("./src/triggers/rewardRetryScheduler");
 
 
 // 서울 리전 설정 (1st generation에서는 functions.region 사용)
@@ -250,3 +253,6 @@ exports.storageCleanupScheduler = storageCleanupScheduler;
 exports.storageCleanupWeeklyScheduler = storageCleanupWeeklyScheduler;
 exports.missionDailyResetScheduler = missionDailyResetScheduler;
 exports.adminLogsCleanupScheduler = adminLogsCleanupScheduler;
+
+// Reward Retry Scheduler 내보내기
+exports.rewardRetryScheduler = rewardRetryScheduler;
