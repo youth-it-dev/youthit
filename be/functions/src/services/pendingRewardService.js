@@ -306,7 +306,7 @@ class PendingRewardService {
         } else {
           // 다음 재시도를 위해 대기 상태로 복귀 (지수 백오프: 1분, 2분, 4분, 8분, 16분)
           const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000; // 밀리초
-          const nextRetryAt = Timestamp.fromMillis(Date.now() + nextRetryDelay);
+          const nextRetryAt = Timestamp.fromMillis(Timestamp.now().toMillis() + nextRetryDelay);
 
           transaction.update(docRef, {
             status: PENDING_STATUS.PENDING,
@@ -360,7 +360,7 @@ class PendingRewardService {
         }
       } else {
         const nextRetryDelay = Math.pow(2, newRetryCount) * 60 * 1000;
-        const nextRetryAt = Timestamp.fromMillis(Date.now() + nextRetryDelay);
+        const nextRetryAt = Timestamp.fromMillis(Timestamp.now().toMillis() + nextRetryDelay);
 
         console.warn('[PENDING REWARD] 재시도 예정:', { 
           docId, 
