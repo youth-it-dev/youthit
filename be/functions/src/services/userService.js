@@ -10,6 +10,7 @@ const {KAKAO_API_TIMEOUT, KAKAO_API_RETRY_DELAY, KAKAO_API_MAX_RETRIES} = requir
 const {fetchKakaoAPI} = require("../utils/kakaoApiHelper");
 const fileService = require("./fileService");
 const { validateNicknameOrThrow } = require("../utils/nicknameValidator");
+const programService = require("./programService");
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const tz = require('dayjs/plugin/timezone');
@@ -1958,6 +1959,21 @@ class UserService {
 
       const communities = communitiesChunked.flat();
 
+      // 노션에서 프로그램 정보 조회 (병렬 처리)
+      const programDataMap = new Map();
+      const programPromises = communities.map(async (community) => {
+        try {
+          const programData = await programService.getProgramById(community.id);
+          if (programData) {
+            programDataMap.set(community.id, programData);
+          }
+        } catch (error) {
+          // 노션 조회 실패 시 기존 communities 값 사용 (fallback)
+          console.warn(`[getMyCommunities] 노션 프로그램 조회 실패 (${community.id}):`, error.message);
+        }
+      });
+      await Promise.all(programPromises);
+
       const PROGRAM_TYPE_ALIASES = {
         ROUTINE: ["ROUTINE", "한끗루틴", "루틴"],
         GATHERING: ["GATHERING", "월간 소모임", "월간소모임", "소모임"],
@@ -2018,8 +2034,49 @@ class UserService {
       const now = new Date();
 
       const filteredCommunities = communities.filter((community) => {
-        const startDate = toDate(community.startDate);
-        const endDate = toDate(community.endDate);
+        // 노션에서 가져온 값 우선 사용, 없으면 기존 communities 값 사용
+        const programData = programDataMap.get(community.id);
+        let startDate, endDate;
+        
+        if (programData) {
+          // 노션에서 받아온 날짜를 KST 기준으로 변환
+          if (programData.startDate) {
+            const startDateStr = typeof programData.startDate === 'string' 
+              ? programData.startDate 
+              : (programData.startDate instanceof Date ? programData.startDate.toISOString().split('T')[0] : null);
+            if (startDateStr) {
+              startDate = dayjs
+                .tz(startDateStr, "Asia/Seoul")
+                .startOf("day")      // 00:00:00 KST
+                .utc()
+                .toDate();
+            }
+          }
+          
+          if (programData.endDate) {
+            const endDateStr = typeof programData.endDate === 'string' 
+              ? programData.endDate 
+              : (programData.endDate instanceof Date ? programData.endDate.toISOString().split('T')[0] : null);
+            if (endDateStr) {
+              endDate = dayjs
+                .tz(endDateStr, "Asia/Seoul")
+                .endOf("day")      // 23:59:59 KST
+                .utc()
+                .toDate();
+            }
+          }
+          
+          // 노션에서 가져온 날짜 로그
+          console.log(`[getMyCommunities] 커뮤니티 ID: ${community.id}, 노션 원본 startDate: ${programData.startDate}, 변환 후: ${startDate?.toISOString()}, 노션 원본 endDate: ${programData.endDate}, 변환 후: ${endDate?.toISOString()}`);
+        }
+        
+        // 노션에서 가져온 값이 없으면 기존 communities 값 사용
+        if (!startDate) {
+          startDate = toDate(community.startDate);
+        }
+        if (!endDate) {
+          endDate = toDate(community.endDate);
+        }
 
         // status가 null이면 진행중 + 완료된 것만 반환 (시작 전 제외)
         if (status === null || status === undefined) {
@@ -2055,8 +2112,46 @@ class UserService {
 
         if (programType && programTypeMapping[programType]) {
           const typeInfo = programTypeMapping[programType];
-          const startDate = toDate(community.startDate);
-          const endDate = toDate(community.endDate);
+          // 노션에서 가져온 값 우선 사용, 없으면 기존 communities 값 사용
+          const programData = programDataMap.get(community.id);
+          let startDate, endDate;
+          
+          if (programData) {
+            // 노션에서 받아온 날짜를 KST 기준으로 변환
+            if (programData.startDate) {
+              const startDateStr = typeof programData.startDate === 'string' 
+                ? programData.startDate 
+                : (programData.startDate instanceof Date ? programData.startDate.toISOString().split('T')[0] : null);
+              if (startDateStr) {
+                startDate = dayjs
+                  .tz(startDateStr, "Asia/Seoul")
+                  .startOf("day")      // 00:00:00 KST
+                  .utc()
+                  .toDate();
+              }
+            }
+            
+            if (programData.endDate) {
+              const endDateStr = typeof programData.endDate === 'string' 
+                ? programData.endDate 
+                : (programData.endDate instanceof Date ? programData.endDate.toISOString().split('T')[0] : null);
+              if (endDateStr) {
+                endDate = dayjs
+                  .tz(endDateStr, "Asia/Seoul")
+                  .endOf("day")      // 23:59:59 KST
+                  .utc()
+                  .toDate();
+              }
+            }
+          }
+          
+          // 노션에서 가져온 값이 없으면 기존 communities 값 사용
+          if (!startDate) {
+            startDate = toDate(community.startDate);
+          }
+          if (!endDate) {
+            endDate = toDate(community.endDate);
+          }
           
           // programStatus 결정
           let programStatus = "ongoing";
