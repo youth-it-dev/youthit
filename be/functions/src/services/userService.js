@@ -2114,16 +2114,31 @@ class UserService {
 
       const grouped = emptyGrouped();
 
+      // 파이어베이스 동기화를 위한 업데이트 작업 수집
+      const syncPromises = [];
+
       filteredCommunities.forEach(community => {
-        let programType = normalizeProgramType(community.programType);
+        // 노션에서 가져온 값 우선 사용, 없으면 기존 communities 값 사용
+        const programData = programDataMap.get(community.id);
+        
+        // 응답용: 노션 원본 값 사용
+        const responseName = programData?.programName || community.name;
+        const responseProgramType = programData?.programType || null;
+        
+        // programType 정규화 (그룹핑 및 동기화용)
+        let programType = null;
+        if (responseProgramType) {
+          programType = normalizeProgramType(responseProgramType);
+        }
+        if (!programType) {
+          programType = normalizeProgramType(community.programType);
+        }
         if (!programType && community.postType && legacyPostTypeToProgramType[community.postType]) {
           programType = legacyPostTypeToProgramType[community.postType];
         }
 
         if (programType && programTypeMapping[programType]) {
           const typeInfo = programTypeMapping[programType];
-          // 노션에서 가져온 값 우선 사용, 없으면 기존 communities 값 사용
-          const programData = programDataMap.get(community.id);
           let startDate, endDate;
           
           if (programData) {
@@ -2163,6 +2178,47 @@ class UserService {
                 }
               }
             }
+
+            // 파이어베이스 동기화: 노션 값과 파이어베이스 값 비교
+            const updateData = {};
+            let needsUpdate = false;
+
+            // name 동기화
+            if (programData.programName && programData.programName !== community.name) {
+              updateData.name = programData.programName;
+              needsUpdate = true;
+            }
+
+            // programType 동기화 (정규화된 값으로 비교 및 저장)
+            const notionProgramTypeNormalized = normalizeProgramType(programData.programType);
+            const firebaseProgramTypeNormalized = normalizeProgramType(community.programType);
+            if (notionProgramTypeNormalized && notionProgramTypeNormalized !== firebaseProgramTypeNormalized) {
+              updateData.programType = notionProgramTypeNormalized;
+              needsUpdate = true;
+            }
+
+            // startDate 동기화
+            const firebaseStartDate = toDate(community.startDate);
+            if (startDate && (!firebaseStartDate || startDate.getTime() !== firebaseStartDate.getTime())) {
+              updateData.startDate = startDate;
+              needsUpdate = true;
+            }
+
+            // endDate 동기화
+            const firebaseEndDate = toDate(community.endDate);
+            if (endDate && (!firebaseEndDate || endDate.getTime() !== firebaseEndDate.getTime())) {
+              updateData.endDate = endDate;
+              needsUpdate = true;
+            }
+
+            // 업데이트 필요 시 비동기로 처리 (응답 지연 방지)
+            if (needsUpdate) {
+              syncPromises.push(
+                this.communitiesService.update(community.id, updateData).catch((error) => {
+                  console.warn(`[getMyCommunities] 파이어베이스 동기화 실패 (${community.id}):`, error.message);
+                })
+              );
+            }
           }
           
           // 노션에서 가져온 값이 없으면 기존 communities 값 사용
@@ -2189,12 +2245,19 @@ class UserService {
           
           grouped[typeInfo.key].items.push({
             id: community.id,
-            name: community.name,
+            name: responseName, // 노션 원본 값 우선 사용
             status: memberStatusMap[community.id] || null,
             programStatus: programStatus,
           });
         }
       });
+
+      // 파이어베이스 동기화 작업 시작 (응답은 기다리지 않음)
+      if (syncPromises.length > 0) {
+        Promise.all(syncPromises).catch((error) => {
+          console.error('[getMyCommunities] 파이어베이스 동기화 중 오류:', error.message);
+        });
+      }
 
       return grouped;
     } catch (error) {
