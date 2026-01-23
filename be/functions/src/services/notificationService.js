@@ -25,6 +25,7 @@ const NOTION_FIELDS = {
   TITLE: '이름',
   CONTENT: '알림 내용',
   MEMBER_MANAGEMENT: '회원 관리',
+  PROGRAM_MANAGEMENT: '프로그램 관리',
   SEND_STATUS: '전송 상태',
   USER_ID: '사용자ID',
   LAST_PAYMENT_DATE: '전송 일시',
@@ -343,17 +344,34 @@ class NotificationService {
         }
       }
 
-      const userRelations = props[NOTION_FIELDS.MEMBER_MANAGEMENT]?.relation || [];
-      const relationPageIds = userRelations.map(relation => relation.id);
+      // "회원 관리" 필드에서 관계형 페이지 ID 수집
+      const memberRelations = props[NOTION_FIELDS.MEMBER_MANAGEMENT]?.relation || [];
+      const memberPageIds = memberRelations.map(relation => relation.id);
 
-      if (relationPageIds.length === 0) {
+      // "프로그램 관리" 필드에서 관계형 페이지 ID 수집
+      const programRelations = props[NOTION_FIELDS.PROGRAM_MANAGEMENT]?.relation || [];
+      const programPageIds = programRelations.map(relation => relation.id);
+
+      // 둘 다 비어있으면 에러
+      if (memberPageIds.length === 0 && programPageIds.length === 0) {
         const error = new Error("선택된 사용자가 없습니다.");
         error.code = ERROR_CODES.NO_USERS_SELECTED;
         error.statusCode = 400;
         throw error;
       }
 
-      const userIds = await this.extractUserIdsFromRelation(relationPageIds);
+      // 각각에서 userId 추출
+      const memberUserIds = memberPageIds.length > 0 
+        ? await this.extractUserIdsFromRelation(memberPageIds)
+        : [];
+      
+      const programUserIds = programPageIds.length > 0
+        ? await this.extractUserIdsFromProgramPages(programPageIds)
+        : [];
+
+      // 병합 및 중복 제거
+      const allUserIds = [...memberUserIds, ...programUserIds];
+      const userIds = [...new Set(allUserIds)];
 
       if (userIds.length === 0) {
         const error = new Error("유효한 사용자 ID를 찾을 수 없습니다.");
@@ -420,12 +438,36 @@ class NotificationService {
         if (!userPage) continue;
 
         const userProps = userPage.properties;
-        let firebaseUserId = getTitleValue(userProps[NOTION_FIELDS.USER_ID]);
+        const userIdField = userProps[NOTION_FIELDS.USER_ID];
         
-        if (!firebaseUserId) {
-          firebaseUserId = getTextContent(userProps[NOTION_FIELDS.USER_ID]) || 
-            userProps[NOTION_FIELDS.USER_ID]?.rich_text?.[0]?.plain_text ||
-            userProps[NOTION_FIELDS.USER_ID]?.title?.[0]?.plain_text;
+        if (!userIdField) {
+          continue;
+        }
+        
+        let firebaseUserId = '';
+        
+        // 필드 타입에 따라 값 추출
+        if (userIdField.type === 'title') {
+          firebaseUserId = getTitleValue(userIdField);
+        } else if (userIdField.type === 'rich_text') {
+          firebaseUserId = getTextContent(userIdField);
+        } else if (userIdField.type === 'text') {
+          firebaseUserId = userIdField.text?.[0]?.plain_text || '';
+        } else if (userIdField.type === 'formula') {
+          // formula 타입인 경우 결과값 추출
+          if (userIdField.formula?.type === 'string') {
+            firebaseUserId = userIdField.formula.string || '';
+          } else if (userIdField.formula?.type === 'title') {
+            firebaseUserId = userIdField.formula.title?.map(t => t.plain_text).join('') || '';
+          }
+        } else {
+          // 기타 타입 시도
+          firebaseUserId = getTitleValue(userIdField) || 
+            getTextContent(userIdField) || 
+            userIdField.rich_text?.[0]?.plain_text ||
+            userIdField.title?.[0]?.plain_text ||
+            userIdField.text?.[0]?.plain_text ||
+            '';
         }
 
         if (firebaseUserId && firebaseUserId.trim()) {
@@ -476,6 +518,64 @@ class NotificationService {
       }
 
       const serviceError = new Error(`사용자 ID를 추출하는데 실패했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.statusCode = 500;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 프로그램 페이지들에서 "사용자ID" 관계형 필드를 통해 실제 사용자ID 추출
+   * @param {Array<string>} programPageIds - 프로그램 페이지 ID 배열
+   * @return {Promise<Array<string>>} Firestore users 컬렉션에 존재하는 유효한 User ID 배열
+   */
+  async extractUserIdsFromProgramPages(programPageIds) {
+    try {
+      // 프로그램 페이지들 병렬 조회
+      const programPages = await Promise.all(
+        programPageIds.map(pageId => 
+          this.notion.pages.retrieve({ page_id: pageId })
+            .catch(error => {
+              console.error(`프로그램 페이지 ${pageId} 조회 실패:`, error.message);
+              return null;
+            })
+        )
+      );
+
+      // 각 프로그램 페이지에서 "사용자ID" 관계형 필드의 회원 관리 페이지 ID 수집
+      const memberPageIds = [];
+      for (const programPage of programPages) {
+        if (!programPage) continue;
+
+        const programProps = programPage.properties;
+        // "사용자ID" 필드는 relation 타입이므로 relation 배열에서 회원 관리 페이지 ID 추출
+        const userIdField = programProps[NOTION_FIELDS.USER_ID];
+        const userIdRelations = userIdField?.relation || [];
+        
+        if (userIdRelations.length > 0) {
+          const relationPageIds = userIdRelations.map(relation => relation.id);
+          memberPageIds.push(...relationPageIds);
+        }
+      }
+
+      // 중복 제거 (같은 회원 관리 페이지가 여러 프로그램에 연결될 수 있음)
+      const uniqueMemberPageIds = [...new Set(memberPageIds)];
+
+      if (uniqueMemberPageIds.length === 0) {
+        return [];
+      }
+
+      // 회원 관리 페이지들에서 실제 사용자ID 추출
+      return await this.extractUserIdsFromRelation(uniqueMemberPageIds);
+    } catch (error) {
+      console.error("프로그램 페이지에서 사용자 ID 추출 실패:", error.message);
+      
+      if (error.code) {
+        throw error;
+      }
+
+      const serviceError = new Error(`프로그램 페이지에서 사용자 ID를 추출하는데 실패했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       serviceError.statusCode = 500;
       serviceError.originalError = error;
