@@ -343,6 +343,7 @@ class FCMService {
       const userTokenMap = new Map(); // 유저 ID -> 토큰 배열 매핑
       const tokenToUserMap = new Map(); // 토큰 -> 유저 ID 매핑
       const allTokens = [];
+      const noTokenUserIds = []; // FCM 토큰이 없는 사용자
       
       if (uniqueUserIds.length > 0) {
         // 모든 사용자의 토큰을 한 번에 가져오기
@@ -354,6 +355,12 @@ class FCMService {
         const tokenResults = await Promise.all(tokenPromises);
         
         tokenResults.forEach(({ userId, tokens }) => {
+          // FCM 토큰이 없는 경우
+          if (tokens.length === 0) {
+            noTokenUserIds.push(userId);
+            return;
+          }
+
           if (skipPushTermsFilter) {
             // 필터링 스킵 시 모든 토큰 사용
             const tokenList = tokens.map((t) => t.token);
@@ -375,18 +382,30 @@ class FCMService {
               });
               approvedUserIds.push(userId);
             } else {
-              filteredOutUserIds.push(userId); // 푸시 미동의 사용자
+              // FCM 토큰은 있지만 푸시 동의가 false인 경우
+              filteredOutUserIds.push(userId);
             }
           }
         });
       }
 
       if (approvedUserIds.length === 0) {
-        return {sentCount: 0, failedCount: 0, successfulUserIds: [], filteredOutUserIds};
+        return {
+          sentCount: 0,
+          failedCount: 0,
+          successfulUserIds: [],
+          filteredOutUserIds,
+          noTokenUserIds,
+        };
       }
 
       if (allTokens.length === 0) {
-        return {sentCount: 0, failedCount: 0, successfulUserIds: []};
+        return {
+          sentCount: 0,
+          failedCount: 0,
+          successfulUserIds: [],
+          noTokenUserIds,
+        };
       }
 
       const result = await this.sendToTokens(allTokens, notification);
@@ -412,6 +431,7 @@ class FCMService {
         failedCount: result.failureCount,
         successfulUserIds: successfulUserIds,
         filteredOutUserIds,
+        noTokenUserIds,
       };
     } catch (error) {
       console.error("다중 사용자 알림 전송 실패:", error);
