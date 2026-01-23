@@ -360,19 +360,34 @@ class NotificationService {
         throw error;
       }
 
-      // 각각에서 userId 추출
-      const memberUserIds = memberPageIds.length > 0 
-        ? await this.extractUserIdsFromRelation(memberPageIds)
-        : [];
+      // 각각에서 userId 추출 (개별 결과를 안전하게 처리)
+      let memberUserIds = [];
+      if (memberPageIds.length > 0) {
+        try {
+          memberUserIds = await this.extractUserIdsFromRelation(memberPageIds);
+        } catch (error) {
+          console.warn("[getNotificationData] 회원 관리에서 사용자ID 추출 실패:", error.message);
+          // 에러가 발생해도 빈 배열로 처리하여 프로그램 관리 결과와 병합 가능하도록 함
+          memberUserIds = [];
+        }
+      }
       
-      const programUserIds = programPageIds.length > 0
-        ? await this.extractUserIdsFromProgramPages(programPageIds)
-        : [];
+      let programUserIds = [];
+      if (programPageIds.length > 0) {
+        try {
+          programUserIds = await this.extractUserIdsFromProgramPages(programPageIds);
+        } catch (error) {
+          console.warn("[getNotificationData] 프로그램 관리에서 사용자ID 추출 실패:", error.message);
+          // 에러가 발생해도 빈 배열로 처리하여 회원 관리 결과와 병합 가능하도록 함
+          programUserIds = [];
+        }
+      }
 
       // 병합 및 중복 제거
       const allUserIds = [...memberUserIds, ...programUserIds];
       const userIds = [...new Set(allUserIds)];
 
+      // 두 소스 모두 실패한 경우에만 에러 발생
       if (userIds.length === 0) {
         const error = new Error("유효한 사용자 ID를 찾을 수 없습니다.");
         error.code = ERROR_CODES.NO_VALID_USER_IDS;
@@ -422,15 +437,16 @@ class NotificationService {
    */
   async extractUserIdsFromRelation(relationPageIds) {
     try {
-      // Notion 페이지 병렬 조회
+      // Notion 페이지 병렬 조회 (async/await + try/catch 패턴 사용)
       const userPages = await Promise.all(
-        relationPageIds.map(pageId => 
-          this.notion.pages.retrieve({ page_id: pageId })
-            .catch(error => {
-              console.error(`사용자 페이지 ${pageId} 조회 실패:`, error.message);
-              return null;
-            })
-        )
+        relationPageIds.map(async (pageId) => {
+          try {
+            return await this.notion.pages.retrieve({ page_id: pageId });
+          } catch (error) {
+            console.error(`사용자 페이지 ${pageId} 조회 실패:`, error.message);
+            return null;
+          }
+        })
       );
 
       const extractedUserIds = [];
@@ -532,15 +548,16 @@ class NotificationService {
    */
   async extractUserIdsFromProgramPages(programPageIds) {
     try {
-      // 프로그램 페이지들 병렬 조회
+      // 프로그램 페이지들 병렬 조회 (async/await + try/catch 패턴 사용)
       const programPages = await Promise.all(
-        programPageIds.map(pageId => 
-          this.notion.pages.retrieve({ page_id: pageId })
-            .catch(error => {
-              console.error(`프로그램 페이지 ${pageId} 조회 실패:`, error.message);
-              return null;
-            })
-        )
+        programPageIds.map(async (pageId) => {
+          try {
+            return await this.notion.pages.retrieve({ page_id: pageId });
+          } catch (error) {
+            console.error(`프로그램 페이지 ${pageId} 조회 실패:`, error.message);
+            return null;
+          }
+        })
       );
 
       // 각 프로그램 페이지에서 "사용자ID" 관계형 필드의 회원 관리 페이지 ID 수집
