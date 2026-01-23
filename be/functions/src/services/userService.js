@@ -2213,6 +2213,7 @@ class UserService {
 
             // 업데이트 필요 시 비동기로 처리 (응답 지연 방지)
             if (needsUpdate) {
+              updateData.updatedAt = FieldValue.serverTimestamp();
               syncPromises.push(
                 this.communitiesService.update(community.id, updateData).catch((error) => {
                   console.warn(`[getMyCommunities] 파이어베이스 동기화 실패 (${community.id}):`, error.message);
