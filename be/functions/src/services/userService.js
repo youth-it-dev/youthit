@@ -2043,26 +2043,36 @@ class UserService {
           if (programData.startDate) {
             const startDateStr = typeof programData.startDate === 'string' 
               ? programData.startDate 
-              : (programData.startDate instanceof Date ? programData.startDate.toISOString().split('T')[0] : null);
+              : (programData.startDate instanceof Date ? programData.startDate.toISOString() : null);
             if (startDateStr) {
-              startDate = dayjs
-                .tz(startDateStr, "Asia/Seoul")
-                .startOf("day")      // 00:00:00 KST
-                .utc()
-                .toDate();
+              const hasTimeInfo = startDateStr.includes('T');
+              if (hasTimeInfo) {
+                startDate = dayjs(startDateStr).tz("Asia/Seoul").utc().toDate();
+              } else {
+                startDate = dayjs
+                  .tz(startDateStr, "Asia/Seoul")
+                  .startOf("day")      // 00:00:00 KST
+                  .utc()
+                  .toDate();
+              }
             }
           }
           
           if (programData.endDate) {
             const endDateStr = typeof programData.endDate === 'string' 
               ? programData.endDate 
-              : (programData.endDate instanceof Date ? programData.endDate.toISOString().split('T')[0] : null);
+              : (programData.endDate instanceof Date ? programData.endDate.toISOString() : null);
             if (endDateStr) {
-              endDate = dayjs
-                .tz(endDateStr, "Asia/Seoul")
-                .endOf("day")      // 23:59:59 KST
-                .utc()
-                .toDate();
+              const hasTimeInfo = endDateStr.includes('T');
+              if (hasTimeInfo) {
+                endDate = dayjs(endDateStr).tz("Asia/Seoul").utc().toDate();
+              } else {
+                endDate = dayjs
+                  .tz(endDateStr, "Asia/Seoul")
+                  .endOf("day")      // 23:59:59 KST
+                  .utc()
+                  .toDate();
+              }
             }
           }
           
@@ -2121,26 +2131,36 @@ class UserService {
             if (programData.startDate) {
               const startDateStr = typeof programData.startDate === 'string' 
                 ? programData.startDate 
-                : (programData.startDate instanceof Date ? programData.startDate.toISOString().split('T')[0] : null);
+                : (programData.startDate instanceof Date ? programData.startDate.toISOString() : null);
               if (startDateStr) {
-                startDate = dayjs
-                  .tz(startDateStr, "Asia/Seoul")
-                  .startOf("day")      // 00:00:00 KST
-                  .utc()
-                  .toDate();
+                const hasTimeInfo = startDateStr.includes('T');
+                if (hasTimeInfo) {
+                  startDate = dayjs(startDateStr).tz("Asia/Seoul").utc().toDate();
+                } else {
+                  startDate = dayjs
+                    .tz(startDateStr, "Asia/Seoul")
+                    .startOf("day")      // 00:00:00 KST
+                    .utc()
+                    .toDate();
+                }
               }
             }
             
             if (programData.endDate) {
               const endDateStr = typeof programData.endDate === 'string' 
                 ? programData.endDate 
-                : (programData.endDate instanceof Date ? programData.endDate.toISOString().split('T')[0] : null);
+                : (programData.endDate instanceof Date ? programData.endDate.toISOString() : null);
               if (endDateStr) {
-                endDate = dayjs
-                  .tz(endDateStr, "Asia/Seoul")
-                  .endOf("day")      // 23:59:59 KST
-                  .utc()
-                  .toDate();
+                const hasTimeInfo = endDateStr.includes('T');
+                if (hasTimeInfo) {
+                  endDate = dayjs(endDateStr).tz("Asia/Seoul").utc().toDate();
+                } else {
+                  endDate = dayjs
+                    .tz(endDateStr, "Asia/Seoul")
+                    .endOf("day")      // 23:59:59 KST
+                    .utc()
+                    .toDate();
+                }
               }
             }
           }
