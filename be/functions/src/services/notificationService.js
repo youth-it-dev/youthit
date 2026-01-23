@@ -26,6 +26,7 @@ const NOTION_FIELDS = {
   CONTENT: '알림 내용',
   MEMBER_MANAGEMENT: '회원 관리',
   PROGRAM_MANAGEMENT: '프로그램 관리',
+  SEND_TO_ALL: '전체 전송',
   SEND_STATUS: '전송 상태',
   USER_ID: '사용자ID',
   LAST_PAYMENT_DATE: '전송 일시',
@@ -352,8 +353,11 @@ class NotificationService {
       const programRelations = props[NOTION_FIELDS.PROGRAM_MANAGEMENT]?.relation || [];
       const programPageIds = programRelations.map(relation => relation.id);
 
-      // 둘 다 비어있으면 에러
-      if (memberPageIds.length === 0 && programPageIds.length === 0) {
+      // "전체 전송" 체크박스 확인
+      const sendToAll = getCheckboxValue(props[NOTION_FIELDS.SEND_TO_ALL]) || false;
+
+      // "전체 전송"이 체크되지 않았고, 회원 관리와 프로그램 관리가 모두 비어있으면 에러
+      if (!sendToAll && memberPageIds.length === 0 && programPageIds.length === 0) {
         const error = new Error("선택된 사용자가 없습니다.");
         error.code = ERROR_CODES.NO_USERS_SELECTED;
         error.statusCode = 400;
@@ -383,8 +387,20 @@ class NotificationService {
         }
       }
 
-      // 병합 및 중복 제거
-      const allUserIds = [...memberUserIds, ...programUserIds];
+      // "전체 전송"이 체크되어 있으면 회원 관리 DB의 모든 사용자 조회
+      let allMemberUserIds = [];
+      if (sendToAll) {
+        try {
+          allMemberUserIds = await this.extractAllUserIdsFromMemberDB();
+        } catch (error) {
+          console.warn("[getNotificationData] 전체 회원 조회 실패:", error.message);
+          // 에러가 발생해도 빈 배열로 처리하여 다른 소스 결과와 병합 가능하도록 함
+          allMemberUserIds = [];
+        }
+      }
+
+      // 병합 및 중복 제거 (회원 관리, 프로그램 관리, 전체 전송)
+      const allUserIds = [...memberUserIds, ...programUserIds, ...allMemberUserIds];
       const userIds = [...new Set(allUserIds)];
 
       // 두 소스 모두 실패한 경우에만 에러 발생
@@ -593,6 +609,70 @@ class NotificationService {
       }
 
       const serviceError = new Error(`프로그램 페이지에서 사용자 ID를 추출하는데 실패했습니다: ${error.message}`);
+      serviceError.code = ERROR_CODES.NOTION_API_ERROR;
+      serviceError.statusCode = 500;
+      serviceError.originalError = error;
+      throw serviceError;
+    }
+  }
+
+  /**
+   * 회원 관리 DB의 모든 페이지에서 사용자ID 추출
+   * @return {Promise<Array<string>>} Firestore users 컬렉션에 존재하는 유효한 User ID 배열
+   */
+  async extractAllUserIdsFromMemberDB() {
+    try {
+      const userDbId = process.env.NOTION_USER_ACCOUNT_DB_ID2;
+      if (!userDbId) {
+        console.warn('[extractAllUserIdsFromMemberDB] NOTION_USER_ACCOUNT_DB_ID2 환경변수가 설정되지 않음');
+        return [];
+      }
+
+      // 페이지네이션을 사용하여 모든 페이지 조회
+      let allPages = [];
+      let hasMore = true;
+      let startCursor;
+
+      while (hasMore) {
+        const queryBody = {
+          page_size: 100,
+        };
+
+        if (startCursor) {
+          queryBody.start_cursor = startCursor;
+        }
+
+        const data = await this.notion.dataSources.query({
+          data_source_id: userDbId,
+          ...queryBody,
+        });
+
+        if (data.results) {
+          allPages = allPages.concat(data.results);
+        }
+
+        hasMore = data.has_more || false;
+        startCursor = data.next_cursor;
+      }
+
+      // 모든 페이지에서 사용자ID 추출
+      const memberPageIds = allPages.map(page => page.id);
+
+      if (memberPageIds.length === 0) {
+        console.warn('[extractAllUserIdsFromMemberDB] 회원 관리 DB에서 페이지를 찾을 수 없습니다.');
+        return [];
+      }
+
+      // 회원 관리 페이지들에서 실제 사용자ID 추출
+      return await this.extractUserIdsFromRelation(memberPageIds);
+    } catch (error) {
+      console.error('[extractAllUserIdsFromMemberDB] 전체 회원 조회 실패:', error.message);
+      
+      if (error.code) {
+        throw error;
+      }
+
+      const serviceError = new Error(`전체 회원 조회에 실패했습니다: ${error.message}`);
       serviceError.code = ERROR_CODES.NOTION_API_ERROR;
       serviceError.statusCode = 500;
       serviceError.originalError = error;
@@ -998,16 +1078,24 @@ class NotificationService {
 
           const batchSuccessfulUserIds = batchResult?.successfulUserIds || [];
           const batchFilteredOutUserIds = batchResult?.filteredOutUserIds || [];
+          const batchNoTokenUserIds = batchResult?.noTokenUserIds || [];
 
           successfulUserIds = successfulUserIds.concat(batchSuccessfulUserIds);
+
+          // FCM 토큰이 없는 사용자는 fcmFailedUserIds에 추가
+          if (batchNoTokenUserIds.length > 0) {
+            fcmFailedUserIds = fcmFailedUserIds.concat(batchNoTokenUserIds);
+          }
 
           const batchFailedUserIds = batch.filter(
             (userId) =>
               !batchSuccessfulUserIds.includes(userId) &&
-              !batchFilteredOutUserIds.includes(userId)
+              !batchFilteredOutUserIds.includes(userId) &&
+              !batchNoTokenUserIds.includes(userId)
           );
           fcmFailedUserIds = fcmFailedUserIds.concat(batchFailedUserIds);
 
+          // 푸시 동의가 false인 사용자만 pushFilteredUserIds에 추가
           if (batchFilteredOutUserIds.length > 0) {
             pushFilteredUserIds = pushFilteredUserIds.concat(batchFilteredOutUserIds);
           }
