@@ -2252,9 +2252,8 @@ class UserService {
         }
       });
 
-      // 파이어베이스 동기화 작업 시작 (응답은 기다리지 않음)
       if (syncPromises.length > 0) {
-        Promise.all(syncPromises).catch((error) => {
+        await Promise.all(syncPromises).catch((error) => {
           console.error('[getMyCommunities] 파이어베이스 동기화 중 오류:', error.message);
         });
       }
