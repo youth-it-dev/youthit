@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 /**
  * @description 마이페이지 달력 관련 유틸리티 함수
  */
@@ -9,7 +10,6 @@ export interface CalendarDay {
   postId?: string;
   hasPost: boolean;
   isConsecutive: boolean;
-  consecutiveDayNumber?: number;
   isCurrentMonth: boolean;
   isToday: boolean;
 }
@@ -33,71 +33,10 @@ export const generateDateKey = (
 };
 
 /**
- * 연속 인증 날짜별 번호 계산 (가장 최근 연속 집합에만 번호 부여)
- * @param dateKeys 인증한 날짜 키 배열 (YYYY-MM-DD 형식, 정렬되어 있어야 함)
- * @returns 날짜 키를 key로, 연속 인증 번호를 value로 하는 Map
- */
-export const calculateConsecutiveDayNumbers = (
-  dateKeys: string[]
-): Map<string, number> => {
-  const result = new Map<string, number>();
-
-  if (dateKeys.length === 0) return result;
-
-  const sortedDateKeys = [...dateKeys].sort();
-
-  const allStreaks: string[][] = [];
-  let currentStreak: string[] = [];
-
-  sortedDateKeys.forEach((dateKey) => {
-    const currentDate = new Date(dateKey);
-
-    if (currentStreak.length === 0) {
-      // 첫 번째 날짜 또는 새로운 연속 시작
-      currentStreak = [dateKey];
-    } else {
-      const lastDateKey = currentStreak[currentStreak.length - 1];
-      const lastDate = new Date(lastDateKey);
-
-      // 날짜 차이 계산 (일 단위)
-      const diffTime = currentDate.getTime() - lastDate.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
-        // 연속된 날짜
-        currentStreak.push(dateKey);
-      } else {
-        // 연속이 끊김 - 현재 연속을 저장하고 새로운 연속 시작
-        if (currentStreak.length >= 2) {
-          allStreaks.push([...currentStreak]);
-        }
-        currentStreak = [dateKey];
-      }
-    }
-  });
-
-  // 마지막 연속 집합 저장
-  if (currentStreak.length >= 2) {
-    allStreaks.push([...currentStreak]);
-  }
-
-  // 가장 최근(마지막) 연속 집합에만 번호 부여
-  if (allStreaks.length > 0) {
-    const lastStreak = allStreaks[allStreaks.length - 1];
-    lastStreak.forEach((key, idx) => {
-      result.set(key, idx + 1);
-    });
-  }
-
-  return result;
-};
-
-/**
  * 달력 그리드 생성
  * @param year 년도
  * @param month 월 (1-12)
  * @param calendarDayData 달력 데이터 (날짜별 이미지 URL 등)
- * @param _consecutiveDays 연속 인증 날짜 Set (사용 안 함 - 이제 자동 계산, 하위 호환성을 위해 유지)
  * @param todayDateKey 오늘 날짜 키
  * @returns 달력 날짜 배열
  */
@@ -105,11 +44,8 @@ export const generateCalendarDays = (
   year: number,
   month: number,
   calendarDayData?: CalendarDayData,
-  _consecutiveDays: Set<string> = new Set(),
   todayDateKey: string = ""
 ): CalendarDay[] => {
-  void _consecutiveDays; // 하위 호환성을 위해 파라미터 유지, 사용하지 않음
-
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = new Date(year, month, 0);
   const startDayOfWeek = firstDay.getDay(); // 0 (일요일) ~ 6 (토요일)
@@ -117,14 +53,40 @@ export const generateCalendarDays = (
 
   const days: CalendarDay[] = [];
 
-  // 인증한 날짜들의 키 추출 및 연속 인증 번호 계산
+  // 인증한 날짜 키 목록 추출
   const certifiedDateKeys = calendarDayData
     ? Object.keys(calendarDayData).filter(
         (key) => calendarDayData[key]?.imageUrl
       )
     : [];
-  const consecutiveDayNumbers =
-    calculateConsecutiveDayNumbers(certifiedDateKeys);
+  const certifiedDateSet = new Set(certifiedDateKeys);
+
+  // 연속 인증 여부 확인 헬퍼 함수
+  const isConsecutiveDay = (dateKey: string): boolean => {
+    if (!certifiedDateSet.has(dateKey)) return false;
+
+    // dayjs를 사용하여 안전하게 날짜 계산
+    // YYYY-MM-DD 형식을 파싱하여 이전/다음 날짜 계산
+    const currentDate = dayjs(dateKey);
+    const prevDate = currentDate.subtract(1, "day");
+    const nextDate = currentDate.add(1, "day");
+
+    const prevDateKey = generateDateKey(
+      prevDate.year(),
+      prevDate.month() + 1, // dayjs는 0-based month
+      prevDate.date()
+    );
+    const nextDateKey = generateDateKey(
+      nextDate.year(),
+      nextDate.month() + 1, // dayjs는 0-based month
+      nextDate.date()
+    );
+
+    // 이전 날짜나 다음 날짜 중 하나라도 인증이 있으면 연속 인증
+    return (
+      certifiedDateSet.has(prevDateKey) || certifiedDateSet.has(nextDateKey)
+    );
+  };
 
   // 이전 달의 마지막 날들 (빈 칸 채우기)
   const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
@@ -144,17 +106,16 @@ export const generateCalendarDays = (
   for (let date = 1; date <= daysInMonth; date++) {
     const dateKey = generateDateKey(year, month, date);
     const dayData = calendarDayData?.[dateKey];
-    const consecutiveDayNumber = consecutiveDayNumbers.get(dateKey);
-    const isConsecutive = consecutiveDayNumber !== undefined;
+    const hasPost = Boolean(dayData?.imageUrl);
     const isToday = dateKey === todayDateKey;
+    const isConsecutive = hasPost && isConsecutiveDay(dateKey);
     days.push({
       date,
       dateKey,
       imageUrl: dayData?.imageUrl,
       postId: dayData?.postId,
-      hasPost: Boolean(dayData?.imageUrl),
+      hasPost,
       isConsecutive,
-      consecutiveDayNumber,
       isCurrentMonth: true,
       isToday,
     });

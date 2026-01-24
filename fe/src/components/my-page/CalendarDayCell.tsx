@@ -16,8 +16,6 @@ interface Props {
   hasPost: boolean;
   /** 연속 인증 여부 */
   isConsecutive: boolean;
-  /** 연속 인증 며칠째인지 (1부터 시작) */
-  consecutiveDayNumber?: number;
   /** 현재 달 여부 */
   isCurrentMonth: boolean;
   /** 오늘 날짜 여부 */
@@ -40,7 +38,6 @@ const CalendarDayCell = ({
   postId,
   hasPost,
   isConsecutive,
-  consecutiveDayNumber,
   isCurrentMonth,
   isToday = false,
   currentRoutineCommunityId,
@@ -62,23 +59,39 @@ const CalendarDayCell = ({
 
   const isClickable = canCertify || canNavigateToPost;
 
+  // 오늘 날짜로 인증했을 때
+  const isTodayCertified = isToday && hasPost && imageUrl;
+
   return (
     <button
       type="button"
       className={cn(
         "relative aspect-square overflow-hidden rounded-lg",
         !isCurrentMonth && "invisible",
-        hasPost && imageUrl
-          ? "bg-gray-900"
-          : canCertify
-            ? "border-2 border-blue-500 bg-white"
-            : "bg-gray-200",
+        isTodayCertified
+          ? "border border-blue-500 bg-gray-900"
+          : hasPost && imageUrl
+            ? "bg-gray-900"
+            : canCertify
+              ? "border border-blue-500 bg-white"
+              : "bg-gray-200",
         isClickable && "cursor-pointer"
       )}
       onClick={handleClick}
       disabled={!isClickable}
     >
-      {/* 날짜 숫자 */}
+      {/* 이미지 */}
+      {hasPost && imageUrl && (
+        <Image
+          src={imageUrl}
+          alt={`${dateKey} 인증 이미지`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 14vw, 14vw"
+        />
+      )}
+
+      {/* 날짜 숫자 - 사진 위에 항상 표시 */}
       {!canCertify && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Typography
@@ -98,26 +111,10 @@ const CalendarDayCell = ({
         </div>
       )}
 
-      {/* 이미지 */}
-      {hasPost && imageUrl && (
-        <Image
-          src={imageUrl}
-          alt={`${dateKey} 인증 이미지`}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 14vw, 14vw"
-        />
-      )}
-
-      {/* 연속 인증 불꽃 아이콘과 숫자 - 사진 정가운데 */}
-      {isConsecutive && hasPost && imageUrl && consecutiveDayNumber && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-0.5">
-            <Flame className="fill-primary-green text-primary-green h-4 w-4" />
-            <Typography font="noto" variant="label2B" className="text-white">
-              {consecutiveDayNumber}
-            </Typography>
-          </div>
+      {/* 연속 인증 불꽃 아이콘 - 우측 상단 */}
+      {isConsecutive && hasPost && imageUrl && (
+        <div className="absolute top-0.5 right-0.5">
+          <Flame className="fill-primary-green text-primary-green size-3.5" />
         </div>
       )}
     </button>

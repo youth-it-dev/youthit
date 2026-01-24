@@ -248,7 +248,6 @@ const Page = () => {
       currentDate.year,
       currentDate.month,
       calendarDataFromApi?.days,
-      new Set(), // 연속 인증 날짜 목록은 API에서 제공하지 않으므로 빈 Set 사용
       todayDateKey
     );
   }, [
@@ -600,7 +599,6 @@ const Page = () => {
                     postId={day.postId}
                     hasPost={day.hasPost}
                     isConsecutive={day.isConsecutive}
-                    consecutiveDayNumber={day.consecutiveDayNumber}
                     isCurrentMonth={day.isCurrentMonth}
                     isToday={day.isToday}
                     currentRoutineCommunityId={
@@ -613,7 +611,7 @@ const Page = () => {
                         ? undefined
                         : handleCertifyClick
                     }
-                    onPostClick={(postId) =>
+                    onPostClick={(postId: string) =>
                       handlePostClick(
                         postId,
                         userData?.currentRoutineCommunityId
