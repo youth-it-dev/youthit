@@ -18,7 +18,9 @@ import type * as imagesTypes from "@/types/generated/images-types";
 import type * as missionsTypes from "@/types/generated/missions-types";
 import type * as notificationsTypes from "@/types/generated/notifications-types";
 import type * as notionrewardhistoryTypes from "@/types/generated/notionrewardhistory-types";
+import type * as notionrewardpolicyTypes from "@/types/generated/notionrewardpolicy-types";
 import type * as notionusersTypes from "@/types/generated/notionusers-types";
+import type * as pendingrewardsTypes from "@/types/generated/pendingrewards-types";
 import type * as programmonitoringTypes from "@/types/generated/programmonitoring-types";
 import type * as programsTypes from "@/types/generated/programs-types";
 import type * as qnaTypes from "@/types/generated/qna-types";
@@ -256,6 +258,21 @@ export const notionusersKeys = {
   ),
 } as const;
 
+// PendingRewards Query Keys
+export const pendingrewardsKeys = {
+  getPendingrewardsList: (
+    request: pendingrewardsTypes.TGETPendingRewardsListReq
+  ) =>
+    __buildKey("pendingrewards", "getPendingrewardsList", {
+      path: {},
+      query: { status: request.status, limit: request.limit },
+    }),
+  getPendingrewardsStats: __buildKey(
+    "pendingrewards",
+    "getPendingrewardsStats"
+  ),
+} as const;
+
 // ProgramMonitoring Query Keys
 export const programmonitoringKeys = {
   getProgrammonitoringExport: (
@@ -441,7 +458,12 @@ export const usersKeys = {
   getUsersMeRewardsEarned: (request: usersTypes.TGETUsersMeRewardsEarnedReq) =>
     __buildKey("users", "getUsersMeRewardsEarned", {
       path: {},
-      query: { page: request.page, size: request.size, filter: request.filter },
+      query: {
+        page: request.page,
+        size: request.size,
+        filter: request.filter,
+        month: request.month,
+      },
     }),
   getUsersMeRoutineCalendar: (
     request: usersTypes.TGETUsersMeRoutineCalendarReq

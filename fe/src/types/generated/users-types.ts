@@ -377,11 +377,16 @@ export interface TGETUsersMeRewardsEarnedReq {
   page?: number;
   size?: number;
   filter?: "all" | "earned" | "used" | "expired";
+  month?: number;
 }
 
 export type TGETUsersMeRewardsEarnedRes = {
   availableRewards?: number;
   expiringThisMonth?: number;
+  period?: {
+    startDate?: string;
+    endDate?: string;
+  };
   history?: {
     id?: string;
     amount?: number;
