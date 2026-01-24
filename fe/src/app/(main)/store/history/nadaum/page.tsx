@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Info } from "lucide-react";
+import { Info, ListFilterIcon, RefreshCwIcon } from "lucide-react";
 import * as Api from "@/api/generated/users-api";
 import CommunityInfiniteScrollTrigger from "@/components/community/CommunityInfiniteScrollTrigger";
+import ButtonBase from "@/components/shared/base/button-base";
 import SingleSelectFilterButtons from "@/components/shared/SingleSelectFilterButtons";
 import { Typography } from "@/components/shared/typography";
 import BottomSheet from "@/components/shared/ui/bottom-sheet";
+import { PeriodOptionButton } from "@/components/store/PeriodOptionButton";
 import { usersKeys } from "@/constants/generated/query-keys";
 import {
   ACTION_KEY,
@@ -19,13 +21,20 @@ import {
   CHANGE_TYPE,
 } from "@/constants/store/_nadaum-history-constants";
 import { NADAUM_HISTORY_FILTER_OPTIONS } from "@/constants/store/_nadaum-history-filter-options";
+import { PERIOD_OPTIONS } from "@/constants/store/_nadaum-history-period-options";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
 import type { TGETUsersMeRewardsEarnedRes } from "@/types/generated/users-types";
 import type { HistorySection, HistoryType } from "@/types/reward-history";
-import type { PageFilterType } from "@/types/store/_nadaum-history-types";
+import type {
+  PageFilterType,
+  PeriodOption,
+} from "@/types/store/_nadaum-history-types";
 import { cn } from "@/utils/shared/cn";
 import { formatDateWithDayKorean } from "@/utils/shared/date";
 import { mapPageFilterToApiFilter } from "@/utils/store/map-api-filter";
+import { periodToMonth } from "@/utils/store/period-to-month";
+
+const PAGE_SIZE = 20;
 
 /**
  * @description 나다움 내역 페이지
@@ -35,22 +44,18 @@ const Page = () => {
     PAGE_FILTER.ALL
   );
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isPeriodFilterOpen, setIsPeriodFilterOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<PeriodOption>("thisMonth");
+  const [appliedPeriod, setAppliedPeriod] = useState<PeriodOption>("thisMonth");
+
   const setTitle = useTopBarStore((state) => state.setTitle);
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const resetTopBar = useTopBarStore((state) => state.reset);
 
-  const handleGuideOpen = useCallback(() => {
-    setIsGuideOpen(true);
-  }, []);
-
-  const handleGuideClose = useCallback(() => {
-    setIsGuideOpen(false);
-  }, []);
-
   // API 필터 매핑
   const apiFilter = mapPageFilterToApiFilter(activeFilter);
-
-  const PAGE_SIZE = 20;
+  const monthParam = periodToMonth(appliedPeriod);
 
   // 무한 스크롤 API 호출
   const {
@@ -64,12 +69,14 @@ const Page = () => {
       page: undefined,
       size: PAGE_SIZE,
       filter: apiFilter,
+      month: monthParam,
     }),
     queryFn: async ({ pageParam }) => {
       const response = await Api.getUsersMeRewardsEarned({
         page: (pageParam as number) ?? 0,
         size: PAGE_SIZE,
         filter: apiFilter,
+        month: monthParam,
       });
       return response.data;
     },
@@ -87,6 +94,7 @@ const Page = () => {
   const firstPage = rewardsPagesData?.pages?.[0];
   const availableNadaum = firstPage?.availableRewards ?? 0;
   const expiringNadaum = firstPage?.expiringThisMonth ?? 0;
+  const period = firstPage?.period;
 
   // 모든 페이지의 history를 합치기
   const allHistory = useMemo(() => {
@@ -166,14 +174,21 @@ const Page = () => {
     }));
   }, [allHistory]);
 
-  const filteredHistory = historySections;
+  const handlePeriodApply = () => {
+    setAppliedPeriod(selectedPeriod);
+    setIsPeriodFilterOpen(false);
+  };
+
+  const handlePeriodReset = () => {
+    setSelectedPeriod("thisMonth");
+  };
 
   useEffect(() => {
     const infoButton = (
       <button
         type="button"
         aria-label="나다움 안내"
-        onClick={handleGuideOpen}
+        onClick={() => setIsGuideOpen(true)}
         className="flex items-center justify-center text-gray-950"
       >
         <Info className="h-5 w-5" />
@@ -185,7 +200,6 @@ const Page = () => {
     return () => {
       resetTopBar();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setTitle, setRightSlot, resetTopBar]);
 
   return (
@@ -216,7 +230,7 @@ const Page = () => {
                 variant="label2M"
                 className="text-gray-400"
               >
-                이번 달 소멸 예정인 나다움
+                30일 이내 소멸 예정인 나다움
               </Typography>
               <Typography
                 font="noto"
@@ -230,12 +244,35 @@ const Page = () => {
         </section>
 
         {/* 필터 섹션 */}
-        <div className="bg-white px-5 py-4">
-          <SingleSelectFilterButtons
-            selectedId={activeFilter}
-            onSelect={setActiveFilter}
-            options={NADAUM_HISTORY_FILTER_OPTIONS}
-          />
+        <div>
+          <div className="flex w-full items-center justify-between bg-white px-5 py-4">
+            <SingleSelectFilterButtons
+              selectedId={activeFilter}
+              onSelect={setActiveFilter}
+              options={NADAUM_HISTORY_FILTER_OPTIONS}
+            />
+            {/* 리스트 필터 */}
+            <ButtonBase
+              className="rounded-md border border-gray-100 p-2"
+              onClick={() => {
+                setSelectedPeriod(appliedPeriod);
+                setIsPeriodFilterOpen(true);
+              }}
+            >
+              <ListFilterIcon className="size-6 text-gray-800" />
+            </ButtonBase>
+          </div>
+          {period?.startDate && period?.endDate && (
+            <div className="px-5 py-2.5">
+              <Typography
+                font="noto"
+                variant="body3M"
+                className="text-gray-400"
+              >
+                {period.startDate} ~ {period.endDate}
+              </Typography>
+            </div>
+          )}
         </div>
 
         {/* 거래 내역 목록 */}
@@ -250,7 +287,7 @@ const Page = () => {
                 로딩 중...
               </Typography>
             </div>
-          ) : filteredHistory.length === 0 ? (
+          ) : historySections.length === 0 ? (
             <div className="bg-white py-16 text-center">
               <Typography
                 font="noto"
@@ -262,7 +299,7 @@ const Page = () => {
             </div>
           ) : null}
 
-          {filteredHistory.map((section) => (
+          {historySections.map((section) => (
             <section
               key={section.date}
               className="flex flex-col border-t-5 border-t-gray-50"
@@ -348,7 +385,7 @@ const Page = () => {
       </div>
 
       {/* 나다움 가이드 바텀시트 */}
-      <BottomSheet isOpen={isGuideOpen} onClose={handleGuideClose}>
+      <BottomSheet isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)}>
         <Typography
           font="noto"
           variant="heading2B"
@@ -365,6 +402,94 @@ const Page = () => {
         >
           {NADAUM_GUIDE_TEXT}
         </Typography>
+      </BottomSheet>
+
+      {/* 조회 기간 필터 바텀시트 */}
+      <BottomSheet
+        isOpen={isPeriodFilterOpen}
+        onClose={() => setIsPeriodFilterOpen(false)}
+      >
+        <div className="flex flex-col">
+          <div className="flex flex-col gap-1.5 py-5">
+            <div className="flex gap-1">
+              {/* 제목 */}
+              <Typography
+                font="noto"
+                variant="body3M"
+                className="text-gray-700"
+              >
+                조회 기간
+              </Typography>
+              <Typography
+                font="noto"
+                variant="body3M"
+                className="text-gray-400"
+              >
+                (최대 1년)
+              </Typography>
+            </div>
+
+            {/* 기간 선택 버튼 그룹 */}
+            <div className="flex flex-col gap-2">
+              {/* 첫 번째 줄: 이번달, 1개월, 3개월 */}
+              <div className="flex gap-3">
+                {PERIOD_OPTIONS.slice(0, 3).map((option) => (
+                  <PeriodOptionButton
+                    key={option.value}
+                    value={option.value}
+                    label={option.label}
+                    isSelected={selectedPeriod === option.value}
+                    onClick={() => setSelectedPeriod(option.value)}
+                  />
+                ))}
+              </div>
+
+              {/* 두 번째 줄: 6개월, 1년 */}
+              <div className="flex gap-2">
+                {PERIOD_OPTIONS.slice(3).map((option) => (
+                  <PeriodOptionButton
+                    key={option.value}
+                    value={option.value}
+                    label={option.label}
+                    isSelected={selectedPeriod === option.value}
+                    onClick={() => setSelectedPeriod(option.value)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 하단 액션 버튼 그룹 */}
+          </div>
+          {/* border가 바텀시트 양 끝까지 가도록 음수 마진 사용 */}
+          <div className="-mx-5 flex gap-2 border-t border-t-gray-100 px-5 py-3">
+            {/* 초기화 버튼 */}
+            <button
+              type="button"
+              onClick={handlePeriodReset}
+              className="flex items-center justify-center gap-2 rounded-md border border-gray-100 bg-white px-7.5"
+            >
+              <RefreshCwIcon className="size-4 text-gray-950" />
+              <Typography
+                font="noto"
+                variant="body2M"
+                className="text-gray-950"
+              >
+                초기화
+              </Typography>
+            </button>
+
+            {/* 적용 버튼 */}
+            <button
+              type="button"
+              onClick={handlePeriodApply}
+              className="bg-main-500 flex flex-1 items-center justify-center rounded-md py-2.5"
+            >
+              <Typography font="noto" variant="body1B" className="text-white">
+                적용
+              </Typography>
+            </button>
+          </div>
+        </div>
       </BottomSheet>
     </>
   );
