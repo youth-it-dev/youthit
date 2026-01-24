@@ -1360,7 +1360,7 @@ router.get("/me/completed-communities", authGuard, userController.getMyCompleted
  *         schema:
  *           type: integer
  *           enum: [1, 3, 6, 12]
- *         description: 기간 필터링 (1=1개월, 3=3개월, 6=6개월, 12=1년). 지정하지 않으면 전체 기간 조회
+ *         description: 기간 필터링 (1=1개월, 3=3개월, 6=6개월, 12=1년). 지정하지 않으면 이번 달 조회
  *         example: 3
  *     responses:
  *       200:
