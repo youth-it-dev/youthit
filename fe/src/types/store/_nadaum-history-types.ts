@@ -23,3 +23,13 @@ export type ChangeType = "add" | "deduct";
  * @description 액션 키 타입
  */
 export type ActionKey = "expiration" | string;
+
+/**
+ * @description 조회 기간 옵션 타입
+ */
+export type PeriodOption =
+  | "thisMonth"
+  | "1month"
+  | "3months"
+  | "6months"
+  | "1year";
