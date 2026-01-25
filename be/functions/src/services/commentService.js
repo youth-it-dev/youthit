@@ -444,24 +444,25 @@ class CommentService {
           }
         }
 
-        // 댓글 작성자들의 커뮤니티 role 배치 조회
+        // 댓글 작성자들의 커뮤니티 role 배치 조회 (N+1 문제 해결)
         const roleMap = {};
         if (uniqueUserIds.length > 0) {
           try {
-            const memberPromises = uniqueUserIds.map(async (userId) => {
-              try {
-                const memberDoc = await this.firestoreService.getDocument(
-                  `communities/${communityId}/members`,
-                  userId
-                );
-                if (memberDoc && memberDoc.role) {
-                  roleMap[userId] = memberDoc.role;
+            // getCollectionWhereIn을 사용하여 배치 조회 (문서 ID로 조회)
+            const memberDocs = await this.firestoreService.getCollectionWhereIn(
+              `communities/${communityId}/members`,
+              "__name__",
+              uniqueUserIds
+            );
+            memberDocs.forEach((memberDoc) => {
+              if (memberDoc && memberDoc.role) {
+                // moderator는 admin으로 normalize (API 응답에서는 member/admin만 사용)
+                const normalizedRole = memberDoc.role === "moderator" ? "admin" : memberDoc.role;
+                if (normalizedRole === "member" || normalizedRole === "admin") {
+                  roleMap[memberDoc.id] = normalizedRole;
                 }
-              } catch (error) {
-                // 멤버 문서가 없거나 조회 실패 시 무시
               }
             });
-            await Promise.all(memberPromises);
           } catch (error) {
             console.warn("[COMMENT] 작성자 role 배치 조회 실패:", error.message);
           }

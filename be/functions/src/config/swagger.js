@@ -1719,7 +1719,7 @@ const options = {
               type: "string",
               nullable: true,
               enum: ["member", "admin"],
-              description: "게시글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)",
+              description: "게시글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함, moderator는 admin으로 normalize)",
               example: "member",
             },
           },
