@@ -1190,11 +1190,19 @@ class ProgramApplicationService {
         // 3. 새 리더가 이미 멤버인지 확인 (중복 DB 호출 제거)
         const existingMember = allMembers.find(m => m.id === newLeaderUserId || m.userId === newLeaderUserId);
         
-        // 4. 기존 admin 삭제 (새 리더와 다른 경우에만)
+        // 4. 기존 admin 처리 (새 리더와 다른 경우에만)
         if (existingAdmin && existingAdmin.userId !== newLeaderUserId) {
-          console.log(`[ProgramApplicationService] 기존 admin 삭제 - userId: ${existingAdmin.userId}`);
           const adminRef = collectionRef.doc(existingAdmin.id);
-          transaction.delete(adminRef);
+          
+          if (existingAdmin.applicantsPageId) {
+            // 기존 신청자면 role만 member로 변경
+            console.log(`[ProgramApplicationService] 기존 admin을 member로 변경 (신청자) - userId: ${existingAdmin.userId}`);
+            transaction.update(adminRef, { role: 'member' });
+          } else {
+            // 신청자가 아니면 삭제
+            console.log(`[ProgramApplicationService] 기존 admin 삭제 - userId: ${existingAdmin.userId}`);
+            transaction.delete(adminRef);
+          }
         }
         
         // 5. 새 리더 처리
