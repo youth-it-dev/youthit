@@ -49,7 +49,7 @@ const ERROR_CODES = {
 // Notion 필드명 상수
 const NOTION_FIELDS = {
   PROGRAM_TITLE: "프로그램 제목",
-  PROGRAM_NAME: "프로그램명",
+  // PROGRAM_NAME 제거: title과 통합하여 PROGRAM_TITLE만 사용
   PROGRAM_DESCRIPTION: "프로그램 소개글",
   PROGRAM_TYPE: "프로그램 종류",
   RECRUITMENT_PERIOD: "모집 기간",
@@ -592,7 +592,7 @@ class ProgramService {
     const baseData = {
       id: page.id,
       title: getTextContent(props[NOTION_FIELDS.PROGRAM_TITLE]),
-      programName: getTextContent(props[NOTION_FIELDS.PROGRAM_NAME]),
+      programName: getTitleValue(props[NOTION_FIELDS.NOTION_PAGE_TITLE]), // 노션 페이지명 사용
       description: getTextContent(props[NOTION_FIELDS.PROGRAM_DESCRIPTION]),
       programType: getSelectValue(props[NOTION_FIELDS.PROGRAM_TYPE]),
       recruitmentStatus: recruitmentStatus,
