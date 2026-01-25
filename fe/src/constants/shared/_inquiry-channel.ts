@@ -8,13 +8,13 @@ export const INQUIRY_CHANNELS = {
     id: "kakao",
     name: "카카오톡 문의하기",
     description: "카카오톡 채널로 연결됩니다",
-    url: "https://pf.kakao.com/_kTGuxj",
+    url: "https://pf.kakao.com/_kTGuxj/chat",
   },
   instagram: {
     id: "instagram",
     name: "인스타그램 DM",
     description: "인스타그램 DM으로 연결됩니다",
-    url: "https://www.instagram.com/youthvoice_my/",
+    url: "https://ig.me/m/youthvoice_my",
   },
 } as const;
 
