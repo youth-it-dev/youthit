@@ -1144,6 +1144,112 @@ class ProgramApplicationService {
       throw new Error(`일괄 대기 처리 중 오류가 발생했습니다: ${error.message}`);
     }
   }
+
+  /**
+   * 커뮤니티 리더 업데이트 (노션 웹훅용)
+   * - 커뮤니티 존재 확인/생성 (ensureCommunityExists)
+   * - 트랜잭션으로 원자적 처리
+   * - 기존 admin role 멤버 삭제
+   * - 새 리더 추가/업데이트 (role: admin)
+   * @param {string} programPageId - 노션 프로그램 페이지 ID (원본)
+   * @param {string} newLeaderUserId - 새 리더 Firebase UID
+   * @param {string} nickname - 리더 닉네임
+   * @returns {Promise<Object>} 업데이트 결과
+   */
+  async updateCommunityLeader(programPageId, newLeaderUserId, nickname) {
+    try {
+      const { ERROR_CODES, normalizeProgramIdForFirestore } = require('./programService');
+      
+      // 1. 프로그램 조회
+      const program = await programService.getProgramById(programPageId);
+      if (!program) {
+        const error = new Error(`프로그램을 찾을 수 없습니다: ${programPageId}`);
+        error.code = ERROR_CODES.PROGRAM_NOT_FOUND;
+        error.statusCode = 404;
+        throw error;
+      }
+      
+      // 2. communityId 정규화
+      const communityId = normalizeProgramIdForFirestore(programPageId);
+      
+      console.log(`[ProgramApplicationService] 리더 업데이트 시작 - programPageId: ${programPageId}, communityId: ${communityId}, newLeaderUserId: ${newLeaderUserId}, nickname: ${nickname}`);
+      
+      // 3. 커뮤니티 존재 확인/생성 (기존 applyToProgram과 동일한 방식)
+      await programCommunityService.ensureCommunityExists(communityId, program);
+      
+      const membersService = new FirestoreService(`communities/${communityId}/members`);
+      
+      // 트랜잭션으로 원자적 처리
+      const result = await membersService.runTransaction(async (transaction, collectionRef) => {
+        // 1. Members 전체 조회 (Transaction 내에서 Lock)
+        const allMembers = await membersService.getAllInTransaction(transaction);
+        
+        // 2. 기존 admin 찾기
+        const existingAdmin = allMembers.find(m => m.role === 'admin');
+        
+        // 3. 새 리더가 이미 멤버인지 확인 (중복 DB 호출 제거)
+        const existingMember = allMembers.find(m => m.id === newLeaderUserId || m.userId === newLeaderUserId);
+        
+        // 4. 기존 admin 삭제 (새 리더와 다른 경우에만)
+        if (existingAdmin && existingAdmin.userId !== newLeaderUserId) {
+          console.log(`[ProgramApplicationService] 기존 admin 삭제 - userId: ${existingAdmin.userId}`);
+          const adminRef = collectionRef.doc(existingAdmin.id);
+          transaction.delete(adminRef);
+        }
+        
+        // 5. 새 리더 처리
+        const newLeaderRef = collectionRef.doc(newLeaderUserId);
+        
+        if (existingMember) {
+          // 기존 멤버면 role 확인 후 필요시에만 업데이트
+          if (existingMember.role !== 'admin') {
+            console.log(`[ProgramApplicationService] 기존 멤버를 admin으로 업데이트 - userId: ${newLeaderUserId}`);
+            transaction.update(newLeaderRef, { role: 'admin' });
+          } else {
+            console.log(`[ProgramApplicationService] 이미 admin인 멤버 - 업데이트 스킵 - userId: ${newLeaderUserId}`);
+          }
+        } else {
+          // 새 멤버면 생성
+          console.log(`[ProgramApplicationService] 새 admin 멤버 생성 - userId: ${newLeaderUserId}`);
+          transaction.set(newLeaderRef, {
+            userId: newLeaderUserId,
+            nickname: nickname || '리더',
+            role: 'admin',
+            status: 'approved',
+            joinedAt: FieldValue.serverTimestamp(),
+          });
+        }
+        
+        return {
+          previousLeaderUserId: existingAdmin?.userId || null,
+          wasAlreadyAdmin: existingMember?.role === 'admin',
+        };
+      });
+      
+      console.log(`[ProgramApplicationService] 리더 업데이트 완료 - communityId: ${communityId}, newLeaderUserId: ${newLeaderUserId}`);
+      
+      return {
+        success: true,
+        communityId,
+        newLeaderUserId,
+        previousLeaderUserId: result.previousLeaderUserId,
+        wasAlreadyAdmin: result.wasAlreadyAdmin,
+      };
+      
+    } catch (error) {
+      console.error('[ProgramApplicationService] 리더 업데이트 오류:', error.message);
+      
+      // 이미 설정된 에러 코드가 있으면 그대로 전달
+      if (error.code && error.statusCode) {
+        throw error;
+      }
+      
+      const serviceError = new Error(`리더 업데이트 중 오류가 발생했습니다: ${error.message}`);
+      serviceError.code = 'LEADER_UPDATE_ERROR';
+      serviceError.statusCode = 500;
+      throw serviceError;
+    }
+  }
 }
 
 module.exports = new ProgramApplicationService();
