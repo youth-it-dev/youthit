@@ -436,6 +436,64 @@ class ProgramController {
     }
   }
 
+  /**
+   * 노션 웹훅 - 리더 변경
+   * @param {Object} req - Express 요청 객체
+   * @param {Object} res - Express 응답 객체
+   * @param {Function} next - Express next 함수
+   */
+  async handleLeaderChangeWebhook(req, res, next) {
+    try {
+      const { data } = req.body;
+      
+      // 웹훅 데이터 유효성 검증
+      if (!data || !data.id) {
+        const error = new Error('유효하지 않은 웹훅 데이터입니다');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+      
+      // 1. 프로그램 페이지 ID 추출
+      const programPageId = data.id;
+      
+      console.log(`[ProgramController] 리더 변경 웹훅 수신 - programPageId: ${programPageId}`);
+      
+      // 2. rollup에서 userId 추출
+      const userIdRollup = data.properties?.['리더사용자ID']?.rollup?.array?.[0];
+      const newLeaderUserId = userIdRollup?.rich_text?.[0]?.plain_text;
+      
+      // 3. rollup에서 nickname 추출
+      const nicknameRollup = data.properties?.['리더 사용자 별명']?.rollup?.array?.[0];
+      const nickname = nicknameRollup?.title?.[0]?.plain_text;
+      
+      // userId 필수 체크
+      if (!newLeaderUserId) {
+        console.warn('[ProgramController] 리더 사용자ID가 없습니다 - 리더가 비어있을 수 있음');
+        const error = new Error('리더 사용자ID가 없습니다');
+        error.code = 'BAD_REQUEST';
+        error.statusCode = 400;
+        return next(error);
+      }
+      
+      console.log(`[ProgramController] 리더 정보 - userId: ${newLeaderUserId}, nickname: ${nickname}`);
+      
+      // 4. 리더 업데이트 (서비스에서 프로그램 조회 및 커뮤니티 존재 확인 처리)
+      const result = await programApplicationService.updateCommunityLeader(
+        programPageId, 
+        newLeaderUserId, 
+        nickname
+      );
+      
+      console.log(`[ProgramController] 리더 업데이트 완료 - result:`, result);
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error('[ProgramController] 리더 변경 웹훅 오류:', error.message);
+      return next(error);
+    }
+  }
 
 }
 

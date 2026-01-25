@@ -575,4 +575,65 @@ router.get('/:programId/applications/:applicationId/approve', programController.
  */
 router.get('/:programId/applications/:applicationId/reject', programController.rejectApplication);
 
+/**
+ * @swagger
+ * /programs/webhooks/leader-change:
+ *   post:
+ *     summary: 노션 웹훅 - 리더 변경
+ *     description: |
+ *       노션 Database Automation에서 리더 변경 시 호출되는 웹훅입니다.
+ *       
+ *       **처리 과정:**
+ *       1. payload에서 프로그램 페이지 ID 추출 → communityId로 변환
+ *       2. rollup에서 리더 userId, nickname 추출
+ *       3. 기존 admin role 멤버 삭제
+ *       4. 새 리더를 admin으로 추가/업데이트
+ *       
+ *       **노션 Automation 설정:**
+ *       - Trigger: "리더 사용자ID" 필드 변경 시
+ *       - Properties: 리더사용자ID (rollup), 리더 사용자 별명 (rollup)
+ *     tags: [Programs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               source:
+ *                 type: object
+ *                 description: 노션 자동화 메타데이터
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: 프로그램 페이지 ID
+ *                   properties:
+ *                     type: object
+ *                     description: 노션 페이지 속성
+ *     responses:
+ *       200:
+ *         description: 리더 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 communityId:
+ *                   type: string
+ *                 newLeaderUserId:
+ *                   type: string
+ *       400:
+ *         description: 잘못된 요청 (리더 정보 없음)
+ *       404:
+ *         description: 커뮤니티를 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+router.post('/webhooks/leader-change', programController.handleLeaderChangeWebhook);
+
 module.exports = router;
