@@ -183,7 +183,7 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             type: string
  *                             nullable: true
  *                             enum: [member, admin]
- *                             description: 댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)
+ *                             description: 댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함, moderator는 admin으로 normalize)
  *                             example: "member"
  *                           repliesCount:
  *                             type: number
@@ -273,7 +273,7 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                                   type: string
  *                                   nullable: true
  *                                   enum: [member, admin]
- *                                   description: 대댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)
+ *                                   description: 대댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함, moderator는 admin으로 normalize)
  *                                   example: "member"
  *                                 reportsCount:
  *                                   type: number

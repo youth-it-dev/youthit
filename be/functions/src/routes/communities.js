@@ -703,7 +703,7 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                           type: string
  *                           nullable: true
  *                           enum: [member, admin]
- *                           description: 사용자의 커뮤니티 역할 (인증된 요청이고 해당 커뮤니티 멤버일 때만 포함)
+ *                           description: 게시글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함, moderator는 admin으로 normalize)
  *                           example: "member"
  *       404:
  *         description: 게시글을 찾을 수 없음

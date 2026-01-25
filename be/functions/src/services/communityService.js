@@ -1002,26 +1002,42 @@ class CommunityService {
       const authorIds = [...new Set(paginatedPosts.map(post => post.authorId).filter(Boolean))];
       const profileImageMap = authorIds.length > 0 ? await loadUserProfiles(authorIds) : {};
 
-      // 게시글 작성자들의 커뮤니티 role 배치 조회
+      // 게시글 작성자들의 커뮤니티 role 배치 조회 (N+1 문제 해결)
       const roleMap = {}; // key: `${communityId}_${authorId}`, value: role
-      const rolePromises = [];
+      // communityId별로 authorId 그룹화
+      const roleQueriesByCommunity = {};
       for (const post of paginatedPosts) {
         if (post.authorId && post.communityId) {
-          rolePromises.push(
-            this.firestoreService.getDocument(
-              `communities/${post.communityId}/members`,
-              post.authorId
-            ).then((memberDoc) => {
-              if (memberDoc && memberDoc.role) {
-                roleMap[`${post.communityId}_${post.authorId}`] = memberDoc.role;
-              }
-            }).catch(() => {
-              // 멤버 문서가 없거나 조회 실패 시 무시
-            })
-          );
+          if (!roleQueriesByCommunity[post.communityId]) {
+            roleQueriesByCommunity[post.communityId] = new Set();
+          }
+          roleQueriesByCommunity[post.communityId].add(post.authorId);
         }
       }
-      await Promise.all(rolePromises);
+      
+      // 각 커뮤니티별로 배치 조회
+      const roleQueryPromises = Object.entries(roleQueriesByCommunity).map(async ([communityId, authorIdSet]) => {
+        try {
+          const authorIds = Array.from(authorIdSet);
+          const memberDocs = await this.firestoreService.getCollectionWhereIn(
+            `communities/${communityId}/members`,
+            "__name__",
+            authorIds
+          );
+          memberDocs.forEach((memberDoc) => {
+            if (memberDoc && memberDoc.role) {
+              // moderator는 admin으로 normalize (API 응답에서는 member/admin만 사용)
+              const normalizedRole = memberDoc.role === "moderator" ? "admin" : memberDoc.role;
+              if (normalizedRole === "member" || normalizedRole === "admin") {
+                roleMap[`${communityId}_${memberDoc.id}`] = normalizedRole;
+              }
+            }
+          });
+        } catch (error) {
+          console.warn(`[COMMUNITY] 커뮤니티 ${communityId} 작성자 role 배치 조회 실패:`, error.message);
+        }
+      });
+      await Promise.all(roleQueryPromises);
 
       const processPost = (post) => {
         const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
@@ -1052,7 +1068,12 @@ class CommunityService {
             name: communityMap[communityId].name,
           } : null,
           profileImageUrl: post.authorId ? (profileImageMap[post.authorId] || null) : null,
-          role: (post.authorId && post.communityId) ? (roleMap[`${post.communityId}_${post.authorId}`] || null) : null,
+          role: (post.authorId && post.communityId) ? (() => {
+            const rawRole = roleMap[`${post.communityId}_${post.authorId}`];
+            if (!rawRole) return null;
+            // moderator는 admin으로 normalize (API 응답에서는 member/admin만 사용)
+            return rawRole === "moderator" ? "admin" : (rawRole === "member" || rawRole === "admin" ? rawRole : null);
+          })() : null,
         };
         processed.programType = resolvedProgramType;
         processed.isReview = resolvedIsReview;
@@ -1853,22 +1874,28 @@ class CommunityService {
       if (viewerId) {
         const liked = await this.hasUserLikedTarget("POST", postId, viewerId);
         response.isLiked = liked;
+      } else {
+        response.isLiked = false;
+      }
 
-        // 사용자의 커뮤니티 role 조회
+      // 게시글 작성자의 커뮤니티 role 조회
+      if (authorId) {
         try {
           const memberDoc = await this.firestoreService.getDocument(
             `communities/${communityId}/members`,
-            viewerId
+            authorId
           );
           if (memberDoc && memberDoc.role) {
-            response.role = memberDoc.role;
+            // moderator는 admin으로 normalize (API 응답에서는 member/admin만 사용)
+            const normalizedRole = memberDoc.role === "moderator" ? "admin" : memberDoc.role;
+            if (normalizedRole === "member" || normalizedRole === "admin") {
+              response.role = normalizedRole;
+            }
           }
         } catch (error) {
           // role 조회 실패 시 무시 (role 필드 없이 응답)
-          console.warn("[COMMUNITY] 멤버 role 조회 실패:", error.message);
+          console.warn("[COMMUNITY] 작성자 role 조회 실패:", error.message);
         }
-      } else {
-        response.isLiked = false;
       }
 
       return response;
