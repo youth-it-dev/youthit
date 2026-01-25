@@ -375,6 +375,7 @@ router.get("/", communityController.getCommunities);
  *                             name: "TMI 자아탐색"
  *                           timeAgo: "2분 전"
  *                           communityPath: "communities/CP:VYTTZW33IH"
+ *                           role: "member"
  *                     pagination:
  *                       type: object
  *                       properties:
@@ -698,6 +699,12 @@ router.post("/:communityId/posts", authGuard, rewardHandler, communityController
  *                           type: boolean
  *                           description: 작성자 여부 (본인 게시글인지)
  *                           example: false
+ *                         role:
+ *                           type: string
+ *                           nullable: true
+ *                           enum: [member, admin]
+ *                           description: 사용자의 커뮤니티 역할 (인증된 요청이고 해당 커뮤니티 멤버일 때만 포함)
+ *                           example: "member"
  *       404:
  *         description: 게시글을 찾을 수 없음
  *       500:

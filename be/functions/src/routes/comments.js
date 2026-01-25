@@ -179,6 +179,12 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                             type: boolean
  *                             nullable: true
  *                             description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
+ *                           role:
+ *                             type: string
+ *                             nullable: true
+ *                             enum: [member, admin]
+ *                             description: 댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)
+ *                             example: "member"
  *                           repliesCount:
  *                             type: number
  *                             description: 대댓글 수
@@ -263,6 +269,12 @@ const optionalAuth = require("../middleware/optionalAuth");
  *                                   nullable: true
  *                                   description: 사용자가 좋아요를 눌렀다면 true (인증된 요청일 때만 포함)
  *                                   example: false
+ *                                 role:
+ *                                   type: string
+ *                                   nullable: true
+ *                                   enum: [member, admin]
+ *                                   description: 대댓글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)
+ *                                   example: "member"
  *                                 reportsCount:
  *                                   type: number
  *                                   description: 신고 횟수

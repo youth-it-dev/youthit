@@ -1715,6 +1715,13 @@ const options = {
               description: "작성자 프로필 이미지 URL",
               example: "https://example.com/profile.jpg",
             },
+            role: {
+              type: "string",
+              nullable: true,
+              enum: ["member", "admin"],
+              description: "게시글 작성자의 커뮤니티 역할 (해당 커뮤니티 멤버일 때만 포함)",
+              example: "member",
+            },
           },
         },
         Comment: {
