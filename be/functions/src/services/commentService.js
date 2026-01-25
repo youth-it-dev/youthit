@@ -444,6 +444,29 @@ class CommentService {
           }
         }
 
+        // 댓글 작성자들의 커뮤니티 role 배치 조회
+        const roleMap = {};
+        if (uniqueUserIds.length > 0) {
+          try {
+            const memberPromises = uniqueUserIds.map(async (userId) => {
+              try {
+                const memberDoc = await this.firestoreService.getDocument(
+                  `communities/${communityId}/members`,
+                  userId
+                );
+                if (memberDoc && memberDoc.role) {
+                  roleMap[userId] = memberDoc.role;
+                }
+              } catch (error) {
+                // 멤버 문서가 없거나 조회 실패 시 무시
+              }
+            });
+            await Promise.all(memberPromises);
+          } catch (error) {
+            console.warn("[COMMENT] 작성자 role 배치 조회 실패:", error.message);
+          }
+        }
+
         for (const comment of paginatedParentComments) {
           const replies = repliesByRootId[comment.id] || [];
          
@@ -465,6 +488,7 @@ class CommentService {
                 reportsCount: reply.reportsCount || 0,
                 parentAuthor: reply.parentAuthor || null,
                 profileImageUrl: reply.userId ? (profileImageMap[reply.userId] || null) : null,
+                role: reply.userId ? (roleMap[reply.userId] || null) : null,
               };
               return replyResult;
             });
@@ -481,6 +505,7 @@ class CommentService {
             reportsCount: comment.reportsCount || 0,
             parentAuthor: comment.parentAuthor || null,
             profileImageUrl: comment.userId ? (profileImageMap[comment.userId] || null) : null,
+            role: comment.userId ? (roleMap[comment.userId] || null) : null,
           };
 
           commentsWithReplies.push(processedComment);
@@ -514,7 +539,7 @@ class CommentService {
         }
       }
 
-      return {
+      const result = {
         content: commentsWithReplies,
         pagination: parentCommentsResult.pageable || {
           pageNumber,
@@ -528,6 +553,8 @@ class CommentService {
         },
         commentAuthorName,
       };
+
+      return result;
     } catch (error) {
       console.error("Get comments error:", error.message);
       if (error.code === "NOT_FOUND") {

@@ -1002,6 +1002,27 @@ class CommunityService {
       const authorIds = [...new Set(paginatedPosts.map(post => post.authorId).filter(Boolean))];
       const profileImageMap = authorIds.length > 0 ? await loadUserProfiles(authorIds) : {};
 
+      // 게시글 작성자들의 커뮤니티 role 배치 조회
+      const roleMap = {}; // key: `${communityId}_${authorId}`, value: role
+      const rolePromises = [];
+      for (const post of paginatedPosts) {
+        if (post.authorId && post.communityId) {
+          rolePromises.push(
+            this.firestoreService.getDocument(
+              `communities/${post.communityId}/members`,
+              post.authorId
+            ).then((memberDoc) => {
+              if (memberDoc && memberDoc.role) {
+                roleMap[`${post.communityId}_${post.authorId}`] = memberDoc.role;
+              }
+            }).catch(() => {
+              // 멤버 문서가 없거나 조회 실패 시 무시
+            })
+          );
+        }
+      }
+      await Promise.all(rolePromises);
+
       const processPost = (post) => {
         const {authorId: _ignored, content: _content, media: _media, communityId, ...rest} = post;
         const createdAtDate = post.createdAt?.toDate?.() || (post.createdAt ? new Date(post.createdAt) : null);
@@ -1031,6 +1052,7 @@ class CommunityService {
             name: communityMap[communityId].name,
           } : null,
           profileImageUrl: post.authorId ? (profileImageMap[post.authorId] || null) : null,
+          role: (post.authorId && post.communityId) ? (roleMap[`${post.communityId}_${post.authorId}`] || null) : null,
         };
         processed.programType = resolvedProgramType;
         processed.isReview = resolvedIsReview;
@@ -1831,6 +1853,20 @@ class CommunityService {
       if (viewerId) {
         const liked = await this.hasUserLikedTarget("POST", postId, viewerId);
         response.isLiked = liked;
+
+        // 사용자의 커뮤니티 role 조회
+        try {
+          const memberDoc = await this.firestoreService.getDocument(
+            `communities/${communityId}/members`,
+            viewerId
+          );
+          if (memberDoc && memberDoc.role) {
+            response.role = memberDoc.role;
+          }
+        } catch (error) {
+          // role 조회 실패 시 무시 (role 필드 없이 응답)
+          console.warn("[COMMUNITY] 멤버 role 조회 실패:", error.message);
+        }
       } else {
         response.isLiked = false;
       }
