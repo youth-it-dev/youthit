@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @description Programs 관련 타입 정의
  * ⚠️ 이 파일은 자동 생성되므로 수정하지 마세요
@@ -48,3 +49,19 @@ export interface TGETProgramsSearchReq {
 }
 
 export type TGETProgramsSearchRes = Schema.ProgramSearchResponse["data"];
+
+export interface TPOSTProgramsWebhooksLeaderChangeReq {
+  data: {
+    source?: Record<string, any>;
+    data?: {
+      id?: string;
+      properties?: Record<string, any>;
+    };
+  };
+}
+
+export type TPOSTProgramsWebhooksLeaderChangeRes = {
+  success?: boolean;
+  communityId?: string;
+  newLeaderUserId?: string;
+};

@@ -58,3 +58,12 @@ export const getProgramsSearch = (request: Types.TGETProgramsSearchReq) => {
     params: request,
   });
 };
+
+export const postProgramsWebhooksLeaderChange = (
+  request: Types.TPOSTProgramsWebhooksLeaderChangeReq
+) => {
+  return post<Types.TPOSTProgramsWebhooksLeaderChangeRes>(
+    `/programs/webhooks/leader-change`,
+    request.data ?? request
+  );
+};

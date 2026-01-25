@@ -195,3 +195,31 @@ export const useGetProgramsSearch = <TData = Types.TGETProgramsSearchRes>(
     ...queryOptions,
   });
 };
+
+export const usePostProgramsWebhooksLeaderChange = <
+  TContext = unknown,
+  TVariables = Types.TPOSTProgramsWebhooksLeaderChangeReq,
+>(
+  options?: Omit<
+    UseMutationOptions<
+      Awaited<ReturnType<typeof Api.postProgramsWebhooksLeaderChange>>,
+      Error,
+      TVariables,
+      TContext
+    >,
+    "mutationFn"
+  >
+) => {
+  return useMutation<
+    Awaited<ReturnType<typeof Api.postProgramsWebhooksLeaderChange>>,
+    Error,
+    TVariables,
+    TContext
+  >({
+    mutationFn: (variables: TVariables) =>
+      Api.postProgramsWebhooksLeaderChange(
+        variables as Types.TPOSTProgramsWebhooksLeaderChangeReq
+      ),
+    ...options,
+  });
+};

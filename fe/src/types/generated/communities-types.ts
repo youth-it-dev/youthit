@@ -109,6 +109,7 @@ export type TGETCommunitiesPostsByTwoIdsRes = Schema.CommunityPost & {
   imageCount?: number;
   reportsCount?: number;
   isAuthor?: boolean;
+  role?: "member" | "admin";
 };
 
 export interface TPUTCommunitiesPostsByTwoIdsReq {

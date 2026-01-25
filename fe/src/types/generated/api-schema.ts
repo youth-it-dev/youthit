@@ -380,6 +380,7 @@ export interface CommunityPost {
   createdAt?: string;
   updatedAt?: string;
   profileImageUrl?: string;
+  role?: "member" | "admin";
   communityId?: string;
   category?: string;
   scheduledDate?: string;
