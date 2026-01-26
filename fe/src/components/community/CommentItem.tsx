@@ -8,6 +8,7 @@ import { Heart, Image as ImageIcon } from "lucide-react";
 import { GiphySelector } from "@/components/shared/giphy-selector";
 import KebabMenu from "@/components/shared/kebab-menu";
 import { Typography } from "@/components/shared/typography";
+import AdminBadge from "@/components/shared/ui/admin-badge";
 import ExpandableBottomSheet from "@/components/shared/ui/expandable-bottom-sheet";
 import {
   commentsKeys,
@@ -986,6 +987,7 @@ const CommentItemComponent = ({
               >
                 {comment.author || COMMENT_ANONYMOUS_NAME}
               </Typography>
+              <AdminBadge role={comment.role} />
               {comment.createdAt && (
                 <Typography
                   font="noto"
@@ -1021,6 +1023,7 @@ const CommentItemComponent = ({
                   >
                     {comment.author || COMMENT_ANONYMOUS_NAME}
                   </Typography>
+                  <AdminBadge role={comment.role} />
                 </div>
                 <button
                   onClick={onCancelEdit}
@@ -1213,6 +1216,7 @@ const CommentItemComponent = ({
                           </span>
                           {replyAuthor}
                         </Typography>
+                        <AdminBadge role={reply.role} />
                         {reply.createdAt && (
                           <Typography
                             font="noto"
@@ -1263,6 +1267,7 @@ const CommentItemComponent = ({
                             >
                               {replyAuthor || COMMENT_ANONYMOUS_NAME}
                             </Typography>
+                            <AdminBadge role={reply.role} />
                           </div>
                           <button
                             onClick={onCancelEdit}

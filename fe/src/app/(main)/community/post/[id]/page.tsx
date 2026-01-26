@@ -494,6 +494,7 @@ const PostDetailPageContent = () => {
         author={post?.author}
         createdAt={post?.createdAt}
         viewCount={post?.viewCount}
+        role={post?.role}
         content={post?.content}
       />
       {/* 좋아요/댓글 액션 바 */}

@@ -14,6 +14,7 @@ export const PostMainContent = memo<{
   author?: string;
   createdAt?: string;
   viewCount?: number;
+  role?: "member" | "admin";
   content?: Schema.CommunityPost["content"];
 }>(
   ({
@@ -23,6 +24,7 @@ export const PostMainContent = memo<{
     author,
     createdAt,
     viewCount,
+    role,
     content,
   }) => {
     return (
@@ -49,6 +51,7 @@ export const PostMainContent = memo<{
           author={author}
           createdAt={createdAt}
           viewCount={viewCount}
+          role={role}
         />
 
         <PostContent content={content} />

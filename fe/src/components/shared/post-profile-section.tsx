@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import { Typography } from "@/components/shared/typography";
+import AdminBadge from "@/components/shared/ui/admin-badge";
 import { getTimeAgo } from "@/utils/shared/date";
 
 interface PostProfileSectionProps {
@@ -21,6 +22,10 @@ interface PostProfileSectionProps {
    */
   viewCount?: number;
   /**
+   * @description 작성자 역할 (member | admin)
+   */
+  role?: "member" | "admin";
+  /**
    * @description 추가 클래스명
    */
   className?: string;
@@ -36,6 +41,7 @@ export const PostProfileSection = ({
   author,
   createdAt,
   viewCount,
+  role,
   className,
 }: PostProfileSectionProps) => {
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -67,6 +73,7 @@ export const PostProfileSection = ({
           <Typography font="noto" variant="body2R" className="text-gray-950">
             {author || "익명"}
           </Typography>
+          <AdminBadge role={role} />
         </div>
         <div className="flex items-center gap-1">
           {createdAt && (
