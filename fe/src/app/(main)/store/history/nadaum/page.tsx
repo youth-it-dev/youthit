@@ -205,74 +205,77 @@ const Page = () => {
   return (
     <>
       <div className="min-h-screen bg-white">
-        {/* 나다움 요약 섹션 */}
-        <section className="bg-white px-5 pt-16 pb-4">
-          <div className="rounded-lg bg-gray-50">
-            <div className="flex items-center justify-between border-b border-b-gray-100 px-4 py-3">
-              <Typography
-                font="noto"
-                variant="label1M"
-                className="text-gray-600"
-              >
-                사용 가능한 나다움
-              </Typography>
-              <Typography
-                font="noto"
-                variant="heading2B"
-                className="text-main-500 font-semibold"
-              >
-                {availableNadaum}N
-              </Typography>
+        {/* 상단 고정 영역: 나다움 요약 + 필터 + 날짜 표시 */}
+        <div className="sticky top-0 z-10 bg-white">
+          {/* 나다움 요약 섹션 */}
+          <section className="bg-white px-5 pt-16 pb-4">
+            <div className="rounded-lg bg-gray-50">
+              <div className="flex items-center justify-between border-b border-b-gray-100 px-4 py-3">
+                <Typography
+                  font="noto"
+                  variant="label1M"
+                  className="text-gray-600"
+                >
+                  사용 가능한 나다움
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="heading2B"
+                  className="text-main-500 font-semibold"
+                >
+                  {availableNadaum}N
+                </Typography>
+              </div>
+              <div className="flex items-center justify-between px-4 py-2">
+                <Typography
+                  font="noto"
+                  variant="label2M"
+                  className="text-gray-400"
+                >
+                  30일 이내 소멸 예정인 나다움
+                </Typography>
+                <Typography
+                  font="noto"
+                  variant="label1B"
+                  className="text-gray-600"
+                >
+                  {expiringNadaum}N
+                </Typography>
+              </div>
             </div>
-            <div className="flex items-center justify-between px-4 py-2">
-              <Typography
-                font="noto"
-                variant="label2M"
-                className="text-gray-400"
-              >
-                30일 이내 소멸 예정인 나다움
-              </Typography>
-              <Typography
-                font="noto"
-                variant="label1B"
-                className="text-gray-600"
-              >
-                {expiringNadaum}N
-              </Typography>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        {/* 필터 섹션 */}
-        <div>
-          <div className="flex w-full items-center justify-between bg-white px-5 py-4">
-            <SingleSelectFilterButtons
-              selectedId={activeFilter}
-              onSelect={setActiveFilter}
-              options={NADAUM_HISTORY_FILTER_OPTIONS}
-            />
-            {/* 리스트 필터 */}
-            <ButtonBase
-              className="rounded-md border border-gray-100 p-2"
-              onClick={() => {
-                setSelectedPeriod(appliedPeriod);
-                setIsPeriodFilterOpen(true);
-              }}
-            >
-              <ListFilterIcon className="size-6 text-gray-800" />
-            </ButtonBase>
-          </div>
-          {period?.startDate && period?.endDate && (
-            <div className="px-5 py-2.5">
-              <Typography
-                font="noto"
-                variant="body3M"
-                className="text-gray-400"
+          {/* 필터 섹션 */}
+          <div>
+            <div className="flex w-full items-center justify-between bg-white px-5 py-4">
+              <SingleSelectFilterButtons
+                selectedId={activeFilter}
+                onSelect={setActiveFilter}
+                options={NADAUM_HISTORY_FILTER_OPTIONS}
+              />
+              {/* 리스트 필터 */}
+              <ButtonBase
+                className="rounded-md border border-gray-100 p-2"
+                onClick={() => {
+                  setSelectedPeriod(appliedPeriod);
+                  setIsPeriodFilterOpen(true);
+                }}
               >
-                {period.startDate} ~ {period.endDate}
-              </Typography>
+                <ListFilterIcon className="size-6 text-gray-800" />
+              </ButtonBase>
             </div>
-          )}
+            {period?.startDate && period?.endDate && (
+              <div className="px-5 py-2.5">
+                <Typography
+                  font="noto"
+                  variant="body3M"
+                  className="text-gray-400"
+                >
+                  {period.startDate} ~ {period.endDate}
+                </Typography>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 거래 내역 목록 */}
