@@ -1156,12 +1156,14 @@ class ProgramApplicationService {
    * @param {string} nickname - 리더 닉네임
    * @returns {Promise<Object>} 업데이트 결과
    */
-  async updateCommunityLeader(programPageId, newLeaderUserId, nickname) {
+  async updateCommunityLeader(programPageId, newLeaderUserId, nickname, program = null) {
     try {
       const { ERROR_CODES, normalizeProgramIdForFirestore } = require('./programService');
       
-      // 1. 프로그램 조회
-      const program = await programService.getProgramById(programPageId);
+      // 1. 프로그램 조회 (전달받지 않은 경우에만 조회)
+      if (!program) {
+        program = await programService.getProgramById(programPageId);
+      }
       if (!program) {
         const error = new Error(`프로그램을 찾을 수 없습니다: ${programPageId}`);
         error.code = ERROR_CODES.PROGRAM_NOT_FOUND;
