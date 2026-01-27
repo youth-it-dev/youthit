@@ -2647,33 +2647,46 @@ class CommunityService {
     
         if (isLiked && post.authorId !== userId) {
           try {
-            // 게시글 isPublic에 따라 닉네임 가져오기
-            const isPrivatePost = post.isPublic === false;
+            // 커뮤니티 정보 가져오기 (programType 확인용)
+            const community = await this.firestoreService.getDocument("communities", communityId);
+            const programType = CommunityService.normalizeProgramType(
+              post.programType || community?.programType || post.type
+            );
+            
             let likerName = "사용자";
 
-            if (isPrivatePost) {
-              // 비공개 게시글: members 컬렉션에서 가져오기
-              const members = await this.firestoreService.getCollectionWhere(
-                `communities/${communityId}/members`,
-                "userId",
-                "==",
-                userId
-              );
-              const memberData = members && members[0];
-              if (memberData) {
-                likerName = memberData.nickname || "사용자";
-              }
+            // TMI 타입이면 공개/비공개 상관없이 실명 사용
+            if (programType === PROGRAM_TYPES.TMI) {
+              const userProfile = await this.firestoreService.getDocument("users", userId);
+              likerName = userProfile?.name || "사용자";
             } else {
-              // 공개 게시글: nicknames 컬렉션에서 가져오기
-              const nicknames = await this.firestoreService.getCollectionWhere(
-                "nicknames",
-                "uid",
-                "==",
-                userId
-              );
-              const nicknameDoc = nicknames && nicknames[0];
-              if (nicknameDoc) {
-                likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
+              // 게시글 isPublic에 따라 닉네임 가져오기
+              const isPrivatePost = post.isPublic === false;
+
+              if (isPrivatePost) {
+                // 비공개 게시글: members 컬렉션에서 가져오기
+                const members = await this.firestoreService.getCollectionWhere(
+                  `communities/${communityId}/members`,
+                  "userId",
+                  "==",
+                  userId
+                );
+                const memberData = members && members[0];
+                if (memberData) {
+                  likerName = memberData.nickname || "사용자";
+                }
+              } else {
+                // 공개 게시글: nicknames 컬렉션에서 가져오기
+                const nicknames = await this.firestoreService.getCollectionWhere(
+                  "nicknames",
+                  "uid",
+                  "==",
+                  userId
+                );
+                const nicknameDoc = nicknames && nicknames[0];
+                if (nicknameDoc) {
+                  likerName = nicknameDoc.id || nicknameDoc.nickname || "사용자";
+                }
               }
             }
 
