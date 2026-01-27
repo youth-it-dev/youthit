@@ -446,7 +446,7 @@ class ProgramController {
     try {
       const { data } = req.body;
       
-      // 웹훅 데이터 유효성 검증
+      // 웹훅 데이터 유효성 검증 (page id만 필요)
       if (!data || !data.id) {
         const error = new Error('유효하지 않은 웹훅 데이터입니다');
         error.code = 'BAD_REQUEST';
@@ -459,13 +459,19 @@ class ProgramController {
       
       console.log(`[ProgramController] 리더 변경 웹훅 수신 - programPageId: ${programPageId}`);
       
-      // 2. rollup에서 userId 추출
-      const userIdRollup = data.properties?.['리더사용자ID']?.rollup?.array?.[0];
-      const newLeaderUserId = userIdRollup?.rich_text?.[0]?.plain_text;
+      // 2. 노션에서 프로그램 데이터 조회 (최신 리더 정보 포함)
+      const program = await programService.getProgramById(programPageId);
       
-      // 3. rollup에서 nickname 추출
-      const nicknameRollup = data.properties?.['리더 사용자 별명']?.rollup?.array?.[0];
-      const nickname = nicknameRollup?.title?.[0]?.plain_text;
+      if (!program) {
+        const error = new Error('프로그램을 찾을 수 없습니다');
+        error.code = 'NOT_FOUND';
+        error.statusCode = 404;
+        return next(error);
+      }
+      
+      // 3. 조회한 프로그램에서 리더 정보 추출
+      const newLeaderUserId = program.leaderUserId;
+      const nickname = program.leaderNickname;
       
       // userId 필수 체크
       if (!newLeaderUserId) {
@@ -478,11 +484,12 @@ class ProgramController {
       
       console.log(`[ProgramController] 리더 정보 - userId: ${newLeaderUserId}, nickname: ${nickname}`);
       
-      // 4. 리더 업데이트 (서비스에서 프로그램 조회 및 커뮤니티 존재 확인 처리)
+      // 4. 리더 업데이트 (이미 조회한 program 전달하여 중복 조회 방지)
       const result = await programApplicationService.updateCommunityLeader(
         programPageId, 
         newLeaderUserId, 
-        nickname
+        nickname,
+        program
       );
       
       console.log(`[ProgramController] 리더 업데이트 완료 - result:`, result);
