@@ -613,7 +613,11 @@ router.get('/:programId/applications/:applicationId/reject', programController.r
  *                     description: 프로그램 페이지 ID (필수)
  *     responses:
  *       200:
- *         description: 리더 업데이트 성공
+ *         description: |
+ *           성공 응답 (3가지 케이스):
+ *           1. 리더 변경 완료
+ *           2. 리더 삭제 완료 (노션에서 리더 비움 + Firebase admin 존재)
+ *           3. 스킵 (노션에서 리더 비움 + Firebase admin 없음)
  *         content:
  *           application/json:
  *             schema:
@@ -621,13 +625,25 @@ router.get('/:programId/applications/:applicationId/reject', programController.r
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 communityId:
  *                   type: string
  *                 newLeaderUserId:
  *                   type: string
+ *                   nullable: true
+ *                 previousLeaderUserId:
+ *                   type: string
+ *                   nullable: true
+ *                 leaderRemoved:
+ *                   type: boolean
+ *                   description: 리더 삭제 여부
+ *                 skipped:
+ *                   type: boolean
+ *                   description: 스킵 여부
+ *                 reason:
+ *                   type: string
+ *                   description: 스킵 사유
  *       400:
- *         description: 잘못된 요청 (리더 정보 없음)
+ *         description: 잘못된 요청 (유효하지 않은 웹훅 데이터)
  *       404:
  *         description: 프로그램을 찾을 수 없음
  *       500:

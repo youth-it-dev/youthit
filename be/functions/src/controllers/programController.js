@@ -473,16 +473,7 @@ class ProgramController {
       const newLeaderUserId = program.leaderUserId;
       const nickname = program.leaderNickname;
       
-      // userId 필수 체크
-      if (!newLeaderUserId) {
-        console.warn('[ProgramController] 리더 사용자ID가 없습니다 - 리더가 비어있을 수 있음');
-        const error = new Error('리더 사용자ID가 없습니다');
-        error.code = 'BAD_REQUEST';
-        error.statusCode = 400;
-        return next(error);
-      }
-      
-      console.log(`[ProgramController] 리더 정보 - userId: ${newLeaderUserId}, nickname: ${nickname}`);
+      console.log(`[ProgramController] 리더 정보 - userId: ${newLeaderUserId || '없음'}, nickname: ${nickname || '없음'}`);
       
       // 4. 리더 업데이트 (이미 조회한 program 전달하여 중복 조회 방지)
       const result = await programApplicationService.updateCommunityLeader(
