@@ -3,7 +3,7 @@ name: Firebase Functions 자동 배포
 on:
   push:
     branches:
-      - "FIX#320"
+      - "main"
     paths:
       - "be/functions/**"
       - ".github/workflows/firebase-deploy.yml"
