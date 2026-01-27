@@ -1189,10 +1189,34 @@ class ProgramApplicationService {
         // 2. 기존 admin 찾기
         const existingAdmin = allMembers.find(m => m.role === 'admin');
         
-        // 3. 새 리더가 이미 멤버인지 확인 (중복 DB 호출 제거)
+        // 3. 새 리더 userId가 없는 경우 (노션에서 리더 삭제됨)
+        if (!newLeaderUserId) {
+          if (!existingAdmin) {
+            // 기존 admin도 없으면 스킵
+            console.log(`[ProgramApplicationService] 새 리더 없음, 기존 admin도 없음 - 스킵`);
+            return { skipped: true, reason: 'no_leader_no_admin' };
+          }
+          
+          // 기존 admin 삭제/member로 변경
+          const adminRef = collectionRef.doc(existingAdmin.id);
+          if (existingAdmin.applicantsPageId) {
+            console.log(`[ProgramApplicationService] 리더 삭제됨 - 기존 admin을 member로 변경 (신청자) - userId: ${existingAdmin.userId}`);
+            transaction.update(adminRef, { role: 'member' });
+          } else {
+            console.log(`[ProgramApplicationService] 리더 삭제됨 - 기존 admin 삭제 - userId: ${existingAdmin.userId}`);
+            transaction.delete(adminRef);
+          }
+          
+          return {
+            previousLeaderUserId: existingAdmin.userId,
+            leaderRemoved: true,
+          };
+        }
+        
+        // 4. 새 리더가 이미 멤버인지 확인 (중복 DB 호출 제거)
         const existingMember = allMembers.find(m => m.id === newLeaderUserId || m.userId === newLeaderUserId);
         
-        // 4. 기존 admin 처리 (새 리더와 다른 경우에만)
+        // 5. 기존 admin 처리 (새 리더와 다른 경우에만)
         if (existingAdmin && existingAdmin.userId !== newLeaderUserId) {
           const adminRef = collectionRef.doc(existingAdmin.id);
           
@@ -1207,7 +1231,7 @@ class ProgramApplicationService {
           }
         }
         
-        // 5. 새 리더 처리
+        // 6. 새 리더 처리
         const newLeaderRef = collectionRef.doc(newLeaderUserId);
         
         if (existingMember) {
@@ -1236,14 +1260,26 @@ class ProgramApplicationService {
         };
       });
       
+      // 스킵된 경우 early return
+      if (result.skipped) {
+        console.log(`[ProgramApplicationService] 리더 업데이트 스킵 - communityId: ${communityId}, reason: ${result.reason}`);
+        return {
+          success: true,
+          skipped: true,
+          reason: result.reason,
+          communityId,
+        };
+      }
+      
       console.log(`[ProgramApplicationService] 리더 업데이트 완료 - communityId: ${communityId}, newLeaderUserId: ${newLeaderUserId}`);
       
       return {
         success: true,
         communityId,
-        newLeaderUserId,
+        newLeaderUserId: newLeaderUserId || null,
         previousLeaderUserId: result.previousLeaderUserId,
         wasAlreadyAdmin: result.wasAlreadyAdmin,
+        leaderRemoved: result.leaderRemoved || false,
       };
       
     } catch (error) {
