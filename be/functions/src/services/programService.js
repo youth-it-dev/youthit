@@ -573,9 +573,9 @@ class ProgramService {
     const props = page.properties;
     
     // 리더 사용자 정보 추출 (rollup 타입)
-    // 리더 사용자ID: rollup에서 첫 번째 항목의 plain_text 추출
+    // 리더 사용자ID: rollup에서 첫 번째 항목의 name 추출
     const leaderUserIdRollup = getRollupValues(props[NOTION_FIELDS.LEADER_USER_ID]);
-    const leaderUserId = leaderUserIdRollup?.value?.[0]?.plain_text || null;
+    const leaderUserId = leaderUserIdRollup?.value?.[0]?.name || null;
     
     // 리더 사용자 별명: rollup에서 첫 번째 항목의 name 추출
     const leaderNicknameRollup = getRollupValues(props[NOTION_FIELDS.LEADER_USER_NICKNAME]);
