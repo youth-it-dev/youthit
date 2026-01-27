@@ -2660,23 +2660,20 @@ class CommunityService {
               const userProfile = await this.firestoreService.getDocument("users", userId);
               likerName = userProfile?.name || "사용자";
             } else {
-              // 게시글 isPublic에 따라 닉네임 가져오기
-              const isPrivatePost = post.isPublic === false;
-
-              if (isPrivatePost) {
-                // 비공개 게시글: members 컬렉션에서 가져오기
-                const members = await this.firestoreService.getCollectionWhere(
-                  `communities/${communityId}/members`,
-                  "userId",
-                  "==",
-                  userId
-                );
-                const memberData = members && members[0];
-                if (memberData) {
-                  likerName = memberData.nickname || "사용자";
-                }
+              // TMI가 아닌 경우: 멤버인지 먼저 확인
+              const members = await this.firestoreService.getCollectionWhere(
+                `communities/${communityId}/members`,
+                "userId",
+                "==",
+                userId
+              );
+              const memberData = members && members[0];
+              
+              if (memberData && memberData.nickname) {
+                // 멤버이고 닉네임이 있으면 멤버 닉네임 사용 (공개/비공개 상관없이)
+                likerName = memberData.nickname;
               } else {
-                // 공개 게시글: nicknames 컬렉션에서 가져오기
+                // 멤버가 아니거나 닉네임이 없으면 전역 닉네임 조회
                 const nicknames = await this.firestoreService.getCollectionWhere(
                   "nicknames",
                   "uid",
