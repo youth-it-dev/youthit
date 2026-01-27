@@ -547,7 +547,7 @@ const Page = () => {
                 <Typography
                   font="noto"
                   variant="body2B"
-                  className="flex items-center text-gray-700"
+                  className="flex w-[90px] items-center justify-center text-gray-700"
                 >
                   {currentDate.year}년 {currentDate.month}월
                 </Typography>
@@ -623,7 +623,7 @@ const Page = () => {
 
               {/* 총 인증 0일 때: 요일 아래(그리드 영역)만 오버레이 + 홈 유도 */}
               {hasNoRoutineCertifications && (
-                <div className="absolute -inset-x-5 -inset-y-2 z-10 flex flex-col items-center justify-center gap-2 bg-white/20 px-6 text-center backdrop-blur-xs">
+                <div className="absolute -inset-x-5 -inset-y-2 z-10 flex flex-col items-center justify-start gap-2 bg-white/20 px-6 pt-20 text-center backdrop-blur-xs">
                   <Typography
                     font="noto"
                     variant="body3M"
