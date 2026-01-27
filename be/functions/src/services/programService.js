@@ -67,7 +67,7 @@ const NOTION_FIELDS = {
   FAQ: "FAQ",
   LAST_EDITED_TIME: "최근 수정 날짜",
   NOTION_PAGE_TITLE: "상세페이지(노션)",
-  LEADER_USER_ID: "리더 사용자ID",
+  LEADER_USER_ID: "리더사용자ID",
   LEADER_USER_NICKNAME: "리더 사용자 별명",
   LEADER_USER_REAL_NAME: "리더 사용자 실명",
   CERTIFICATION_METHOD: "인증 방법",
