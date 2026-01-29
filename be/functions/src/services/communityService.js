@@ -125,6 +125,24 @@ function getTodayAndYesterdayKeys() {
 }
 
 /**
+ * 날짜 키 집합에서 "가장 최근 날짜를 끝으로 하는" 연속된 날의 개수 계산
+ * @param {Set<string>} dateKeysSet - YYYY-MM-DD 형식 날짜 키 집합 (KST 기준)
+ * @returns {number}
+ */
+function countConsecutiveDaysFromLatest(dateKeysSet) {
+  if (!dateKeysSet || dateKeysSet.size === 0) return 0;
+  const sorted = Array.from(dateKeysSet).sort().reverse();
+  const latest = sorted[0];
+  let count = 0;
+  let check = latest;
+  while (dateKeysSet.has(check)) {
+    count += 1;
+    check = dayjs(check).tz("Asia/Seoul").subtract(1, "day").format("YYYY-MM-DD");
+  }
+  return count;
+}
+
+/**
  * 연속일자 계산
  * @param {string|null} lastRoutineAuthDate - 마지막 인증 날짜 (YYYY-MM-DD, KST 기준)
  * @param {number} currentConsecutive - 현재 연속일자
@@ -2331,53 +2349,67 @@ class CommunityService {
 
       await this._deleteLikesByPost(postId);
 
-      // 루틴 인증글 삭제인 경우 롤백 로직을 위한 정보 조회 (트랜잭션 전에)
-      let shouldRollback = false;
-      let rollbackData = null;
+      // 루틴 인증글 삭제 시: 남은 글 기준으로 총 인증/연속 인증/마지막 인증일/currentRoutineCommunityId 재계산 (오늘·이전 구분 없이)
+      let routineUserUpdate = null;
+      let decrementMemberCert = false;
       if (post.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
         try {
-          const { todayKey, yesterdayKey } = getTodayAndYesterdayKeys();
           const deletedPostDate = getDateKey(post.createdAt);
-          
-          // 오늘 작성한 게시글만 처리
-          if (deletedPostDate === todayKey) {
-            const userDoc = await this.firestoreService.getDocument("users", userId);
-            const userData = {
-              lastRoutineAuthDate: userDoc?.lastRoutineAuthDate || null,
-              currentRoutineCommunityId: userDoc?.currentRoutineCommunityId || null,
-              consecutiveRoutinePosts: userDoc?.consecutiveRoutinePosts || 0,
-            };
+          const userDoc = await this.firestoreService.getDocument("users", userId);
+          const currentRoutineCommunityId = userDoc?.currentRoutineCommunityId || null;
 
-            // 삭제 후 오늘 남아있는 인증글 개수 확인
-            const authoredPosts = await this.firestoreService.getCollectionWhere(
-              `users/${userId}/authoredPosts`,
-              "programType",
-              "==",
-              PROGRAM_TYPES.ROUTINE
+          // 삭제할 글을 제외한 남은 루틴 인증글 전체 (모든 커뮤니티)
+          const allAuthoredRoutine = await this.firestoreService.getCollectionWhere(
+            `users/${userId}/authoredPosts`,
+            "programType",
+            "==",
+            PROGRAM_TYPES.ROUTINE
+          );
+          const remainingAll = allAuthoredRoutine.filter((ap) => ap.postId !== postId);
+          const remainingDatesAll = new Set(
+            remainingAll.map((ap) => getDateKey(ap.createdAt)).filter(Boolean)
+          );
+          const shouldDecrementCertificationPosts =
+            !!deletedPostDate && !remainingDatesAll.has(deletedPostDate);
+
+          if (communityId !== currentRoutineCommunityId) {
+            // 다른 커뮤니티 글 삭제: 총 인증만 필요 시 -1, 연속/마지막일/currentCommunity는 변경 안 함
+            routineUserUpdate = { updatedAt: FieldValue.serverTimestamp() };
+            if (shouldDecrementCertificationPosts) {
+              routineUserUpdate.certificationPosts = FieldValue.increment(-1);
+              decrementMemberCert = true;
+            }
+          } else {
+            // 현재 진행 중인 커뮤니티 글 삭제: 남은 글(같은 커뮤니티) 기준으로 네 값 재계산
+            const remainingInCommunity = remainingAll.filter((ap) => ap.communityId === communityId);
+            const dateKeysInCommunity = new Set(
+              remainingInCommunity.map((ap) => getDateKey(ap.createdAt)).filter(Boolean)
             );
-            
-            const todayPosts = authoredPosts.filter((authoredPost) => {
-              if (authoredPost.postId === postId) return false; // 삭제할 게시글 제외
-              if (authoredPost.communityId !== communityId) return false; // 같은 커뮤니티만
-              const postDate = getDateKey(authoredPost.createdAt);
-              return postDate === todayKey;
-            });
 
-            // 롤백 조건 확인
-            if (
-              todayPosts.length === 0 && // 오늘 인증글이 0개
-              userData.lastRoutineAuthDate === todayKey && // 오늘 인증했음
-              userData.currentRoutineCommunityId === communityId // 같은 커뮤니티
-            ) {
-              shouldRollback = true;
-              rollbackData = {
-                consecutiveRoutinePosts: userData.consecutiveRoutinePosts,
-                yesterdayKey,
-              };
+            let lastRoutineAuthDate = null;
+            let consecutiveRoutinePosts = 0;
+            let newCurrentRoutineCommunityId = null;
+
+            if (dateKeysInCommunity.size > 0) {
+              const sortedDesc = Array.from(dateKeysInCommunity).sort().reverse();
+              lastRoutineAuthDate = sortedDesc[0];
+              consecutiveRoutinePosts = countConsecutiveDaysFromLatest(dateKeysInCommunity);
+              newCurrentRoutineCommunityId = communityId;
+            }
+
+            routineUserUpdate = {
+              lastRoutineAuthDate,
+              consecutiveRoutinePosts,
+              currentRoutineCommunityId: newCurrentRoutineCommunityId,
+              updatedAt: FieldValue.serverTimestamp(),
+            };
+            if (shouldDecrementCertificationPosts) {
+              routineUserUpdate.certificationPosts = FieldValue.increment(-1);
+              decrementMemberCert = true;
             }
           }
         } catch (error) {
-          console.warn("[COMMUNITY][deletePost] 루틴 인증 롤백 정보 조회 실패 (계속 진행):", error.message);
+          console.warn("[COMMUNITY][deletePost] 루틴 인증 재계산 정보 조회 실패 (계속 진행):", error.message);
         }
       }
 
@@ -2414,36 +2446,16 @@ class CommunityService {
           .doc(postId);
         transaction.delete(authoredPostRef);
 
-        // 루틴 인증글 삭제 시 롤백 처리
+        // 루틴 인증글 삭제 시: 남은 글 기준 재계산 반영
         if (post.type === PROGRAM_TYPE_TO_POST_TYPE[PROGRAM_TYPES.ROUTINE].cert) {
-          if (shouldRollback && rollbackData) {
-            // 롤백 처리
-            const userUpdate = {
-              updatedAt: FieldValue.serverTimestamp(),
-            };
-
-            if (rollbackData.consecutiveRoutinePosts >= 2) {
-              userUpdate.consecutiveRoutinePosts = rollbackData.consecutiveRoutinePosts - 1;
-              userUpdate.lastRoutineAuthDate = rollbackData.yesterdayKey;
-            } else {
-              userUpdate.consecutiveRoutinePosts = 0;
-              userUpdate.lastRoutineAuthDate = null;
-              userUpdate.currentRoutineCommunityId = null;
-            }
-
-            userUpdate.certificationPosts = FieldValue.increment(-1);
-            transaction.update(userRef, userUpdate);
-
-            // 멤버 문서가 존재할 때만 업데이트 (Admin은 members에 없을 수 있음)
-            if (isMemberExists) {
+          if (routineUserUpdate) {
+            transaction.update(userRef, routineUserUpdate);
+            if (decrementMemberCert && isMemberExists) {
               transaction.update(memberRef, {
                 certificationPostsCount: FieldValue.increment(-1),
                 updatedAt: FieldValue.serverTimestamp(),
               });
             }
-          } else {
-            // 롤백하지 않는 경우 (어제 이전 게시글 삭제 등)
-            // certificationPosts는 감소하지 않음 (이미 오늘 인증이 완료된 상태)
           }
         } else if (CERTIFICATION_COUNT_TYPES.has(post.type)) {
           // 기존 로직 (루틴이 아닌 다른 인증글)
