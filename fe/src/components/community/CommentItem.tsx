@@ -1326,7 +1326,7 @@ const CommentItemComponent = ({
                               className={cn(
                                 "flex h-8 items-center rounded-lg px-3 py-2 transition-all",
                                 hasEditContent
-                                  ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                                  ? "bg-main-500 hover:bg-main-600 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
                             >
@@ -1473,7 +1473,7 @@ const CommentItemComponent = ({
                               className={cn(
                                 "flex h-8 items-center rounded-lg px-3 py-2 transition-all",
                                 !isCommentSubmitting && hasReplyToReplyContent
-                                  ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                                  ? "bg-main-500 hover:bg-main-600 cursor-pointer text-white"
                                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
                               )}
                             >
