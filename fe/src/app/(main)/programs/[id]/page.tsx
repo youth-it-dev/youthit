@@ -396,7 +396,7 @@ const ProgramDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-white pt-12 pb-24">
-      <div className="relative aspect-square w-full max-w-[470px] overflow-hidden">
+      <div className="relative aspect-4/5 w-full max-w-[470px] overflow-hidden">
         {/* 썸네일 이미지 우선순위: thumbnail.url > coverImage > 일러스트 */}
         {program.thumbnail?.[0]?.url ? (
           <img
