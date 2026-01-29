@@ -80,7 +80,7 @@ export const MissionCertificationSuccessModal = ({
               onClose();
               router.push(LINK_URL.MISSION_LIST);
             }}
-            className="bg-main-600 hover:bg-main-700 w-full rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
+            className="bg-main-500 hover:bg-main-600 w-full rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500"
           >
             <Typography font="noto" variant="body2B" className="text-white">
               다음 미션 찾아보기
