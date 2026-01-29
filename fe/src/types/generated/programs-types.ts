@@ -54,8 +54,7 @@ export interface TPOSTProgramsWebhooksLeaderChangeReq {
   data: {
     source?: Record<string, any>;
     data?: {
-      id?: string;
-      properties?: Record<string, any>;
+      id: string;
     };
   };
 }
@@ -64,4 +63,8 @@ export type TPOSTProgramsWebhooksLeaderChangeRes = {
   success?: boolean;
   communityId?: string;
   newLeaderUserId?: string;
+  previousLeaderUserId?: string;
+  leaderRemoved?: boolean;
+  skipped?: boolean;
+  reason?: string;
 };
