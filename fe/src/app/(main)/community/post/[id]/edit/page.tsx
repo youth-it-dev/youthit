@@ -96,6 +96,7 @@ const EditPageContent = () => {
 
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
   const setTitle = useTopBarStore((state) => state.setTitle);
+  const resetTopBar = useTopBarStore((state) => state.reset);
 
   // 기존 media 배열을 state로 관리
   const [originalMedia, setOriginalMedia] = useState<string[]>([]);
@@ -652,8 +653,11 @@ const EditPageContent = () => {
         </Typography>
       </ButtonBase>
     );
+    return () => {
+      resetTopBar();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTitle, setRightSlot, isSubmitDisabled, handleSubmit]);
+  }, [setTitle, setRightSlot, isSubmitDisabled, handleSubmit, resetTopBar]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {

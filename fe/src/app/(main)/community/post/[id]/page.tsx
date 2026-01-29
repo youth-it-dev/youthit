@@ -61,6 +61,7 @@ const PostDetailPageContent = () => {
     close: closeDeleteSuccessModal,
   } = useToggle();
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const resetTopBar = useTopBarStore((state) => state.reset);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const focusCommentInputRef = useRef<(() => void) | null>(null);
 
@@ -211,8 +212,12 @@ const PostDetailPageContent = () => {
         onReport={!isAuthor ? handleReportClick : undefined}
       />
     );
+    return () => {
+      resetTopBar();
+    };
   }, [
     setRightSlot,
+    resetTopBar,
     isAuthor,
     handleShare,
     handleEditClick,

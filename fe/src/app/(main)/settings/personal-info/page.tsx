@@ -26,12 +26,17 @@ const PersonalInfoPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const setTitle = useTopBarStore((state) => state.setTitle);
+  const resetTopBar = useTopBarStore((state) => state.reset);
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false);
 
   useEffect(() => {
     setTitle("계정 관리");
-  }, [setTitle]);
+
+    return () => {
+      resetTopBar();
+    };
+  }, [setTitle, resetTopBar]);
 
   const { data: userData } = useGetUsersMe({
     request: {},

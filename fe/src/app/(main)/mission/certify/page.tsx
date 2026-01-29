@@ -436,6 +436,7 @@ const MissionCertifyPageContent = () => {
 
   // TopBar 뒤로가기 버튼 클릭 시 컨펌 모달 열기
   const setLeftSlot = useTopBarStore((state) => state.setLeftSlot);
+  const resetTopBar = useTopBarStore((state) => state.reset);
   useEffect(() => {
     const handleBackClick = () => {
       openLeaveConfirm();
@@ -453,9 +454,9 @@ const MissionCertifyPageContent = () => {
     );
 
     return () => {
-      setLeftSlot(null);
+      resetTopBar();
     };
-  }, [setLeftSlot, openLeaveConfirm]);
+  }, [setLeftSlot, openLeaveConfirm, resetTopBar]);
 
   // 뒤로가기(popstate) 인터셉트: 언제나 컨펌 모달 노출
   useEffect(() => {
