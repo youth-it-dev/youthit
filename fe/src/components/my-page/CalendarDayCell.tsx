@@ -12,6 +12,8 @@ interface Props {
   imageUrl?: string;
   /** 게시글 ID */
   postId?: string;
+  /** 커뮤니티 ID (게시글 상세 이동 시 필요) */
+  communityId?: string;
   /** 인증 여부 */
   hasPost: boolean;
   /** 연속 인증 여부 */
@@ -24,8 +26,8 @@ interface Props {
   currentRoutineCommunityId?: string | null;
   /** 인증 버튼 클릭 핸들러 */
   onCertifyClick?: () => void;
-  /** 게시글 클릭 핸들러 */
-  onPostClick?: (postId: string) => void;
+  /** 게시글 클릭 핸들러 (postId, communityId) */
+  onPostClick?: (postId: string, communityId?: string) => void;
 }
 
 /**
@@ -36,6 +38,7 @@ const CalendarDayCell = ({
   dateKey,
   imageUrl,
   postId,
+  communityId,
   hasPost,
   isConsecutive,
   isCurrentMonth,
@@ -46,14 +49,14 @@ const CalendarDayCell = ({
 }: Props) => {
   // 오늘 날짜이고 인증 사진이 없고 currentRoutineCommunityId가 있으면 인증 가능 상태
   const canCertify = isToday && !hasPost && Boolean(currentRoutineCommunityId);
-  // 인증 사진이 있고 postId가 있으면 게시글로 이동 가능
-  const canNavigateToPost = hasPost && imageUrl && postId;
+  // 인증 사진이 있고 postId가 있으면 게시글로 이동 가능 (communityId 있으면 상세 조회 가능)
+  const canNavigateToPost = hasPost && imageUrl && postId && communityId;
 
   const handleClick = () => {
     if (canCertify && onCertifyClick) {
       onCertifyClick();
     } else if (canNavigateToPost && onPostClick && postId) {
-      onPostClick(postId);
+      onPostClick(postId, communityId);
     }
   };
 

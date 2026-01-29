@@ -8,6 +8,7 @@ export interface CalendarDay {
   dateKey: string;
   imageUrl?: string;
   postId?: string;
+  communityId?: string;
   hasPost: boolean;
   isConsecutive: boolean;
   isCurrentMonth: boolean;
@@ -18,6 +19,7 @@ interface CalendarDayData {
   [dateKey: string]: {
     imageUrl?: string;
     postId?: string;
+    communityId?: string;
   };
 }
 
@@ -114,6 +116,7 @@ export const generateCalendarDays = (
       dateKey,
       imageUrl: dayData?.imageUrl,
       postId: dayData?.postId,
+      communityId: dayData?.communityId,
       hasPost,
       isConsecutive,
       isCurrentMonth: true,
