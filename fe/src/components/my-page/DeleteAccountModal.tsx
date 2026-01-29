@@ -174,7 +174,7 @@ const DeleteAccountModal = ({
               !nickname ||
               userName.trim() !== nickname
             }
-            className="bg-primary-pink hover:bg-primary-pink/80 rounded-xl px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="bg-main-500 hover:bg-main-600 rounded-xl px-4 py-3 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:bg-gray-300"
             aria-label={isLoading ? "탈퇴 진행 중..." : "탈퇴"}
           >
             <Typography font="noto" variant="body2M" className="text-white">

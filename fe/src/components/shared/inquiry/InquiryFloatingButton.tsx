@@ -222,7 +222,7 @@ export const InquiryFloatingButton = ({
         <button
           onClick={handleOpen}
           className={cn(
-            "bg-main-600 hover:bg-main-700 pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4 shadow-lg transition-all hover:scale-105",
+            "bg-main-500 hover:bg-main-600 pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4 shadow-lg transition-all hover:scale-105",
             className
           )}
         >

@@ -571,7 +571,7 @@ const ProgramDetailPage = () => {
           <Typography as="h3" font="noto" variant="heading3B">
             참여했던 친구들의 후기에요!
           </Typography>
-          <Link href={`/community?category=한끗루틴`} className="text-pink-500">
+          <Link href={`/community?category=한끗루틴`} className="text-main-500">
             <Typography font="noto" variant="body3R">
               피드 보러가기 →
             </Typography>

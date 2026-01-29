@@ -185,7 +185,7 @@ export const ReportReasonPage = ({
             "w-full rounded-lg py-3 transition-colors",
             isValid && !isSubmitting
               ? "bg-main-500 hover:bg-main-600 text-white"
-              : "cursor-not-allowed bg-pink-100 text-gray-400"
+              : "bg-main-100 cursor-not-allowed text-gray-400"
           )}
           type="button"
         >

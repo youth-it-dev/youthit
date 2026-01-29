@@ -66,7 +66,11 @@ const PostCard = ({
       {/* 게시글 정보 */}
       <div className="flex h-27 flex-col justify-between gap-1 p-2">
         {/* 제목/태그 */}
-        <Typography font="noto" variant="label2M" className="truncate text-pink-600">
+        <Typography
+          font="noto"
+          variant="label2M"
+          className="text-main-500 truncate"
+        >
           {title}
         </Typography>
 
@@ -83,7 +87,7 @@ const PostCard = ({
         <div className="flex items-center justify-between">
           {/* 작성자 정보 */}
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-pink-100">
+            <div className="bg-main-100 flex h-6 w-6 items-center justify-center overflow-hidden rounded-full">
               {authorProfileUrl ? (
                 <img
                   src={authorProfileUrl}
@@ -91,7 +95,7 @@ const PostCard = ({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <User className="h-3 w-3 text-pink-400" />
+                <User className="text-main-500 h-3 w-3" />
               )}
             </div>
             <Typography
