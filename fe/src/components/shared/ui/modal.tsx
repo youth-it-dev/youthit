@@ -179,7 +179,7 @@ const Modal = ({
             onClick={onConfirm}
             disabled={confirmDisabled}
             className={cn(
-              "bg-main-600 hover:bg-main-700 rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300",
+              "bg-main-500 hover:bg-main-600 rounded-lg py-2 text-white transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300",
               "flex-1 grow"
             )}
             aria-label={confirmText}

@@ -150,7 +150,7 @@ export const ActivityApplicationForm = ({
               maxLength={200}
               rows={4}
               className={cn(
-                "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
+                "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-500 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
                 motivationError
                   ? "border-red-500"
                   : formData.customMotivation.length >= MIN_MOTIVATION_LENGTH &&

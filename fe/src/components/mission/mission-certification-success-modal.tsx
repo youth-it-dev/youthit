@@ -44,7 +44,7 @@ export const MissionCertificationSuccessModal = ({
       >
         {/* 체크마크 아이콘 */}
         <div className="flex justify-center">
-          <div className="bg-main-600 flex size-16 items-center justify-center rounded-full">
+          <div className="bg-main-500 flex size-16 items-center justify-center rounded-full">
             <Check className="size-8 text-white" strokeWidth={3.5} />
           </div>
         </div>

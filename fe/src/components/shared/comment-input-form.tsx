@@ -329,7 +329,7 @@ export const CommentInputForm = memo(
               className={cn(
                 "h-[40px] rounded-lg px-4 py-2 text-sm font-medium transition-all",
                 !replyingTo?.isReply && !isSubmitting && hasContent
-                  ? "bg-main-600 hover:bg-main-700 cursor-pointer text-white"
+                  ? "bg-main-500 hover:bg-main-600 cursor-pointer text-white"
                   : "cursor-not-allowed bg-gray-100 text-gray-400 opacity-50"
               )}
             >
