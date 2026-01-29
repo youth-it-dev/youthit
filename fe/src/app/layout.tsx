@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Noto_Sans_KR } from "next/font/google";
 import AppNotificationsInitializer from "@/components/shared/layouts/app-notifications-initializer";
-import LandscapeBlocker from "@/components/shared/layouts/landscape-blocker";
 import PwaInstallPrompt from "@/components/shared/layouts/pwa-install-prompt";
 import { Toaster } from "@/components/shared/ui/sonner";
 import { SuspensionDialogProvider } from "@/contexts/shared/suspension-dialog";
@@ -73,7 +72,6 @@ export default function RootLayout({
             <SuspensionDialogProvider>
               <Toaster />
               <AppNotificationsInitializer />
-              <LandscapeBlocker />
               <div className="flex h-screen w-full flex-col bg-white">
                 {children}
               </div>
