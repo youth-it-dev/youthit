@@ -117,7 +117,7 @@ const RewardsHistoryPage = () => {
           <div className="rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">사용 가능한 나다움</span>
-              <span className="text-2xl font-semibold text-pink-500">
+              <span className="text-main-500 text-2xl font-semibold">
                 {availableRewards}
                 <span className="ml-1 text-2xl font-semibold">N</span>
               </span>

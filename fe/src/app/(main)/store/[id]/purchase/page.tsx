@@ -623,7 +623,7 @@ const StorePurchasePage = () => {
                     <Typography
                       font="noto"
                       variant="body3B"
-                      className="text-pink-600"
+                      className="text-main-500"
                     >
                       {totalRequiredPoints}N
                     </Typography>

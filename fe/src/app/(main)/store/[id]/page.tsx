@@ -404,7 +404,7 @@ const StoreProductDetailPage = () => {
         <Typography as="h2" font="noto" variant="title5" className="mb-2">
           {productData.name || "-"}
         </Typography>
-        <Typography font="noto" variant="heading3B" className="text-pink-600">
+        <Typography font="noto" variant="heading3B" className="text-main-500">
           {productData.requiredPoints || 0}N
         </Typography>
       </div>

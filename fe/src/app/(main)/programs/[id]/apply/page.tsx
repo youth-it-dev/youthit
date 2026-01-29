@@ -1080,7 +1080,7 @@ const ProgramApplyPageContent = () => {
                         className={cn(
                           "font-noto focus:ring-main-400 focus:outline-main-400 focus:border-main-600 w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-base font-normal shadow-xs focus:outline-3",
                           formData.customMotivation.length >=
-                            MIN_MOTIVATION_LENGTH && "border-pink-500"
+                            MIN_MOTIVATION_LENGTH && "border-main-500"
                         )}
                       />
                       <Typography

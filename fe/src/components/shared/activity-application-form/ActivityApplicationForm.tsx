@@ -154,7 +154,7 @@ export const ActivityApplicationForm = ({
                 motivationError
                   ? "border-red-500"
                   : formData.customMotivation.length >= MIN_MOTIVATION_LENGTH &&
-                      "border-pink-500"
+                      "border-main-500"
               )}
             />
             <Typography
@@ -163,7 +163,7 @@ export const ActivityApplicationForm = ({
               className={cn(
                 "mt-1 text-right",
                 formData.customMotivation.length < MIN_MOTIVATION_LENGTH
-                  ? "text-pink-500"
+                  ? "text-main-500"
                   : "text-gray-400"
               )}
             >
@@ -345,7 +345,7 @@ export const ActivityApplicationForm = ({
               className={cn(
                 phoneError
                   ? "border-red-500"
-                  : formData.phoneNumber && "border-pink-500"
+                  : formData.phoneNumber && "border-main-500"
               )}
             />
           ) : (
@@ -393,7 +393,7 @@ export const ActivityApplicationForm = ({
                     "pr-10",
                     nicknameError
                       ? "border-red-500"
-                      : formData.nickname && "border-pink-500"
+                      : formData.nickname && "border-main-500"
                   )}
                 />
                 {formData.nickname && (
