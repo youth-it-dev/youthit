@@ -36,6 +36,7 @@ const Page = () => {
 
   const queryClient = useQueryClient();
   const setRightSlot = useTopBarStore((state) => state.setRightSlot);
+  const resetTopBar = useTopBarStore((state) => state.reset);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const focusCommentInputRef = useRef<(() => void) | null>(null);
 
@@ -210,7 +211,10 @@ const Page = () => {
         onReport={!isAuthor ? handleReportClick : undefined}
       />
     );
-  }, [setRightSlot, handleShare, isAuthor, handleReportClick]);
+    return () => {
+      resetTopBar();
+    };
+  }, [setRightSlot, handleShare, isAuthor, handleReportClick, resetTopBar]);
 
   // 로딩 중 - 스켈레톤 표시
   if (isLoading) {
