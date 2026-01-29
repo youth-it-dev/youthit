@@ -2009,7 +2009,7 @@ const TextEditor = ({
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    className="bg-main-600 min-w-[84px] rounded px-3 py-2.5 text-sm text-white active:opacity-90"
+                    className="bg-main-500 min-w-[84px] rounded px-3 py-2.5 text-sm text-white active:opacity-90"
                     onClick={() => {
                       if (
                         window.confirm("선택한 텍스트의 링크를 제거할까요?")

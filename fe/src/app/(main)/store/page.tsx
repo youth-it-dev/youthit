@@ -191,7 +191,7 @@ const StorePage = () => {
                     <Typography
                       font="noto"
                       variant="label1B"
-                      className="text-main-600"
+                      className="text-main-500"
                     >
                       {product.requiredPoints || 0}N
                     </Typography>

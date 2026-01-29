@@ -208,7 +208,7 @@ const QuantitySelectorPopup = ({
             "w-full rounded-lg px-4 py-3 text-white transition-colors",
             isInsufficientPoints
               ? "cursor-not-allowed bg-gray-400"
-              : "bg-main-600 hover:bg-main-700"
+              : "bg-main-500 hover:bg-main-600"
           )}
         >
           <Typography font="noto" variant="body3R" className="text-white">
@@ -460,7 +460,7 @@ const StoreProductDetailPage = () => {
             "w-full rounded-lg px-4 py-3 text-white transition-colors",
             isInsufficientPoints
               ? "cursor-not-allowed bg-gray-400"
-              : "bg-main-600 hover:bg-main-700"
+              : "bg-main-500 hover:bg-main-600"
           )}
         >
           <Typography font="noto" variant="body3R" className="text-white">

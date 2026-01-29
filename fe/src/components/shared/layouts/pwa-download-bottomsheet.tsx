@@ -194,7 +194,7 @@ const PwaDownloadBottomSheet = ({
             <ButtonBase
               onClick={onInstall}
               className={
-                "bg-main-600 w-full rounded-lg px-4 py-3.5 font-semibold text-white transition-colors duration-200 hover:cursor-pointer"
+                "bg-main-500 w-full rounded-lg px-4 py-3.5 font-semibold text-white transition-colors duration-200 hover:cursor-pointer"
               }
             >
               설치 없이 앱으로 열기

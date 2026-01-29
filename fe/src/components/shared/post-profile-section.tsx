@@ -64,7 +64,7 @@ export const PostProfileSection = ({
         />
       ) : (
         <User
-          className="text-main-600 mr-3 h-8 w-8 rounded-full"
+          className="text-main-500 mr-3 h-8 w-8 rounded-full"
           strokeWidth={1.5}
         />
       )}

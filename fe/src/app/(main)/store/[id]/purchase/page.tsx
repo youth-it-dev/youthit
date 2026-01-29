@@ -332,7 +332,7 @@ const StorePurchasePage = () => {
   // 하단 버튼 렌더링
   const renderBottomButton = useCallback(() => {
     const buttonBaseClass =
-      "w-full rounded-lg bg-main-600 px-4 py-3 text-white transition-colors hover:bg-main-700 disabled:bg-gray-300 disabled:hover:bg-gray-300";
+      "w-full rounded-lg bg-main-500 px-4 py-3 text-white transition-colors hover:bg-main-600 disabled:bg-gray-300 disabled:hover:bg-gray-300";
 
     switch (currentStep) {
       case "recipient-info": {
@@ -434,7 +434,7 @@ const StorePurchasePage = () => {
           </Typography>
           <button
             onClick={() => router.push(`/store/${productId}`)}
-            className="bg-main-600 rounded-lg px-4 py-2 text-white"
+            className="bg-main-500 rounded-lg px-4 py-2 text-white"
           >
             <Typography font="noto" variant="body3R" className="text-white">
               상품 페이지로 돌아가기
