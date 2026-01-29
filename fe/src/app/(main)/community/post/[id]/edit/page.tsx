@@ -648,7 +648,7 @@ const EditPageContent = () => {
         disabled={isSubmitDisabled || isSubmitting}
         onClick={handleSubmit(onSubmit)}
       >
-        <Typography font="noto" variant="body2M" className="text-main-600">
+        <Typography font="noto" variant="body2M" className="text-main-500">
           완료
         </Typography>
       </ButtonBase>
