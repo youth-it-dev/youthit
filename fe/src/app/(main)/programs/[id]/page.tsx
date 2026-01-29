@@ -738,7 +738,7 @@ const ProgramDetailPage = () => {
           <Link
             href={`/programs/${programId}/apply`}
             className={cn(
-              "bg-main-600 block w-full rounded-lg px-4 py-3 text-center text-white",
+              "bg-main-500 block w-full rounded-lg px-4 py-3 text-center text-white",
               (!isRecruitmentPeriodActive || isFirstComeDeadlineReached) &&
                 "pointer-events-none cursor-not-allowed opacity-50"
             )}
