@@ -7,3 +7,4 @@ export { CollectionGrid } from "./CollectionGrid";
 export { CollectionBanner } from "./CollectionBanner";
 export { CustomPageLink } from "./CustomPageLink";
 export { CustomImage } from "./CustomImage";
+export { SafeNotionRenderer } from "./SafeNotionRenderer";

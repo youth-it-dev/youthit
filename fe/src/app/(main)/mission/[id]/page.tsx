@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
@@ -10,7 +9,11 @@ import MissionDetailActionBar from "@/components/mission/mission-detail-action-b
 import MissionInfoBox from "@/components/mission/mission-info-box";
 import MissionReviewCard from "@/components/mission/mission-review-card";
 import MissionTag from "@/components/mission/mission-tag";
-import { CustomImage, CustomPageLink } from "@/components/shared/notion";
+import {
+  CustomImage,
+  CustomPageLink,
+  SafeNotionRenderer,
+} from "@/components/shared/notion";
 import { Typography } from "@/components/shared/typography";
 import AccordionItem from "@/components/shared/ui/accordion-item";
 import DetailImage from "@/components/shared/ui/detail-image";
@@ -38,12 +41,6 @@ import { getTomorrow4AM59 } from "@/utils/shared/date";
 import { getErrorStatus } from "@/utils/shared/error";
 import { shareContent } from "@/utils/shared/share";
 import { showToast } from "@/utils/shared/toast";
-
-// NotionRenderer는 클라이언트 전용으로 렌더링하여 hydration 불일치 방지
-const NotionRenderer = dynamic(
-  () => import("react-notion-x").then((m) => m.NotionRenderer),
-  { ssr: false }
-);
 
 /**
  * @description 미션 상세 페이지
@@ -368,7 +365,7 @@ const Page = () => {
                 content={
                   faq.recordMap ? (
                     <div className="notion-page">
-                      <NotionRenderer
+                      <SafeNotionRenderer
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         recordMap={faq.recordMap as any}
                         fullPage={false}

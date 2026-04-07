@@ -2,11 +2,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { ExtendedRecordMap } from "notion-types";
 import "react-notion-x/src/styles.css";
-import { CustomPageLink, CustomImage } from "@/components/shared/notion";
+import {
+  CustomPageLink,
+  CustomImage,
+  SafeNotionRenderer,
+} from "@/components/shared/notion";
 import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { useGetHome } from "@/hooks/generated/home-hooks";
 import { useTopBarStore } from "@/stores/shared/topbar-store";
@@ -14,11 +17,7 @@ import { isS3UrlExpired } from "@/utils/shared/s3-url-parser";
 
 const INITIAL_HEIGHT = 950;
 
-// NotionRenderer는 클라이언트 전용으로 렌더링하여 hydration 불일치 방지
-const NotionRenderer = dynamic(
-  () => import("react-notion-x").then((m) => m.NotionRenderer),
-  { ssr: false }
-);
+const getBlockValue = (block: any) => block?.value?.value ?? block?.value;
 
 /**
  * @description 홈 페이지 - Notion 기반 홈 화면
@@ -53,13 +52,13 @@ const HomePage = () => {
 
     // recordMap에서 페이지 블록 찾기
     const pageBlock = Object.values(homeData.block).find(
-      (block: any) => (block as any)?.value?.type === "page"
+      (block: any) => getBlockValue(block)?.type === "page"
     );
 
     if (!pageBlock) return [];
 
     // 페이지의 properties에서 배경화면 필드 찾기
-    const properties = (pageBlock as any).value?.properties;
+    const properties = getBlockValue(pageBlock)?.properties;
     if (!properties) return [];
 
     // "배경화면" 필드 찾기 (필드 ID는 "o|d}"로 보임)
@@ -93,7 +92,7 @@ const HomePage = () => {
 
               // 2. 파일 ID로 직접 찾지 못한 경우, 페이지 블록의 file_ids를 확인하여 해당 파일을 참조하는 블록 찾기
               if (!signedUrl && fileId && homeData.block) {
-                const pageValue = (pageBlock as any).value;
+                const pageValue = getBlockValue(pageBlock);
                 const fileIds = pageValue?.file_ids || [];
 
                 // file_ids에 해당 파일 ID가 있는 경우, 해당 파일을 참조하는 블록 찾기
@@ -101,13 +100,13 @@ const HomePage = () => {
                   // 모든 블록을 순회하여 해당 파일 ID를 참조하는 블록 찾기
                   const fileBlock = Object.values(homeData.block).find(
                     (block: any) => {
-                      const blockFileIds = block?.value?.file_ids || [];
+                      const blockFileIds = getBlockValue(block)?.file_ids || [];
                       return blockFileIds.includes(fileId);
                     }
                   );
 
                   if (fileBlock) {
-                    const blockId = (fileBlock as any).value?.id;
+                    const blockId = getBlockValue(fileBlock)?.id;
                     if (blockId && homeData.signed_urls) {
                       signedUrl = homeData.signed_urls[blockId] || null;
                     }
@@ -117,7 +116,7 @@ const HomePage = () => {
 
               // 3. signed_urls에서 찾지 못한 경우, Notion 이미지 URL 생성
               if (!signedUrl && fileId) {
-                const pageId = (pageBlock as any).value?.id;
+                const pageId = getBlockValue(pageBlock)?.id;
                 signedUrl = `https://www.notion.so/image/${encodeURIComponent(attachmentUrl)}?table=block&id=${pageId}&cache=v2`;
               }
 
@@ -315,8 +314,8 @@ const HomePage = () => {
 
         <div className="relative mx-auto w-full max-w-[470px] px-1">
           <div className="relative z-10 mx-auto my-0 pt-[40px]">
-            {homeData && (
-              <NotionRenderer
+            {homeData?.block && (
+              <SafeNotionRenderer
                 recordMap={homeData}
                 fullPage={false}
                 darkMode={false}

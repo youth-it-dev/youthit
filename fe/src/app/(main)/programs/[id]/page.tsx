@@ -6,9 +6,9 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
 import type { ExtendedRecordMap } from "notion-types";
-import { NotionRenderer } from "react-notion-x";
 import "react-notion-x/src/styles.css";
 import { InquiryFloatingButton } from "@/components/shared/inquiry/InquiryFloatingButton";
+import { SafeNotionRenderer } from "@/components/shared/notion";
 import { Typography } from "@/components/shared/typography";
 import Icon from "@/components/shared/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -545,7 +545,7 @@ const ProgramDetailPage = () => {
       >
         {notionRecordMap ? (
           <div className="notion-page">
-            <NotionRenderer
+            <SafeNotionRenderer
               recordMap={notionRecordMap}
               fullPage={false}
               darkMode={false}
