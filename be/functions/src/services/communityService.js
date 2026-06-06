@@ -805,8 +805,8 @@ class CommunityService {
       // 인기순 정렬인 경우 점수 기반 정렬 로직
       if (sort === "popular") {
         // 인기순은 더 많은 데이터를 가져와서 점수 계산 후 정렬해야 함
-        const batchSize = 500; // 인기순일 때는 더 많이 가져옴
-        const maxPosts = 1000; // 최신순 게시글 1000개까지 수집
+        const batchSize = 50; // 인기순일 때는 더 많이 가져옴
+        const maxPosts = 200; // 최신순 게시글 1000개까지 수집
         let rawPage = 0;
         let hasMore = true;
         const allAccessiblePosts = [];
@@ -920,7 +920,7 @@ class CommunityService {
         }
       } else {
         // 최신순 정렬 (기존 로직)
-        const batchSize = Math.max(size, 50);
+        const batchSize = Math.max(size, 20);
         let rawPage = 0;
         let hasMore = true;
 
