@@ -102,7 +102,7 @@ jobs:
         working-directory: be/functions
         run: |
           echo "📦 의존성 설치 시작"
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --ignore-scripts
           
           echo "🔨 빌드 테스트 시작"
           pnpm run build
