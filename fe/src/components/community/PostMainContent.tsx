@@ -3,6 +3,7 @@ import { PostContent } from "@/components/shared/post-content";
 import { PostProfileSection } from "@/components/shared/post-profile-section";
 import { Typography } from "@/components/shared/typography";
 import type * as Schema from "@/types/generated/api-schema";
+import { decodeHtmlEntities } from "@/utils/shared/string";
 
 /**
  * @description 게시글 메인 콘텐츠 (좋아요 상태와 무관하게 리렌더링 방지)
@@ -43,7 +44,7 @@ export const PostMainContent = memo<{
           variant="heading1M"
           className="mb-4 text-gray-950"
         >
-          {title}
+          {decodeHtmlEntities(title || "")}
         </Typography>
 
         <PostProfileSection
