@@ -10,7 +10,20 @@ interface PostContentProps {
    */
   className?: string;
 }
+const processContent = (content: string): string => {
+  const youtubeRegex =
+    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^\s<]*/g;
 
+  const urlRegex = /(?<!['"=])(https?:\/\/[^\s<>"']+)/g;
+
+  return content
+    .replace(youtubeRegex, (_, videoId) => {
+      return `<div class="youtube-embed my-4"><iframe width="100%" height="200" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe></div>`;
+    })
+    .replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+};
 /**
  * @description 게시글 콘텐츠 렌더링 컴포넌트
  * - HTML 콘텐츠를 안전하게 렌더링
@@ -34,7 +47,7 @@ export const PostContent = ({ content, className }: PostContentProps) => {
         "[&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-full [&_img]:rounded-lg",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: processContent(content) }}
     />
   );
 };
