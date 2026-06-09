@@ -205,7 +205,7 @@ const PostFeed = ({
                 variant="body2B"
                 className="mb-1 line-clamp-1 break-all text-gray-600"
               >
-                {post.title || ""}
+                {decodeHtmlEntities(post.title || "")}
               </Typography>
 
               {/* 설명 (2줄 미리보기) */}
