@@ -10,6 +10,7 @@ import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { getTimeAgo } from "@/utils/shared/date";
 import { isValidImageUrl } from "@/utils/shared/url";
 import { Typography } from "../shared/typography";
+import { decodeHtmlEntities } from "@/utils/shared/string";
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
@@ -214,7 +215,7 @@ const PostFeed = ({
                   variant="label1M"
                   className="mb-6 line-clamp-2 break-all text-gray-500"
                 >
-                  {post.preview.description}
+                  {decodeHtmlEntities(post.preview.description)}
                 </Typography>
               )}
 
