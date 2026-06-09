@@ -8,9 +8,9 @@ import { IMAGE_URL } from "@/constants/shared/_image-url";
 import { POST_ANONYMOUS_NAME } from "@/constants/shared/_post-constants";
 import { CommunityPostListItem } from "@/types/generated/api-schema";
 import { getTimeAgo } from "@/utils/shared/date";
+import { decodeHtmlEntities } from "@/utils/shared/string";
 import { isValidImageUrl } from "@/utils/shared/url";
 import { Typography } from "../shared/typography";
-import { decodeHtmlEntities } from "@/utils/shared/string";
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
