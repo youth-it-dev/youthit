@@ -259,51 +259,44 @@ const PostFeed = ({
               </div>
 
               {/* 하단 칩 섹션 */}
-<div className="flex items-center justify-between gap-2">
-  <div className="flex gap-2">
-    {post.category && (
-      <div className="flex items-center rounded-md bg-white px-[6px] py-1">
-        <Typography
-          font="noto"
-          variant="caption1M"
-          className="line-clamp-1 text-gray-400"
-        >
-          {post.category}
-        </Typography>
-      </div>
-    )}
-    {post.channel && (
-      <div className="flex items-center rounded-md bg-white px-[6px] py-1">
-        <Typography
-          font="noto"
-          variant="caption1M"
-          className="line-clamp-1 text-gray-400"
-        >
-          {post.channel}
-        </Typography>
-      </div>
-    )}
-  </div>
-  <div className="flex items-center gap-3">
-    {typeof post.likesCount === "number" && (
-      <div className="flex items-center gap-1">
-        <span className="text-gray-400 text-xs">🤍</span>
-        <Typography font="noto" variant="caption1M" className="text-gray-400">
-          {post.likesCount}
-        </Typography>
-      </div>
-    )}
-    {typeof post.commentsCount === "number" && (
-      <div className="flex items-center gap-1">
-        <span className="text-gray-400 text-xs">💬</span>
-        <Typography font="noto" variant="caption1M" className="text-gray-400">
-          {post.commentsCount}
-        </Typography>
-      </div>
-    )}
-
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex gap-2">
+                  {post.category && (
+                    <div className="flex items-center rounded-md bg-white px-[6px] py-1">
+                      <Typography font="noto" variant="caption1M" className="line-clamp-1 text-gray-400">
+                        {post.category}
+                      </Typography>
+                    </div>
+                  )}
+                  {post.channel && (
+                    <div className="flex items-center rounded-md bg-white px-[6px] py-1">
+                      <Typography font="noto" variant="caption1M" className="line-clamp-1 text-gray-400">
+                        {post.channel}
+                      </Typography>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {typeof post.likesCount === "number" && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-400 text-xs">🤍</span>
+                      <Typography font="noto" variant="caption1M" className="text-gray-400">
+                        {post.likesCount}
+                      </Typography>
+                    </div>
+                  )}
+                  {typeof post.commentsCount === "number" && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-400 text-xs">💬</span>
+                      <Typography font="noto" variant="caption1M" className="text-gray-400">
+                        {post.commentsCount}
+                      </Typography>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-  
+
             {/* 우하단 접힌 부분 (dog-ear) */}
             <div
               className="pointer-events-none absolute right-0 bottom-0"
