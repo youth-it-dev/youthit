@@ -303,6 +303,7 @@ const PostFeed = ({
     )}
 
             </div>
+  
             {/* 우하단 접힌 부분 (dog-ear) */}
             <div
               className="pointer-events-none absolute right-0 bottom-0"
