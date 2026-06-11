@@ -11,6 +11,11 @@ import { getTimeAgo } from "@/utils/shared/date";
 import { decodeHtmlEntities } from "@/utils/shared/string";
 import { isValidImageUrl } from "@/utils/shared/url";
 import { Typography } from "../shared/typography";
+const CARD_COLORS = ["#B8C4F0", "#FFB3D9", "#C8F0A0"];
+const getCardColor = (id: string) => {
+  const index = id.charCodeAt(0) % CARD_COLORS.length;
+  return CARD_COLORS[index];
+};
 
 interface PostFeedProps {
   posts: CommunityPostListItem[];
@@ -193,7 +198,7 @@ const PostFeed = ({
               className="relative ml-8 cursor-pointer p-5 shadow-sm transition-shadow hover:shadow-md"
               onClick={() => handlePostClick(post)}
               style={{
-                backgroundColor: "#EBF0F9",
+                backgroundColor: getCardColor(post.id || ""),
                 borderRadius: "10px",
                 clipPath:
                   "polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)",
@@ -303,7 +308,7 @@ const PostFeed = ({
               style={{
                 borderTopLeftRadius: "10px",
                 borderWidth: "0 0 24px 24px",
-                borderColor: "transparent transparent transparent #C4D4F3",
+                borderColor: `transparent transparent transparent ${getCardColor(post.id || "")}`,
               }}
             />
           </div>
