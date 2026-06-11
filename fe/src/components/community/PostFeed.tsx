@@ -284,7 +284,7 @@ const PostFeed = ({
                 <div className="flex items-center gap-3">
                   {typeof post.likesCount === "number" && (
                     <div className="flex items-center gap-1">
-                      <span className="text-gray-400 text-xs">🤍</span>
+                      <span className="text-xs">{post.isLiked ? "❤️" : "🤍"}</span>
                       <Typography font="noto" variant="caption1M" className="text-gray-600">
                         {post.likesCount}
                       </Typography>
