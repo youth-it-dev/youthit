@@ -285,7 +285,7 @@ const PostFeed = ({
                   {typeof post.likesCount === "number" && (
                     <div className="flex items-center gap-1">
                       <span className="text-gray-400 text-xs">🤍</span>
-                      <Typography font="noto" variant="caption1M" className="text-gray-400">
+                      <Typography font="noto" variant="caption1M" className="text-gray-600">
                         {post.likesCount}
                       </Typography>
                     </div>
@@ -293,7 +293,7 @@ const PostFeed = ({
                   {typeof post.commentsCount === "number" && (
                     <div className="flex items-center gap-1">
                       <span className="text-gray-400 text-xs">💬</span>
-                      <Typography font="noto" variant="caption1M" className="text-gray-400">
+                      <Typography font="noto" variant="caption1M" className="text-gray-600">
                         {post.commentsCount}
                       </Typography>
                     </div>
