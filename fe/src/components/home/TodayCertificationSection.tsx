@@ -35,7 +35,7 @@ const TodayCertificationSection = () => {
       {todayPosts.length > 0 ? (
         <div className="mb-3 flex gap-4 overflow-x-auto pb-1">
           {todayPosts.map((post, index) => (
-            <div key={post.id || index} className="flex flex-col items-center gap-1 shrink-0">
+            <div key={post.id || index} className="flex flex-col items-center gap-1 flex-shrink-0">
               <ProfileImage
                 src={post.profileImageUrl}
                 alt={post.author || ""}
