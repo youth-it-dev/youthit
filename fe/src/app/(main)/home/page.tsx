@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import type { ExtendedRecordMap } from "notion-types";
 import "react-notion-x/src/styles.css";
+import TodayCertificationSection from "@/components/home/TodayCertificationSection";
 import {
   CustomPageLink,
   CustomImage,
@@ -314,6 +315,7 @@ const HomePage = () => {
 
         <div className="relative mx-auto w-full max-w-[470px] px-1">
           <div className="relative z-10 mx-auto my-0 pt-[40px]">
+            <TodayCertificationSection />
             {homeData?.block && (
               <SafeNotionRenderer
                 recordMap={homeData}
