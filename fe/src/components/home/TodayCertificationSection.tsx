@@ -1,8 +1,8 @@
 "use client";
 import { useMemo } from "react";
-import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 import ProfileImage from "@/components/shared/ui/profile-image";
 import { Typography } from "@/components/shared/typography";
+import { useGetCommunitiesPosts } from "@/hooks/generated/communities-hooks";
 
 /**
  * @description 오늘 인증 멤버 프로필 + 누적 인증 수 표시 섹션
